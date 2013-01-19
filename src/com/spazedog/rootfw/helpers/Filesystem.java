@@ -5,13 +5,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Locale;
 
 import android.content.Context;
 
 import com.spazedog.rootfw.RootFW;
+import com.spazedog.rootfw.containers.DiskInfo;
 import com.spazedog.rootfw.containers.FileData;
 import com.spazedog.rootfw.containers.FileInfo;
-import com.spazedog.rootfw.containers.MountCollection;
+import com.spazedog.rootfw.containers.MountInfo;
 import com.spazedog.rootfw.containers.ShellResult;
 
 public final class Filesystem {
@@ -42,7 +44,7 @@ public final class Filesystem {
 			Integer y;
 			
 			for (int i=0; i < lines.length; i++) {
-				parts = lines[i].replaceAll("  ", " ").trim().split(" ");
+				parts = RootFW.replaceAll(lines[i], "  ", " ").trim().split(" ");
 				y = parts[parts.length-2].equals("->") ? 3 : 1;
 				
 				if (parts[parts.length-y].equals(item)) {
@@ -465,22 +467,175 @@ public final class Filesystem {
 		return result.getResultCode() == 0 ? true : false;
 	}
 	
-	public ArrayList<MountCollection> getMounts() {
+	public ArrayList<MountInfo> getMounts() {
 		FileData filedata = readFile("/proc/mounts");
 		
 		if (filedata != null) {
 			String[] mounts = filedata.getData(), line;
 			
-			ArrayList<MountCollection> list = new ArrayList<MountCollection>();
+			ArrayList<MountInfo> list = new ArrayList<MountInfo>();
 			
 			if (mounts != null) {
 				for (int i=0; i < mounts.length; i++) {
-					line = mounts[i].replaceAll("  ", "").trim().split(" ");
+					line = RootFW.replaceAll(mounts[i], "  ", " ").trim().split(" ");
 					
-					list.add(new MountCollection(line[0], line[1], line[2], line[3].split(",")));
+					list.add(new MountInfo(line[0], line[1], line[2], line[3].split(",")));
 				}
 				
 				return list;
+			}
+		}
+		
+		return null;
+	}
+	
+	public MountInfo getDiskMount(String argDevice) {
+		Boolean blockdevice;
+		
+		if ((blockdevice = isBlockDevice(argDevice)) || isDir(argDevice)) {
+			ArrayList<MountInfo> mounts = getMounts();
+			
+			if (mounts != null) {
+				String path = null;
+				
+				if (!blockdevice) {
+					path = argDevice.endsWith("/") ? argDevice.substring(0, argDevice.length()-1) : argDevice;
+				}
+				
+				for (int i=0; i < mounts.size(); i++) {
+					if (blockdevice) {
+						if (mounts.get(i).getDevice().equals(argDevice)) {
+							return mounts.get(i);
+						}
+						
+					} else {
+						do {
+							if (mounts.get(i).getMountPoint().equals(path)) {
+								return mounts.get(i);
+							}
+							
+						} while (path.lastIndexOf("/") > 0 && !(path = path.substring(0, path.lastIndexOf("/"))).equals(""));
+					}
+				}
+			}
+		}
+		
+		return null;
+	}
+	
+	/*
+	 * This method will provide disk information from a specific path.
+	 * The information provided are device path, mountpoint, disk usage, 
+	 * disk size, disk remaining space and usage percentage.
+	 * 
+	 * The information provided are the same as a proper supported busybox df command,
+	 * even on systems with low supported toolbox df command.
+	 */
+	public DiskInfo getDiskInfo(String argPath) {
+		Boolean blockdevice;
+		
+		if ((blockdevice = isBlockDevice(argPath)) || isDir(argPath)) {
+			MountInfo mountinfo = null;
+			
+			if (blockdevice) {
+				mountinfo = getDiskMount(argPath);
+				
+				if (mountinfo != null) {
+					argPath = mountinfo.getMountPoint();
+				}
+			}
+			
+			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("df -k " + argPath));
+			String[] parts = null, data = null;
+			
+			Long size=null, usage=null, remaining=null;
+			String device=null, mountpoint=null, repacked="";
+			Integer percentage;
+			
+			if (result.getResultCode() != 0) {
+				result = ROOTFW.runShell(RootFW.mkCmd("df " + argPath));
+				
+				if (result.getResultCode() == 0) {
+					data = result.getResult().getData();
+					for (int y=1; y < data.length; y++) {
+						repacked = data[y] + " ";
+					}
+					parts = RootFW.replaceAll(repacked, "  ", " ").trim().split(" ");
+					
+					String prefix;
+					String[] prefixes = {"k", "m", "g", "t"};
+					Double tmpSize;
+					for(int i=1; i < 4; i++) {
+						if (parts[i].matches("^.*[A-Za-z]$")) {
+							prefix = parts[i].substring(parts[i].length()-1).toLowerCase(Locale.US);
+							tmpSize = Double.parseDouble(parts[i].substring(0, parts[i].length()-1));
+							
+							RootFW.log(TAG, "getDiskInfo(): Removing prefix '" + prefix + "' and calculating '" + parts[i] + "' into bytes");
+							
+							if (!prefix.equals("b") && tmpSize > 0) {
+								for (int x=0; x < prefixes.length; x++) {
+									RootFW.log(TAG, "getDiskInfo(): Converting " + tmpSize.toString() + prefixes[x]);
+									
+									tmpSize = tmpSize * 1024D;
+									
+									if (prefixes[x].equals(prefix)) {
+										break;
+									}
+								}
+							}
+							
+							switch(i) {
+								case 1: size = tmpSize.longValue(); break;
+								case 2: usage = tmpSize.longValue(); break;
+								case 3: remaining = tmpSize.longValue(); break;
+							}
+							
+						} else {
+							switch(i) {
+								case 1: size = (Long.parseLong(parts[i]) * 1024L); break;
+								case 2: usage = (Long.parseLong(parts[i]) * 1024L); break;
+								case 3: remaining = (Long.parseLong(parts[i]) * 1024L); break;
+							}
+						}
+					}
+				}
+				
+			} else {
+				data = result.getResult().getData();
+				for (int y=1; y < data.length; y++) {
+					repacked = data[y] + " ";
+				}
+				parts = RootFW.replaceAll(repacked, "  ", " ").trim().split(" ");
+				
+				size = (Long.parseLong(parts[1]) * 1024L);
+				usage = (Long.parseLong(parts[2]) * 1024L);
+				remaining = (Long.parseLong(parts[3]) * 1024L);
+			}
+			
+			if (result.getResultCode() == 0) {
+				RootFW.log(TAG, "getDiskInfo(): Found disk info string '" + repacked + "'");
+				
+				if (parts.length >= 6 && isBlockDevice(parts[0])) {
+					percentage = Integer.parseInt(parts[4].endsWith("%") ? parts[4].substring(0, parts[4].length()-1) : parts[4]);
+					device = parts[0];
+					mountpoint = parts[5];
+
+				} else {
+					percentage = ((Long) ((usage * 100L) / size)).intValue();
+					
+					if (mountinfo == null) {
+						mountinfo = getDiskMount(argPath);
+					}
+					
+					if (mountinfo != null) {
+						device = mountinfo.getDevice();
+						mountpoint = mountinfo.getMountPoint();
+					}
+				}
+				
+				RootFW.log(TAG, "getDiskInfo(): Found disk info Device(" + device + "), MountPoint(" + mountpoint + "), Size(" + size.intValue() + "), Usage(" + usage.intValue() + "), Remaining(" + remaining.intValue() + "), Percentage(" + percentage + ")");
+				
+				return new DiskInfo(device, size, usage, remaining, percentage, mountpoint);
 			}
 		}
 		

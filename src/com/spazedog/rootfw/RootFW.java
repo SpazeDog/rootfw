@@ -59,6 +59,19 @@ public final class RootFW {
 		}
 	}
 	
+	public static String replaceAll(String argString, String argSearch, String argReplace) {
+		String ret = argString;
+		
+		if (!argSearch.equals(argReplace)) {
+			do {
+				ret = ret.replaceAll(argSearch, argReplace);
+				
+			} while(ret.contains(argSearch));
+		}
+		
+		return ret;
+	}
+	
 	public static String mkCmdEcho(String argContent) {
 		return "$(busybox echo 'busybox echo " + argContent + "' 2>/dev/null || toolbox echo 'toolbox echo " + argContent + "' 2>/dev/null || echo '" + argContent + "' 2>/dev/null)";
 	}

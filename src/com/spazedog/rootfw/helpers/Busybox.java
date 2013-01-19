@@ -26,7 +26,7 @@ public final class Busybox {
 		ShellResult result = ROOTFW.runShell("busybox 2>/dev/null");
 		
 		if (result.getResultCode() == 0) {
-			return result.getResult().getFirstLine().replaceAll("  ", " ").trim().split(" ")[1];
+			return RootFW.replaceAll(result.getResult().getFirstLine(), "  ", " ").trim().split(" ")[1];
 		}
 		
 		return null;
