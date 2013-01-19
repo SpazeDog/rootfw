@@ -81,94 +81,126 @@ public final class Filesystem {
 	
 	public Boolean exist(String argPath) {
 		ShellResult result = ROOTFW.runShell("busybox [ -e " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
+		Boolean status = false;
 		
 		if (result.getResultCode() != 0) {
 			result = ROOTFW.runShell("[ -e " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
 		}
 		
 		if (result.getResultCode() == 0) {
-			return result.getResult().getLastLine().equals("true") ? true : false;
+			status = result.getResult().getLastLine().equals("true") ? true : false;
 		}
 		
-		return getFileInfo(argPath) != null ? true : false;
+		status = getFileInfo(argPath) != null ? true : false;
+		
+		RootFW.log(TAG, "exist(): Checking if " + argPath + " exists which it " + (status ? "seams" : "does not seam") + " to do");
+		
+		return status;
 	}
 	
 	public Boolean isFile(String argPath) {
 		FileInfo fi;
 		ShellResult result = ROOTFW.runShell("busybox [ -f " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
+		Boolean status = false;
 		
 		if (result.getResultCode() != 0) {
 			result = ROOTFW.runShell("[ -f " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
 		}
 		
 		if (result.getResultCode() == 0) {
-			return result.getResult().getLastLine().equals("true") ? true : false;
+			status = result.getResult().getLastLine().equals("true") ? true : false;
 		}
 		
-		return (fi = getFileInfo(argPath)) != null && fi.getType().equals("-") ? true : false;
+		status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("-") ? true : false;
+		
+		RootFW.log(TAG, "isFile(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a file");
+		
+		return status;
 	}
 	
 	public Boolean isDir(String argPath) {
 		FileInfo fi;
 		ShellResult result = ROOTFW.runShell("busybox [ -d " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
+		Boolean status = false;
 		
 		if (result.getResultCode() != 0) {
 			result = ROOTFW.runShell("[ -d " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
 		}
 		
 		if (result.getResultCode() == 0) {
-			return result.getResult().getLastLine().equals("true") ? true : false;
+			status = result.getResult().getLastLine().equals("true") ? true : false;
 		}
 		
-		return (fi = getFileInfo(argPath)) != null && fi.getType().equals("d") ? true : false;
+		status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("d") ? true : false;
+
+		RootFW.log(TAG, "isDir(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a directory");
+		
+		return status;
 	}
 	
 	public Boolean isLink(String argPath) {
 		FileInfo fi;
 		ShellResult result = ROOTFW.runShell("busybox [ -L " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
+		Boolean status = false;
 		
 		if (result.getResultCode() != 0) {
 			result = ROOTFW.runShell("[ -L " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
 		}
 		
 		if (result.getResultCode() == 0) {
-			return result.getResult().getLastLine().equals("true") ? true : false;
+			status = result.getResult().getLastLine().equals("true") ? true : false;
 		}
 		
-		return (fi = getFileInfo(argPath)) != null && fi.getType().equals("l") ? true : false;
+		status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("l") ? true : false;
+		
+		RootFW.log(TAG, "isLink(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a link");
+		
+		return status;
 	}
 	
 	public Boolean isBlockDevice(String argPath) {
 		FileInfo fi;
 		ShellResult result = ROOTFW.runShell("busybox [ -b " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
+		Boolean status = false;
 		
 		if (result.getResultCode() != 0) {
 			result = ROOTFW.runShell("[ -b " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
 		}
 		
 		if (result.getResultCode() == 0) {
-			return result.getResult().getLastLine().equals("true") ? true : false;
+			status = result.getResult().getLastLine().equals("true") ? true : false;
 		}
 		
-		return (fi = getFileInfo(argPath)) != null && fi.getType().equals("b") ? true : false;
+		status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("b") ? true : false;
+		
+		RootFW.log(TAG, "isBlockDevice(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a block device");
+		
+		return status;
 	}
 	
 	public Boolean isCharacterDevice(String argPath) {
 		FileInfo fi;
 		ShellResult result = ROOTFW.runShell("busybox [ -c " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
+		Boolean status = false;
 		
 		if (result.getResultCode() != 0) {
 			result = ROOTFW.runShell("[ -c " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
 		}
 		
 		if (result.getResultCode() == 0) {
-			return result.getResult().getLastLine().equals("true") ? true : false;
+			status = result.getResult().getLastLine().equals("true") ? true : false;
 		}
 		
-		return (fi = getFileInfo(argPath)) != null && fi.getType().equals("c") ? true : false;
+		status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("c") ? true : false;
+		
+		RootFW.log(TAG, "isCharacterDevice(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a character device");
+		
+		return status;
 	}
 	
 	public Boolean copyFileResource(Context argContext, Integer argSrc, String argDes, String argPerms, String argUser, String argGroup) {
+		RootFW.log(TAG, "copyFileResource(): Trying to copy resource into " + argDes);
+		
 		if (!isDir(argDes)) {
 			InputStream in = argContext.getResources().openRawResource( argSrc );
 			FileOutputStream out = null;
@@ -227,7 +259,7 @@ public final class Filesystem {
 					result = ROOTFW.runShell(RootFW.mkCmd("cat " + argSrc + " > " + dest));
 				}
 				
-				if (result.getResultCode() == 0) {
+				if (result.getResultCode() == 0 || result.getResultCode() == 130) {
 					if (setPermissions(dest, argPerms) && setOwner(dest, argUser, argGroup)) {
 						status = true;
 					}
@@ -254,7 +286,7 @@ public final class Filesystem {
 					result = ROOTFW.runShell(RootFW.mkCmd("cat " + argSrc + " > " + dest));
 					FileInfo fi;
 					
-					if (result.getResultCode() == 0 && (fi = getFileInfo(argSrc)) != null) {
+					if ((result.getResultCode() == 0 || result.getResultCode() == 130) && (fi = getFileInfo(argSrc)) != null) {
 						if (setPermissions(argDes, fi.getPermissions()) && setOwner(argDes, fi.getUser(), fi.getGroup()) && rmFile(argSrc)) {
 							status = true;
 						}
@@ -263,6 +295,8 @@ public final class Filesystem {
 				} else {
 					status = true;
 				}
+				
+				RootFW.log(TAG, "moveFile(): " + (status ? "moved " + argSrc + " into " + argDes : "could not move " + argSrc + " into " + argDes), status ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
 				
 				return status;
 			}
@@ -332,7 +366,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean setPermissions(String argPath, String argPerms, Boolean argRecursive) {
-		if (argPath.length() > 0 && !exist(argPath)) {
+		if (argPath.length() > 0 && exist(argPath)) {
 			ShellResult result;
 			
 			if (argRecursive) { 
@@ -341,6 +375,8 @@ public final class Filesystem {
 			} else {
 				result = ROOTFW.runShell(RootFW.mkCmd("chmod " + argPerms + " " + argPath));
 			}
+			
+			RootFW.log(TAG, "setPermissions(): " + (result.getResultCode() == 0 ? "changed permission on " + argPath + " to '" + argPerms + "'" : "could not set permission on " + argPath + " to '" + argPerms + "'"), result.getResultCode() == 0 ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
 			
 			return result.getResultCode() == 0 ? true : false;
 		}
@@ -353,15 +389,17 @@ public final class Filesystem {
 	}
 	
 	public Boolean setOwner(String argPath, String argUser, String argGroup, Boolean argRecursive) {
-		if (argPath.length() > 0 && !exist(argPath)) {
+		if (argPath.length() > 0 && exist(argPath)) {
 			ShellResult result;
 			
 			if (argRecursive) {
 				result = ROOTFW.runShell(RootFW.mkCmd("chown -R " + (argUser + "." + argGroup) + " " + argPath));
 			
 			} else {
-				result = ROOTFW.runShell(RootFW.mkCmd("chown -R " + (argUser + "." + argGroup) + " " + argPath));
+				result = ROOTFW.runShell(RootFW.mkCmd("chown " + (argUser + "." + argGroup) + " " + argPath));
 			}
+			
+			RootFW.log(TAG, "setPermissions(): " + (result.getResultCode() == 0 ? "changed owner on " + argPath + " to '" + argUser + "." + argGroup + "'" : "could not set owner on " + argPath + " to '" + argUser + "." + argGroup + "'"), result.getResultCode() == 0 ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
 			
 			return result.getResultCode() == 0 ? true : false;
 		}
@@ -370,7 +408,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean rmFile(String argPath) {
-		if (argPath.length() > 0 && !exist(argPath)) {
+		if (argPath.length() > 0 && exist(argPath)) {
 			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("unlink " + argPath));
 			
 			if (result.getResultCode() != 0) {
@@ -384,7 +422,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean rmDir(String argPath) {
-		if (argPath.length() > 0 && !isDir(argPath)) {
+		if (argPath.length() > 0 && isDir(argPath)) {
 			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("rmdir " + argPath));
 			
 			if (result.getResultCode() != 0) {
@@ -521,6 +559,22 @@ public final class Filesystem {
 		}
 		
 		return null;
+	}
+	
+	public Boolean hasMountFlag(String argDevice, String argOption) {
+		MountInfo mi = getDiskMount(argDevice);
+		
+		if (mi != null) {
+			String[] mo = mi.getFlags();
+			
+			for (int i=0; i < mo.length; i++) {
+				if (mo[i].equals(argOption)) {
+					return true;
+				}
+			}
+		}
+		
+		return false;
 	}
 	
 	/*

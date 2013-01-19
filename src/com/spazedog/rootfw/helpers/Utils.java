@@ -1,5 +1,7 @@
 package com.spazedog.rootfw.helpers;
 
+import android.content.Context;
+
 import com.spazedog.rootfw.RootFW;
 import com.spazedog.rootfw.containers.ShellResult;
 
@@ -36,5 +38,33 @@ public class Utils {
 		RootFW.log(TAG, "matchMd5(): Comparing argument '" + argSum + "' with file sum '" + md5 + "' on '" + argFile + "'");
 		
 		return md5 == null ? false : md5.equals(argSum);
+	}
+	
+	public Boolean recoveryInstall(Context argContext, Integer argResource) {
+		if (ROOTFW.busybox.exist()) {
+			Boolean isWriteable = ROOTFW.filesystem.hasMountFlag("/", "rw");
+			
+			if (!isWriteable) {
+				ROOTFW.filesystem.remount("/", "rw");
+			}
+			
+			if(ROOTFW.filesystem.copyFileResource(argContext, argContext.getResources().getIdentifier("recovery_install_sh", "raw", argContext.getPackageName()), "/recoveryInstall.sh", "0770", "0", "0")) {
+				if(ROOTFW.filesystem.copyFileResource(argContext, argResource, "/update.zip", "0655", "0", "0")) {
+					ShellResult result = ROOTFW.runShell(RootFW.mkCmd("/recoveryInstall.sh"));
+					
+					if (!isWriteable) {
+						ROOTFW.filesystem.remount("/", "ro");
+					}
+					
+					return result.getResultCode() == 0 ? true : false;
+				}
+			}
+			
+			if (!isWriteable) {
+				ROOTFW.filesystem.remount("/", "ro");
+			}
+		}
+		
+		return false;
 	}
 }
