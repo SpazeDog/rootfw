@@ -116,7 +116,11 @@ public final class RootFW {
 				SHELL_IS_CONNECTED = true;
 			}
 			
-		} catch(Throwable e) { e.printStackTrace(); }
+		} catch(Throwable e) { 
+			SHELL_IS_CONNECTED = false;
+			
+			e.printStackTrace(); 
+		}
 	}
 	
 	/* 
