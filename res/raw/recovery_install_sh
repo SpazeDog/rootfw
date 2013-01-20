@@ -1,16 +1,24 @@
 #!/system/bin/sh
 
-for x in /data /cache; do
-    for i in /fstab.* /fstab /init.*.rc /init.rc; do
+for x in data cache; do
+    for i in /fstab.* /fstab /init.*.rc /init.rc /proc/mtd; do
         if busybox [ -f $i ]; then
-            if [ ! -z "`echo $i | grep -e '^\/init'`" ]; then
-                mountDevice="`busybox grep mount $i | busybox grep /dev/ | busybox grep $x | busybox grep -v -e '^[ \t]*#' | busybox sed -n '1p' | busybox awk '{print $3}'`"
+            if busybox [ ! -z "`busybox echo $i | busybox grep -e '^\/init'`" ]; then
+                mountDevice="`busybox grep mount $i | busybox grep /dev/ | busybox grep /$x | busybox grep -v -e '^[ \t]*#' | busybox sed -n '1p' | busybox awk '{print $3}'`"
+
+            elif busybox [ ! -z "`echo $i | grep -e '^\/fstab'`" ]; then
+                mountDevice="`busybox grep " /$x " $i | busybox grep -v -e '^[ \t]*#' | busybox sed -n '1p' | busybox awk '{print $1}'`"
+
             else
-                mountDevice="`busybox grep " $x " $i | busybox grep -v -e '^[ \t]*#' | busybox sed -n '1p' | busybox awk '{print $1}'`"
+                mountDevice="`busybox grep $x $i | busybox sed -n '1p' | busybox awk '{print $1}'`"
+
+                if busybox [ ! -z "$mountDevice" ]; then
+                    mountDevice="/dev/block/$(busybox echo $mountDevice | busybox sed 's/mtd/mtdblock/' | busybox sed 's/://')"
+                fi
             fi
 
             if busybox [ ! -z "$mountDevice" ] && busybox [ -b $mountDevice ]; then
-                busybox [ "$x" = "/cache" ] && cacheDevice=$mountDevice || dataDevice=$mountDevice; 
+                busybox [ "$x" = "cache" ] && cacheDevice=$mountDevice || dataDevice=$mountDevice; 
 
                 break
             fi
