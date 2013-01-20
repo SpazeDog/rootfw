@@ -14,6 +14,7 @@ import com.spazedog.rootfw.containers.DiskInfo;
 import com.spazedog.rootfw.containers.FileData;
 import com.spazedog.rootfw.containers.FileInfo;
 import com.spazedog.rootfw.containers.MountInfo;
+import com.spazedog.rootfw.containers.ShellCommand;
 import com.spazedog.rootfw.containers.ShellResult;
 
 public final class Filesystem {
@@ -30,48 +31,52 @@ public final class Filesystem {
 			return null;
 		}
 		
+		RootFW.log(TAG, "getFileInfo(): Getting file info on '" + argPath + "'");
+		
 		String path = argPath.endsWith("/") ? argPath.substring(0, argPath.length() - 1) : argPath;
 		String dir = path.substring(0, path.lastIndexOf("/"));
 		String item = path.substring(path.lastIndexOf("/") + 1);
-		ShellResult result = ROOTFW.runShell(RootFW.mkCmd("ls -ln " + dir));
 		
-		if (result.getResultCode() != 0) {
-			result = ROOTFW.runShell(RootFW.mkCmd("ls -l " + dir));
-		}
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"ls -ln " + dir, "ls -l " + dir} ));
 		
 		if (result.getResultCode() == 0) {
 			String[] lines = result.getResult().getData(), parts;
 			Integer y;
 			
-			for (int i=0; i < lines.length; i++) {
+			for (int i=1; i < lines.length; i++) {
 				parts = RootFW.replaceAll(lines[i], "  ", " ").trim().split(" ");
-				y = parts[parts.length-2].equals("->") ? 3 : 1;
 				
-				if (parts[parts.length-y].equals(item)) {
-					y = parts[4].matches("^[0-9]+$") ? 0 : 1;
+				if (parts.length > 1) {
+					y = parts[parts.length-2].equals("->") ? 3 : 1;
 					
-					String permissions = parts[0];
-					String user = parts[2-y];
-					String group = parts[3-y];
-					String type = permissions.substring(0, 1);
-					String link=null;
-					
-					if (type.equals("l")) {
-						link = parts[parts.length-1];
-					}
-					
-					String[] tmpPerms = {permissions.substring(1), permissions.substring(1, 4), permissions.substring(4, 7), permissions.substring(7, 10)};
-					Integer tmpNum;
-					String perms="";
-					for (int x=0; x < tmpPerms.length; x++) {
-						tmpNum = (x == 0 && tmpPerms[x].charAt(2) == 's') || (x > 0 && tmpPerms[x].charAt(0) == 'r') ? 4 : 0;
-						tmpNum += (x == 0 && tmpPerms[x].charAt(5) == 's') || (x > 0 && tmpPerms[x].charAt(1) == 'w') ? 2 : 0;
-						tmpNum += (x == 0 && tmpPerms[x].charAt(8) == 't') || (x > 0 && tmpPerms[x].charAt(2) == 'x') ? 1 : 0;
+					if (parts[parts.length-y].equals(item)) {
+						RootFW.log(TAG, "getFileInfo(): Found the fallowing information '" + lines[i] + "'");
 						
-						perms += tmpNum;
+						y = parts[4].matches("^[0-9]+$") ? 0 : 1;
+						
+						String permissions = parts[0];
+						String user = parts[2-y];
+						String group = parts[3-y];
+						String type = permissions.substring(0, 1);
+						String link=null;
+						
+						if (type.equals("l")) {
+							link = parts[parts.length-1];
+						}
+						
+						String[] tmpPerms = {permissions.substring(1), permissions.substring(1, 4), permissions.substring(4, 7), permissions.substring(7, 10)};
+						Integer tmpNum;
+						String perms="";
+						for (int x=0; x < tmpPerms.length; x++) {
+							tmpNum = (x == 0 && tmpPerms[x].charAt(2) == 's') || (x > 0 && tmpPerms[x].charAt(0) == 'r') ? 4 : 0;
+							tmpNum += (x == 0 && tmpPerms[x].charAt(5) == 's') || (x > 0 && tmpPerms[x].charAt(1) == 'w') ? 2 : 0;
+							tmpNum += (x == 0 && tmpPerms[x].charAt(8) == 't') || (x > 0 && tmpPerms[x].charAt(2) == 'x') ? 1 : 0;
+							
+							perms += tmpNum;
+						}
+						
+						return new FileInfo(type, user, group, perms, permissions, link);
 					}
-					
-					return new FileInfo(type, user, group, perms, permissions, link);
 				}
 			}
 		}
@@ -80,12 +85,9 @@ public final class Filesystem {
 	}
 	
 	public Boolean exist(String argPath) {
-		ShellResult result = ROOTFW.runShell("busybox [ -e " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
+		ShellResult result = ROOTFW.runShell("busybox [ -e " + argPath + " ] && echo true || echo false", "[ -e " + argPath + " ] && echo true || echo false");
+
 		Boolean status = false;
-		
-		if (result.getResultCode() != 0) {
-			result = ROOTFW.runShell("[ -e " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		}
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
@@ -99,13 +101,10 @@ public final class Filesystem {
 	}
 	
 	public Boolean isFile(String argPath) {
-		FileInfo fi;
-		ShellResult result = ROOTFW.runShell("busybox [ -f " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		Boolean status = false;
+		ShellResult result = ROOTFW.runShell("busybox [ -f " + argPath + " ] && echo true || echo false", "[ -f " + argPath + " ] && echo true || echo false");
 		
-		if (result.getResultCode() != 0) {
-			result = ROOTFW.runShell("[ -f " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		}
+		FileInfo fi;
+		Boolean status = false;
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
@@ -119,13 +118,10 @@ public final class Filesystem {
 	}
 	
 	public Boolean isDir(String argPath) {
-		FileInfo fi;
-		ShellResult result = ROOTFW.runShell("busybox [ -d " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		Boolean status = false;
+		ShellResult result = ROOTFW.runShell("busybox [ -d " + argPath + " ] && echo true || echo false", "[ -d " + argPath + " ] && echo true || echo false");
 		
-		if (result.getResultCode() != 0) {
-			result = ROOTFW.runShell("[ -d " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		}
+		FileInfo fi;
+		Boolean status = false;
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
@@ -139,13 +135,10 @@ public final class Filesystem {
 	}
 	
 	public Boolean isLink(String argPath) {
-		FileInfo fi;
-		ShellResult result = ROOTFW.runShell("busybox [ -L " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		Boolean status = false;
+		ShellResult result = ROOTFW.runShell("busybox [ -L " + argPath + " ] && echo true || echo false", "[ -L " + argPath + " ] && echo true || echo false");
 		
-		if (result.getResultCode() != 0) {
-			result = ROOTFW.runShell("[ -L " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		}
+		FileInfo fi;
+		Boolean status = false;
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
@@ -159,13 +152,10 @@ public final class Filesystem {
 	}
 	
 	public Boolean isBlockDevice(String argPath) {
-		FileInfo fi;
-		ShellResult result = ROOTFW.runShell("busybox [ -b " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		Boolean status = false;
+		ShellResult result = ROOTFW.runShell("busybox [ -b " + argPath + " ] && echo true || echo false", "[ -b " + argPath + " ] && echo true || echo false");
 		
-		if (result.getResultCode() != 0) {
-			result = ROOTFW.runShell("[ -b " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		}
+		FileInfo fi;
+		Boolean status = false;
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
@@ -179,13 +169,10 @@ public final class Filesystem {
 	}
 	
 	public Boolean isCharacterDevice(String argPath) {
-		FileInfo fi;
-		ShellResult result = ROOTFW.runShell("busybox [ -c " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		Boolean status = false;
+		ShellResult result = ROOTFW.runShell("busybox [ -c " + argPath + " ] && echo true || echo false", "[ -c " + argPath + " ] && echo true || echo false");
 		
-		if (result.getResultCode() != 0) {
-			result = ROOTFW.runShell("[ -c " + argPath + " ] && " + RootFW.mkCmdEcho("true") + " || " + RootFW.mkCmdEcho("false") + " 2>/dev/null");
-		}
+		FileInfo fi;
+		Boolean status = false;
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
@@ -253,13 +240,9 @@ public final class Filesystem {
 					(argDes.endsWith("/") ? argDes.substring(0, argDes.length() - 1) : argDes) + "/" + argSrc.substring(argSrc.lastIndexOf("/") + 1);
 				
 				Boolean status = false;
-				ShellResult result = ROOTFW.runShell(RootFW.mkCmd("cp " + argSrc + " " + dest));
+				ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"cp " + argSrc + " " + dest + "", "cat " + argSrc + " > " + dest + ""} ));
 				
-				if (result.getResultCode() != 0) {
-					result = ROOTFW.runShell(RootFW.mkCmd("cat " + argSrc + " > " + dest));
-				}
-				
-				if (result.getResultCode() == 0 || result.getResultCode() == 130) {
+				if (result.getResultCode() == 0) {
 					if (setPermissions(dest, argPerms) && setOwner(dest, argUser, argGroup)) {
 						status = true;
 					}
@@ -280,19 +263,18 @@ public final class Filesystem {
 					(argDes.endsWith("/") ? argDes.substring(0, argDes.length() - 1) : argDes) + "/" + argSrc.substring(argSrc.lastIndexOf("/") + 1);
 				
 				Boolean status = false;
-				ShellResult result = ROOTFW.runShell(RootFW.mkCmd("mv " + argSrc + " " + dest));
+				ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"mv " + argSrc + " " + dest + "", "cat " + argSrc + " > " + dest + ""} ));
 				
-				if (result.getResultCode() != 0) {
-					result = ROOTFW.runShell(RootFW.mkCmd("cat " + argSrc + " > " + dest));
+				if (result.getCommandNumber() > ShellCommand.getCompatibleBinaries().length) {
 					FileInfo fi;
 					
-					if ((result.getResultCode() == 0 || result.getResultCode() == 130) && (fi = getFileInfo(argSrc)) != null) {
+					if (result.getResultCode() == 0 && (fi = getFileInfo(argSrc)) != null) {
 						if (setPermissions(argDes, fi.getPermissions()) && setOwner(argDes, fi.getUser(), fi.getGroup()) && rmFile(argSrc)) {
 							status = true;
 						}
 					}
 					
-				} else {
+				} else if (result.getResultCode() == 0) {
 					status = true;
 				}
 				
@@ -308,7 +290,7 @@ public final class Filesystem {
 	
 	public FileData readFile(String argFile) {
 		if (exist(argFile)) {
-			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("cat " + argFile));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("cat " + argFile));
 			
 			if (result.getResultCode() == 0) {
 				return result.getResult();
@@ -320,11 +302,7 @@ public final class Filesystem {
 	
 	public String readFileLine(String argFile) {
 		if (exist(argFile)) {
-			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("sed -n '1p' " + argFile));
-			
-			if (result.getResultCode() != 0) {
-				result = ROOTFW.runShell(RootFW.mkCmd("cat " + argFile));
-			}
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"sed -n '1p' " + argFile + "", "cat " + argFile + ""}));
 			
 			if (result.getResultCode() == 0) {
 				return result.getResult().getFirstLine();
@@ -346,10 +324,10 @@ public final class Filesystem {
 				ShellResult result; 
 				
 				if (argAppend) {
-					result = ROOTFW.runShell(RootFW.mkCmd("echo " + argLineData + " >> " + argFile));
+					result = ROOTFW.runShell(ShellCommand.makeCompatibles("echo " + argLineData + " >> " + argFile));
 				
 				} else {
-					result = ROOTFW.runShell(RootFW.mkCmd("echo " + argLineData + " > " + argFile));
+					result = ROOTFW.runShell(ShellCommand.makeCompatibles("echo " + argLineData + " > " + argFile));
 				}
 				
 				if (result.getResultCode() == 0) {
@@ -370,10 +348,10 @@ public final class Filesystem {
 			ShellResult result;
 			
 			if (argRecursive) { 
-				result = ROOTFW.runShell(RootFW.mkCmd("chmod -R " + argPerms + " " + argPath));
+				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chmod -R " + argPerms + " " + argPath));
 				
 			} else {
-				result = ROOTFW.runShell(RootFW.mkCmd("chmod " + argPerms + " " + argPath));
+				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chmod " + argPerms + " " + argPath));
 			}
 			
 			RootFW.log(TAG, "setPermissions(): " + (result.getResultCode() == 0 ? "changed permission on " + argPath + " to '" + argPerms + "'" : "could not set permission on " + argPath + " to '" + argPerms + "'"), result.getResultCode() == 0 ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
@@ -393,10 +371,10 @@ public final class Filesystem {
 			ShellResult result;
 			
 			if (argRecursive) {
-				result = ROOTFW.runShell(RootFW.mkCmd("chown -R " + (argUser + "." + argGroup) + " " + argPath));
+				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chown -R " + (argUser + "." + argGroup) + " " + argPath));
 			
 			} else {
-				result = ROOTFW.runShell(RootFW.mkCmd("chown " + (argUser + "." + argGroup) + " " + argPath));
+				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chown " + (argUser + "." + argGroup) + " " + argPath));
 			}
 			
 			RootFW.log(TAG, "setPermissions(): " + (result.getResultCode() == 0 ? "changed owner on " + argPath + " to '" + argUser + "." + argGroup + "'" : "could not set owner on " + argPath + " to '" + argUser + "." + argGroup + "'"), result.getResultCode() == 0 ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
@@ -409,11 +387,7 @@ public final class Filesystem {
 	
 	public Boolean rmFile(String argPath) {
 		if (argPath.length() > 0 && exist(argPath)) {
-			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("unlink " + argPath));
-			
-			if (result.getResultCode() != 0) {
-				result = ROOTFW.runShell(RootFW.mkCmd("rm -rf " + argPath));
-			}
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"unlink " + argPath + "", "rm -rf " + argPath + ""}));
 			
 			return result.getResultCode() == 0 ? true : false;
 		}
@@ -423,11 +397,7 @@ public final class Filesystem {
 	
 	public Boolean rmDir(String argPath) {
 		if (argPath.length() > 0 && isDir(argPath)) {
-			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("rmdir " + argPath));
-			
-			if (result.getResultCode() != 0) {
-				result = ROOTFW.runShell(RootFW.mkCmd("rm -rf " + argPath));
-			}
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"rmdir " + argPath + "", "rm -rf " + argPath + ""}));
 			
 			return result.getResultCode() == 0 ? true : false;
 		}
@@ -437,7 +407,7 @@ public final class Filesystem {
 	
 	public Boolean mkDir(String argPath) {
 		if (argPath.length() > 0 && !isDir(argPath)) {
-			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("mkdir -p " + argPath));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("mkdir -p " + argPath));
 			
 			if (result.getResultCode() != 0) {
 				String path = argPath.endsWith("/") ? argPath.substring(0, -1) : argPath;
@@ -449,7 +419,7 @@ public final class Filesystem {
 					path += paths[i] + "/";
 					
 					if (!isDir(path)) {
-						result = ROOTFW.runShell(RootFW.mkCmd("mkdir " + path));
+						result = ROOTFW.runShell(ShellCommand.makeCompatibles("mkdir " + argPath));
 	
 						if (result.getResultCode() != 0) {
 							break;
@@ -468,7 +438,8 @@ public final class Filesystem {
 	public Boolean emptyDir(String argPath) {
 		if (isDir(argPath)) {
 			String dir = argPath.endsWith("/") ? argPath.substring(0, argPath.length() - 1) : argPath;
-			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("rm -rf " + dir + "/*"));
+			
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("rm -rf " + dir + "/*"));
 			
 			return result.getResultCode() == 0 ? true : false;
 		}
@@ -481,11 +452,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean unmount(String argDevice) {
-		ShellResult result = ROOTFW.runShell(RootFW.mkCmd("umount " + argDevice));
-		
-		if (result.getResultCode() != 0) {
-			result = ROOTFW.runShell(RootFW.mkCmd("umount -f " + argDevice));
-		}
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"umount " + argDevice + "", "umount -f " + argDevice + ""}));
 		
 		return result.getResultCode() == 0 ? true : false;
 	}
@@ -500,7 +467,8 @@ public final class Filesystem {
 	
 	public Boolean mount(String argDevice, String argMountPoint, String argFileSystem, String argOptions) {
 		String mount = "mount" + (argDevice != null ? " " + argDevice : "") + (argFileSystem != null ? " -t " + argFileSystem : "") + (argOptions != null ? " -o " + argOptions : "") + " " + argMountPoint;
-		ShellResult result = ROOTFW.runShell(RootFW.mkCmd(mount));
+		
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(mount));
 		
 		return result.getResultCode() == 0 ? true : false;
 	}
@@ -599,16 +567,14 @@ public final class Filesystem {
 				}
 			}
 			
-			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("df -k " + argPath));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"df -k " + argPath + "", "df " + argPath + ""}));
+
 			String[] parts = null, data = null;
-			
 			Long size=null, usage=null, remaining=null;
 			String device=null, mountpoint=null, repacked="";
 			Integer percentage;
 			
-			if (result.getResultCode() != 0) {
-				result = ROOTFW.runShell(RootFW.mkCmd("df " + argPath));
-				
+			if (result.getCommandNumber() > ShellCommand.getCompatibleBinaries().length) {
 				if (result.getResultCode() == 0) {
 					data = result.getResult().getData();
 					for (int y=1; y < data.length; y++) {

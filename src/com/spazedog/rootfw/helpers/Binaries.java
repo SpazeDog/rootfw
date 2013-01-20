@@ -1,6 +1,7 @@
 package com.spazedog.rootfw.helpers;
 
 import com.spazedog.rootfw.RootFW;
+import com.spazedog.rootfw.containers.ShellCommand;
 import com.spazedog.rootfw.containers.ShellResult;
 
 public final class Binaries {
@@ -11,15 +12,16 @@ public final class Binaries {
 	}
 	
 	public String getPath(String argBinary) {
-		ShellResult result = ROOTFW.runShell(RootFW.mkCmd("readlink -f $(" + RootFW.mkCmd("which " + argBinary) + ")"));
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("which " + argBinary));
+		ShellResult result2 = null;
 		
-		if (result.getResultCode() != 0) {
-			result = ROOTFW.runShell(RootFW.mkCmd("which " + argBinary));
+		if (result.getResultCode() == 0) {
+			result2 = ROOTFW.runShell(ShellCommand.makeCompatibles("readlink -f $(" + result.getResult().getLastLine() + ")"));
 		}
 		
-		String path = result.getResult().getLastLine().trim();
+		String path = result.getResultCode() == 0 ? (result2.getResultCode() == 0 ? result2.getResult() : result.getResult()).getLastLine().trim() : null;
 		
-		if (result.getResultCode() == 0 && path.length() > 0) {
+		if (path != null && path.length() > 0) {
 			return path;
 		}
 		

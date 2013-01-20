@@ -8,6 +8,7 @@ import java.util.HashMap;
 import android.os.Bundle;
 import android.util.Log;
 
+import com.spazedog.rootfw.containers.ShellCommand;
 import com.spazedog.rootfw.containers.ShellResult;
 import com.spazedog.rootfw.helpers.Binaries;
 import com.spazedog.rootfw.helpers.Busybox;
@@ -70,14 +71,6 @@ public final class RootFW {
 		}
 		
 		return ret;
-	}
-	
-	public static String mkCmdEcho(String argContent) {
-		return "$(busybox echo 'busybox echo " + argContent + "' 2>/dev/null || toolbox echo 'toolbox echo " + argContent + "' 2>/dev/null || echo '" + argContent + "' 2>/dev/null)";
-	}
-	
-	public static String mkCmd(String argCmd) {
-		return "busybox " + argCmd + " 2>/dev/null || toolbox " + argCmd + " 2>/dev/null || " + argCmd + " 2>/dev/null";
 	}
 	
 	/*
@@ -147,7 +140,7 @@ public final class RootFW {
 	public static RootFW getInstance(String argName, Boolean argUseRoot) {
 		String name = argName + (argUseRoot ? ":root" : ":user");
 		
-		if (SHELLS.get(name) == null) {
+		if (SHELLS.get(name) == null || !SHELLS.get(name).isConnected() || SHELLS.get(name).SHELL == null) {
 			SHELLS.put(name, new RootFW(argUseRoot));
 			SHELLS.get(name).NAME = argName;
 			
@@ -239,56 +232,91 @@ public final class RootFW {
 	 * @ Example: runShell("ls -l /data")
 	 * @ Example: runShell( new String[] {"command1", "command2"} )
 	 */
-	public ShellResult runShell(String argCommand) {
-		return runShell(new String[] {argCommand});
+	public ShellResult runShell(String[]... arg) {
+		ShellCommand cmd = new ShellCommand(0);
+		
+		for (int i=0; i < arg.length; i++) {
+			cmd.addCommand(arg[i]);
+		}
+		
+		return runShell(cmd);
 	}
 	
-	public ShellResult runShell(String[] argCommand) {
+	public ShellResult runShell(String... arg) {
+		ShellCommand cmd = new ShellCommand(0);
+		
+		for (int i=0; i < arg.length; i++) {
+			cmd.addCommand(arg[i]);
+		}
+		
+		return runShell(cmd);
+	}
+	
+	public ShellResult runShell(ShellCommand argCommand) {
 		try {
 			DataOutputStream output = new DataOutputStream(SHELL.getOutputStream());
 			BufferedReader buffer = new BufferedReader(new InputStreamReader(SHELL.getInputStream()));
 			String cmd="", data="", line, result=null;
-			Boolean skip = false;
+			String[] commands;
+			Integer iResult = -1, commandNum = 0;
 			
-			for (int i=0; i < argCommand.length; i++) {
-				cmd += argCommand[i] + "\n";
-			}
-			
-			cmd += "\n";
-			cmd += "busybox echo $? 2> /dev/null || toolbox echo $? 2> /dev/null || echo $? 2> /dev/null || $?\n";
-			cmd += "busybox echo EOL:a00c38d8:EOL 2> /dev/null || toolbox echo EOL:a00c38d8:EOL 2> /dev/null || echo EOL:a00c38d8:EOL 2> /dev/null || EOL:a00c38d8:EOL\n";
-			
-			/* The problem with BufferedReader.readLine, is that it will block as soon as it reaches the end, as it will be waiting
-			 * for the next line to be printed. In this case it will never return NULL at any point. So we add a little ID at the end
-			 * that we can look for and then manually break the loop when that ID is returned, while getting the last line, which is what we need
-			 */
-			output.write(cmd.getBytes()); 
-			output.flush();
-			
-			try {
-				while ((line = buffer.readLine()) != null && !line.contains("EOL:a00c38d8:EOL")) {
-					if (!skip && result != null) {
-						data += result + "\n";
-					}
-					
-					if (line.length() > 0) {
-						result = line;
-						skip = false;
-						
-					} else {
-						data += line + "\n";
-						skip = true;
-					}
+			outerloop:
+			for (int x=0; x < argCommand.getCommandLength(); x++) {
+				cmd = data = line = result = "";
+				iResult = -1;
+				commandNum = x;
+				
+				commands = argCommand.getCommand(x);
+							
+				for (int i=0; i < commands.length; i++) {
+					cmd += commands[i] + "\n";
 				}
 				
-				Integer iResult;
-				try { iResult = Integer.parseInt(result.split(":")[0]); } catch(Throwable e) { iResult = -1; }
+				cmd += "\n";
+				cmd += "status=$? && EOL:a00c38d8:EOL || $status\n";
 				
-				ShellResult shellresult = new ShellResult(iResult, data.split("\n"));
+				/* The problem with BufferedReader.readLine, is that it will block as soon as it reaches the end, as it will be waiting
+				 * for the next line to be printed. In this case it will never return NULL at any point. So we add a little ID at the end
+				 * that we can look for and then manually break the loop when that ID is returned, while getting the last line, which is what we need
+				 */
+				output.write(cmd.getBytes());
+				output.flush();
 				
-				return shellresult;
+				try {
+					while ((line = buffer.readLine()) != null) {
+						if (!line.contains("EOL:a00c38d8:EOL")) {
+							data += line + "\n";
+							
+						} else {
+							result = buffer.readLine(); break;
+						}
+					}
+					
+					while(data.endsWith("\n") && data.length() > 0) {
+						data = data.substring(0, data.length()-1);
+					}
+					
+					while(data.startsWith("\n") && data.length() > 0) {
+						data = data.substring(1);
+					}
+
+					try { iResult = Integer.parseInt(result.split(":")[0]); } catch(Throwable e) { iResult = -1; }
+					
+					if (argCommand.getCommandLength() > 0 && x < argCommand.getCommandLength()-1) {
+						for (int y=0; y < argCommand.getResultLength(); y++) {
+							if (argCommand.getResult(y) == iResult) {
+								break outerloop;
+							}
+						}
+						
+					} else {
+						break;
+					}
+					
+				} catch(Throwable e) { e.printStackTrace(); }
+			}
 				
-			} catch(Throwable e) { e.printStackTrace(); }
+			return new ShellResult(commandNum, iResult, data.split("\n"));
 			
 		} catch(Throwable e) { e.printStackTrace(); }
 		

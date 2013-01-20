@@ -3,6 +3,7 @@ package com.spazedog.rootfw.helpers;
 import android.content.Context;
 
 import com.spazedog.rootfw.RootFW;
+import com.spazedog.rootfw.containers.ShellCommand;
 import com.spazedog.rootfw.containers.ShellResult;
 
 public class Utils {
@@ -18,7 +19,7 @@ public class Utils {
 		/* It's very important to make sure that the string contains something. 
 		 * Otherwise the md5sum binary will start a process and everything will hang forever */
 		if (argFile.length() > 0 && ROOTFW.filesystem.exist(argFile)) {
-			ShellResult result = ROOTFW.runShell(RootFW.mkCmd("md5sum " + argFile));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("md5sum " + argFile));
 			
 			if (result.getResultCode() == 0) {
 				String md5 = result.getResult().getLastLine().split(" ")[0].trim();
@@ -50,7 +51,7 @@ public class Utils {
 			
 			if(ROOTFW.filesystem.copyFileResource(argContext, argContext.getResources().getIdentifier("recovery_install_sh", "raw", argContext.getPackageName()), "/recoveryInstall.sh", "0770", "0", "0")) {
 				if(ROOTFW.filesystem.copyFileResource(argContext, argResource, "/update.zip", "0655", "0", "0")) {
-					ShellResult result = ROOTFW.runShell(RootFW.mkCmd("/recoveryInstall.sh"));
+					ShellResult result = ROOTFW.runShell("/recoveryInstall.sh");
 					
 					if (!isWriteable) {
 						ROOTFW.filesystem.remount("/", "ro");

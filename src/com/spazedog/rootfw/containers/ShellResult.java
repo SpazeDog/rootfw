@@ -4,8 +4,10 @@ package com.spazedog.rootfw.containers;
 public final class ShellResult {
 	private Integer RESULTCODE;
 	private FileData RESULT;
+	private Integer CMDNUM;
 	
-	public ShellResult(Integer argResult, String[] argData) {
+	public ShellResult(Integer argCommandNumber, Integer argResult, String[] argData) {
+		CMDNUM = argCommandNumber;
 		RESULTCODE = argResult;
 		RESULT = new FileData(argData);
 	}
@@ -16,5 +18,9 @@ public final class ShellResult {
 	
 	public Integer getResultCode() {
 		return RESULTCODE;
+	}
+	
+	public Integer getCommandNumber() {
+		return CMDNUM;
 	}
 }
