@@ -273,7 +273,7 @@ public final class RootFW {
 				}
 				
 				cmd += "\n";
-				cmd += "status=$? && EOL:a00c38d8:EOL || $status\n";
+				cmd += "status=$? && echo EOL:a00c38d8:EOL && echo $status\n";
 				
 				/* The problem with BufferedReader.readLine, is that it will block as soon as it reaches the end, as it will be waiting
 				 * for the next line to be printed. In this case it will never return NULL at any point. So we add a little ID at the end

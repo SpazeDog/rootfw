@@ -43,10 +43,10 @@ public final class Filesystem {
 			String[] lines = result.getResult().getData(), parts;
 			Integer y;
 			
-			for (int i=1; i < lines.length; i++) {
+			for (int i=0; i < lines.length; i++) {
 				parts = RootFW.replaceAll(lines[i], "  ", " ").trim().split(" ");
 				
-				if (parts.length > 1) {
+				if (parts.length > 4) {
 					y = parts[parts.length-2].equals("->") ? 3 : 1;
 					
 					if (parts[parts.length-y].equals(item)) {
@@ -79,6 +79,11 @@ public final class Filesystem {
 					}
 				}
 			}
+			
+			RootFW.log(TAG, "getFileInfo(): Could not get file info on " + argPath + "'. The item does not exist");
+			
+		} else {
+			RootFW.log(TAG, "getFileInfo(): Could not get file info on '" + argPath + "'. ls returned code '" + result.getResultCode() + "'");
 		}
 		
 		return null;
@@ -91,9 +96,10 @@ public final class Filesystem {
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
+			
+		} else {
+			status = getFileInfo(argPath) != null ? true : false;
 		}
-		
-		status = getFileInfo(argPath) != null ? true : false;
 		
 		RootFW.log(TAG, "exist(): Checking if " + argPath + " exists which it " + (status ? "seams" : "does not seam") + " to do");
 		
@@ -108,10 +114,11 @@ public final class Filesystem {
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
+			
+		} else {
+			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("-") ? true : false;
 		}
-		
-		status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("-") ? true : false;
-		
+
 		RootFW.log(TAG, "isFile(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a file");
 		
 		return status;
@@ -125,9 +132,10 @@ public final class Filesystem {
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
+			
+		} else {
+			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("d") ? true : false;
 		}
-		
-		status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("d") ? true : false;
 
 		RootFW.log(TAG, "isDir(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a directory");
 		
@@ -142,9 +150,10 @@ public final class Filesystem {
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
+			
+		} else {
+			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("l") ? true : false;
 		}
-		
-		status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("l") ? true : false;
 		
 		RootFW.log(TAG, "isLink(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a link");
 		
@@ -159,9 +168,10 @@ public final class Filesystem {
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
+			
+		} else {
+			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("b") ? true : false;
 		}
-		
-		status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("b") ? true : false;
 		
 		RootFW.log(TAG, "isBlockDevice(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a block device");
 		
@@ -176,9 +186,10 @@ public final class Filesystem {
 		
 		if (result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
+			
+		} else {
+			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("c") ? true : false;
 		}
-		
-		status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("c") ? true : false;
 		
 		RootFW.log(TAG, "isCharacterDevice(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a character device");
 		
