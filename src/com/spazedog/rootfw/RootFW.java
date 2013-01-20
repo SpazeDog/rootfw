@@ -257,7 +257,7 @@ public final class RootFW {
 			DataOutputStream output = new DataOutputStream(SHELL.getOutputStream());
 			BufferedReader buffer = new BufferedReader(new InputStreamReader(SHELL.getInputStream()));
 			String cmd="", data="", line, result=null;
-			String[] commands;
+			String[] commands, resultParts;
 			Integer iResult = -1, commandNum = 0;
 			
 			outerloop:
@@ -273,7 +273,9 @@ public final class RootFW {
 				}
 				
 				cmd += "\n";
-				cmd += "status=$? && echo EOL:a00c38d8:EOL && echo $status\n";
+				cmd += "status=$? && EOL:a00c38d8:EOL\n";
+				cmd += "\\|$status\\|\n";
+				cmd += "EOL:a00c38d8:EOL\n";
 				
 				/* The problem with BufferedReader.readLine, is that it will block as soon as it reaches the end, as it will be waiting
 				 * for the next line to be printed. In this case it will never return NULL at any point. So we add a little ID at the end
@@ -288,7 +290,19 @@ public final class RootFW {
 							data += line + "\n";
 							
 						} else {
-							result = buffer.readLine(); break;
+							while ((line = buffer.readLine()) != null && !line.contains("EOL:a00c38d8:EOL")) {
+								if (line.length() > 0) {
+									resultParts = line.split("|");
+									
+									for (int i=0; i < resultParts.length; i++) {
+										if (resultParts[i].matches("^[0-9]+$")) {
+											result = resultParts[i];
+										}
+									}
+								}
+							}
+							
+							break;
 						}
 					}
 					
@@ -300,7 +314,7 @@ public final class RootFW {
 						data = data.substring(1);
 					}
 
-					try { iResult = Integer.parseInt(result.split(":")[0]); } catch(Throwable e) { iResult = -1; }
+					try { iResult = Integer.parseInt(result); } catch(Throwable e) { iResult = -1; }
 					
 					if (argCommand.getCommandLength() > 0 && x < argCommand.getCommandLength()-1) {
 						for (int y=0; y < argCommand.getResultLength(); y++) {
