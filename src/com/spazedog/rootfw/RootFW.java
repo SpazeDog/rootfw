@@ -90,7 +90,7 @@ public final class RootFW {
 	}
 	
 	public RootFW(Boolean argUseRoot) {
-		SHELL_IS_CONNECTED = argUseRoot;
+		SHELL_IS_ROOT = argUseRoot;
 		
 		try {
 			ProcessBuilder builder;
