@@ -130,7 +130,7 @@ public final class Filesystem {
 		Boolean status = false;
 		
 		if (result != null && result.getResultCode() == 0) {
-			status = result.getResult().getLastLine().equals("true") ? true : false;
+			status = "true".equals(result.getResult().getLastLine()) ? true : false;
 			
 		} else {
 			status = getFileInfo(argPath) != null ? true : false;
@@ -148,7 +148,7 @@ public final class Filesystem {
 		Boolean status = false;
 		
 		if (result != null && result.getResultCode() == 0) {
-			status = result.getResult().getLastLine().equals("true") ? true : false;
+			status = "true".equals(result.getResult().getLastLine()) ? true : false;
 			
 		} else {
 			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("-") ? true : false;
@@ -166,7 +166,7 @@ public final class Filesystem {
 		Boolean status = false;
 		
 		if (result != null && result.getResultCode() == 0) {
-			status = result.getResult().getLastLine().equals("true") ? true : false;
+			status = "true".equals(result.getResult().getLastLine()) ? true : false;
 			
 		} else {
 			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("d") ? true : false;
@@ -184,7 +184,7 @@ public final class Filesystem {
 		Boolean status = false;
 		
 		if (result != null && result.getResultCode() == 0) {
-			status = result.getResult().getLastLine().equals("true") ? true : false;
+			status = "true".equals(result.getResult().getLastLine()) ? true : false;
 			
 		} else {
 			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("l") ? true : false;
@@ -202,7 +202,7 @@ public final class Filesystem {
 		Boolean status = false;
 		
 		if (result != null && result.getResultCode() == 0) {
-			status = result.getResult().getLastLine().equals("true") ? true : false;
+			status = "true".equals(result.getResult().getLastLine()) ? true : false;
 			
 		} else {
 			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("b") ? true : false;
@@ -220,7 +220,7 @@ public final class Filesystem {
 		Boolean status = false;
 		
 		if (result != null && result.getResultCode() == 0) {
-			status = result.getResult().getLastLine().equals("true") ? true : false;
+			status = "true".equals(result.getResult().getLastLine()) ? true : false;
 			
 		} else {
 			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("c") ? true : false;
