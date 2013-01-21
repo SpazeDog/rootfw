@@ -125,7 +125,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean exist(String argPath) {
-		ShellResult result = ROOTFW.runShell("busybox [ -e " + argPath + " ] && echo true || echo false", "[ -e " + argPath + " ] && echo true || echo false");
+		ShellResult result = ROOTFW.runShell("( busybox [ -e " + argPath + " ] && echo true ) || ( busybox [ ! -e " + argPath + " ] && echo false )", "( [ -e " + argPath + " ] && echo true ) || ( [ ! -e " + argPath + " ] && echo false )");
 
 		Boolean status = false;
 		
@@ -142,7 +142,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean isFile(String argPath) {
-		ShellResult result = ROOTFW.runShell("busybox [ -f " + argPath + " ] && echo true || echo false", "[ -f " + argPath + " ] && echo true || echo false");
+		ShellResult result = ROOTFW.runShell("( busybox [ -f " + argPath + " ] && echo true ) || ( busybox [ ! -f " + argPath + " ] && echo false )", "( [ -f " + argPath + " ] && echo true ) || ( [ ! -f " + argPath + " ] && echo false )");
 		
 		FileInfo fi;
 		Boolean status = false;
@@ -160,7 +160,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean isDir(String argPath) {
-		ShellResult result = ROOTFW.runShell("busybox [ -d " + argPath + " ] && echo true || echo false", "[ -d " + argPath + " ] && echo true || echo false");
+		ShellResult result = ROOTFW.runShell("( busybox [ -d " + argPath + " ] && echo true ) || ( busybox [ ! -d " + argPath + " ] && echo false )", "( [ -d " + argPath + " ] && echo true ) || ( [ ! -d " + argPath + " ] && echo false )");
 		
 		FileInfo fi;
 		Boolean status = false;
@@ -178,7 +178,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean isLink(String argPath) {
-		ShellResult result = ROOTFW.runShell("busybox [ -L " + argPath + " ] && echo true || echo false", "[ -L " + argPath + " ] && echo true || echo false");
+		ShellResult result = ROOTFW.runShell("( busybox [ -L " + argPath + " ] && echo true ) || ( busybox [ ! -L " + argPath + " ] && echo false )", "( [ -L " + argPath + " ] && echo true ) || ( [ ! -L " + argPath + " ] && echo false )");
 		
 		FileInfo fi;
 		Boolean status = false;
@@ -196,7 +196,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean isBlockDevice(String argPath) {
-		ShellResult result = ROOTFW.runShell("busybox [ -b " + argPath + " ] && echo true || echo false", "[ -b " + argPath + " ] && echo true || echo false");
+		ShellResult result = ROOTFW.runShell("( busybox [ -b " + argPath + " ] && echo true ) || ( busybox [ ! -b " + argPath + " ] && echo false )", "( [ -b " + argPath + " ] && echo true ) || ( [ ! -b " + argPath + " ] && echo false )");
 		
 		FileInfo fi;
 		Boolean status = false;
@@ -214,7 +214,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean isCharacterDevice(String argPath) {
-		ShellResult result = ROOTFW.runShell("busybox [ -c " + argPath + " ] && echo true || echo false", "[ -c " + argPath + " ] && echo true || echo false");
+		ShellResult result = ROOTFW.runShell("( busybox [ -c " + argPath + " ] && echo true ) || ( busybox [ ! -c " + argPath + " ] && echo false )", "( [ -c " + argPath + " ] && echo true ) || ( [ ! -c " + argPath + " ] && echo false )");
 		
 		FileInfo fi;
 		Boolean status = false;
