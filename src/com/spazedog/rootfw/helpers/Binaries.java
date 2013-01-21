@@ -15,11 +15,12 @@ public final class Binaries {
 		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("which " + argBinary));
 		ShellResult result2 = null;
 		
-		if (result.getResultCode() == 0) {
+		if (result == null || result.getResultCode() == 0) {
 			result2 = ROOTFW.runShell(ShellCommand.makeCompatibles("readlink -f $(" + result.getResult().getLastLine() + ")"));
 		}
 		
-		String path = result.getResultCode() == 0 ? (result2.getResultCode() == 0 ? result2.getResult() : result.getResult()).getLastLine().trim() : null;
+		String path = result != null && result.getResultCode() == 0 ? result.getResult().getLastLine().trim() : 
+			result2 != null && result2.getResultCode() == 0 ? result2.getResult().getLastLine().trim() : null;
 		
 		if (path != null && path.length() > 0) {
 			return path;

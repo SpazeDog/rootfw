@@ -39,7 +39,7 @@ public final class Filesystem {
 		
 		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"ls -ln " + dir, "ls -l " + dir} ));
 		
-		if (result.getResultCode() == 0) {
+		if (result != null && result.getResultCode() == 0) {
 			String[] lines = result.getResult().getData(), parts;
 			Integer y;
 			
@@ -82,7 +82,7 @@ public final class Filesystem {
 			
 			RootFW.log(TAG, "getFileInfo(): Could not get file info on " + argPath + "'. The item does not exist");
 			
-		} else {
+		} else if (result != null) {
 			RootFW.log(TAG, "getFileInfo(): Could not get file info on '" + argPath + "'. ls returned code '" + result.getResultCode() + "'");
 		}
 		
@@ -94,7 +94,7 @@ public final class Filesystem {
 
 		Boolean status = false;
 		
-		if (result.getResultCode() == 0) {
+		if (result != null && result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
 			
 		} else {
@@ -112,7 +112,7 @@ public final class Filesystem {
 		FileInfo fi;
 		Boolean status = false;
 		
-		if (result.getResultCode() == 0) {
+		if (result != null && result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
 			
 		} else {
@@ -130,7 +130,7 @@ public final class Filesystem {
 		FileInfo fi;
 		Boolean status = false;
 		
-		if (result.getResultCode() == 0) {
+		if (result != null && result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
 			
 		} else {
@@ -148,7 +148,7 @@ public final class Filesystem {
 		FileInfo fi;
 		Boolean status = false;
 		
-		if (result.getResultCode() == 0) {
+		if (result != null && result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
 			
 		} else {
@@ -166,7 +166,7 @@ public final class Filesystem {
 		FileInfo fi;
 		Boolean status = false;
 		
-		if (result.getResultCode() == 0) {
+		if (result != null && result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
 			
 		} else {
@@ -184,7 +184,7 @@ public final class Filesystem {
 		FileInfo fi;
 		Boolean status = false;
 		
-		if (result.getResultCode() == 0) {
+		if (result != null && result.getResultCode() == 0) {
 			status = result.getResult().getLastLine().equals("true") ? true : false;
 			
 		} else {
@@ -253,7 +253,7 @@ public final class Filesystem {
 				Boolean status = false;
 				ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"cp " + argSrc + " " + dest + "", "cat " + argSrc + " > " + dest + ""} ));
 				
-				if (result.getResultCode() == 0) {
+				if (result != null && result.getResultCode() == 0) {
 					if (setPermissions(dest, argPerms) && setOwner(dest, argUser, argGroup)) {
 						status = true;
 					}
@@ -276,7 +276,7 @@ public final class Filesystem {
 				Boolean status = false;
 				ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"mv " + argSrc + " " + dest + "", "cat " + argSrc + " > " + dest + ""} ));
 				
-				if (result.getCommandNumber() > ShellCommand.getCompatibleBinaries().length) {
+				if (result != null && result.getCommandNumber() > ShellCommand.getCompatibleBinaries().length) {
 					FileInfo fi;
 					
 					if (result.getResultCode() == 0 && (fi = getFileInfo(argSrc)) != null) {
@@ -285,7 +285,7 @@ public final class Filesystem {
 						}
 					}
 					
-				} else if (result.getResultCode() == 0) {
+				} else if (result != null && result.getResultCode() == 0) {
 					status = true;
 				}
 				
@@ -303,7 +303,7 @@ public final class Filesystem {
 		if (exist(argFile)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("cat " + argFile));
 			
-			if (result.getResultCode() == 0) {
+			if (result != null && result.getResultCode() == 0) {
 				return result.getResult();
 			}
 		}
@@ -315,7 +315,7 @@ public final class Filesystem {
 		if (exist(argFile)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"sed -n '1p' " + argFile + "", "cat " + argFile + ""}));
 			
-			if (result.getResultCode() == 0) {
+			if (result != null && result.getResultCode() == 0) {
 				return result.getResult().getFirstLine();
 			}
 		}
@@ -341,7 +341,7 @@ public final class Filesystem {
 					result = ROOTFW.runShell(ShellCommand.makeCompatibles("echo " + argLineData + " > " + argFile));
 				}
 				
-				if (result.getResultCode() == 0) {
+				if (result != null && result.getResultCode() == 0) {
 					return true;
 				}
 			}
@@ -365,9 +365,9 @@ public final class Filesystem {
 				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chmod " + argPerms + " " + argPath));
 			}
 			
-			RootFW.log(TAG, "setPermissions(): " + (result.getResultCode() == 0 ? "changed permission on " + argPath + " to '" + argPerms + "'" : "could not set permission on " + argPath + " to '" + argPerms + "'"), result.getResultCode() == 0 ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
+			RootFW.log(TAG, "setPermissions(): " + (result != null && result.getResultCode() == 0 ? "changed permission on " + argPath + " to '" + argPerms + "'" : "could not set permission on " + argPath + " to '" + argPerms + "'"), result.getResultCode() == 0 ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
 			
-			return result.getResultCode() == 0 ? true : false;
+			return result != null && result.getResultCode() == 0 ? true : false;
 		}
 		
 		return false;
@@ -388,9 +388,9 @@ public final class Filesystem {
 				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chown " + (argUser + "." + argGroup) + " " + argPath));
 			}
 			
-			RootFW.log(TAG, "setPermissions(): " + (result.getResultCode() == 0 ? "changed owner on " + argPath + " to '" + argUser + "." + argGroup + "'" : "could not set owner on " + argPath + " to '" + argUser + "." + argGroup + "'"), result.getResultCode() == 0 ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
+			RootFW.log(TAG, "setPermissions(): " + (result != null && result.getResultCode() == 0 ? "changed owner on " + argPath + " to '" + argUser + "." + argGroup + "'" : "could not set owner on " + argPath + " to '" + argUser + "." + argGroup + "'"), result.getResultCode() == 0 ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
 			
-			return result.getResultCode() == 0 ? true : false;
+			return result != null && result.getResultCode() == 0 ? true : false;
 		}
 		
 		return false;
@@ -400,7 +400,7 @@ public final class Filesystem {
 		if (argPath.length() > 0 && exist(argPath)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"unlink " + argPath + "", "rm -rf " + argPath + ""}));
 			
-			return result.getResultCode() == 0 ? true : false;
+			return result != null && result.getResultCode() == 0 ? true : false;
 		}
 		
 		return true;
@@ -410,7 +410,7 @@ public final class Filesystem {
 		if (argPath.length() > 0 && isDir(argPath)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"rmdir " + argPath + "", "rm -rf " + argPath + ""}));
 			
-			return result.getResultCode() == 0 ? true : false;
+			return result != null && result.getResultCode() == 0 ? true : false;
 		}
 		
 		return true;
@@ -420,7 +420,7 @@ public final class Filesystem {
 		if (argPath.length() > 0 && !isDir(argPath)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("mkdir -p " + argPath));
 			
-			if (result.getResultCode() != 0) {
+			if (result != null && result.getResultCode() != 0) {
 				String path = argPath.endsWith("/") ? argPath.substring(0, -1) : argPath;
 				path = path.startsWith("/") ? path.substring(1) : path;
 				
@@ -439,7 +439,7 @@ public final class Filesystem {
 				}
 			}
 			
-			return result.getResultCode() == 0 ? true : false;
+			return result != null && result.getResultCode() == 0 ? true : false;
 			
 		} else {
 			return true;
@@ -452,7 +452,7 @@ public final class Filesystem {
 			
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("rm -rf " + dir + "/*"));
 			
-			return result.getResultCode() == 0 ? true : false;
+			return result != null && result.getResultCode() == 0 ? true : false;
 		}
 		
 		return false;
@@ -465,7 +465,7 @@ public final class Filesystem {
 	public Boolean unmount(String argDevice) {
 		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"umount " + argDevice + "", "umount -f " + argDevice + ""}));
 		
-		return result.getResultCode() == 0 ? true : false;
+		return result != null && result.getResultCode() == 0 ? true : false;
 	}
 	
 	public Boolean mount(String argMountPoint, String argOptions) {
@@ -481,7 +481,7 @@ public final class Filesystem {
 		
 		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(mount));
 		
-		return result.getResultCode() == 0 ? true : false;
+		return result != null && result.getResultCode() == 0 ? true : false;
 	}
 	
 	public ArrayList<MountInfo> getMounts() {
@@ -585,7 +585,7 @@ public final class Filesystem {
 			String device=null, mountpoint=null, repacked="";
 			Integer percentage;
 			
-			if (result.getCommandNumber() > ShellCommand.getCompatibleBinaries().length) {
+			if (result != null && result.getCommandNumber() > ShellCommand.getCompatibleBinaries().length) {
 				if (result.getResultCode() == 0) {
 					data = result.getResult().getData();
 					for (int y=1; y < data.length; y++) {
@@ -631,7 +631,7 @@ public final class Filesystem {
 					}
 				}
 				
-			} else {
+			} else if (result != null) {
 				data = result.getResult().getData();
 				for (int y=1; y < data.length; y++) {
 					repacked = data[y] + " ";
@@ -643,7 +643,7 @@ public final class Filesystem {
 				remaining = (Long.parseLong(parts[3]) * 1024L);
 			}
 			
-			if (result.getResultCode() == 0) {
+			if (result != null && result.getResultCode() == 0) {
 				RootFW.log(TAG, "getDiskInfo(): Found disk info string '" + repacked + "'");
 				
 				if (parts.length >= 6 && isBlockDevice(parts[0])) {

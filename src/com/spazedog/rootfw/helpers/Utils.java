@@ -21,7 +21,7 @@ public class Utils {
 		if (argFile.length() > 0 && ROOTFW.filesystem.exist(argFile)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("md5sum " + argFile));
 			
-			if (result.getResultCode() == 0) {
+			if (result != null && result.getResultCode() == 0) {
 				String md5 = result.getResult().getLastLine().split(" ")[0].trim();
 				
 				RootFW.log(TAG, "getMd5(): Returning md5sum '" + md5 + "' on '" + argFile + "'");
@@ -57,7 +57,7 @@ public class Utils {
 						ROOTFW.filesystem.remount("/", "ro");
 					}
 					
-					return result.getResultCode() == 0 ? true : false;
+					return result != null && result.getResultCode() == 0 ? true : false;
 				}
 			}
 			
