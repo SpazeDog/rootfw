@@ -21,6 +21,8 @@ public final class RootFW {
 	
 	public final static String TAG = "RootFW";
 	
+	public static Boolean DEBUG = false;
+	
 	public final static Integer LOG_INFO = 1;
 	public final static Integer LOG_WARNING = 2;
 	public final static Integer LOG_ERROR = 3;
@@ -51,12 +53,14 @@ public final class RootFW {
 	}
 	
 	public static void log(String argTag, String argMsg, Integer argLevel, Throwable e) {
-		String tag = argTag == null ? TAG : argTag;
-		
-		switch (argLevel) {
-			case 1: Log.v(tag, argMsg, e); break;
-			case 2: Log.w(tag, argMsg, e); break;
-			case 3: Log.e(tag, argMsg, e); break;
+		if (DEBUG) {
+			String tag = argTag == null ? TAG : argTag;
+			
+			switch (argLevel) {
+				case 1: Log.v(tag, argMsg, e); break;
+				case 2: Log.w(tag, argMsg, e); break;
+				case 3: Log.e(tag, argMsg, e); break;
+			}
 		}
 	}
 	
