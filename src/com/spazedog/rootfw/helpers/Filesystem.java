@@ -46,17 +46,25 @@ public final class Filesystem {
 	}
 	
 	public FileInfo getFileInfo(String argPath) {
-		if (argPath.equals("/")) {
-			return null;
-		}
-		
 		RootFW.log(TAG, "getFileInfo(): Getting file info on '" + argPath + "'");
 		
-		String path = argPath.endsWith("/") ? argPath.substring(0, argPath.length() - 1) : argPath;
-		String dir = path.substring(0, path.lastIndexOf("/"));
-		String item = path.substring(path.lastIndexOf("/") + 1);
+		ShellResult result;
+		String item;
 		
-		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"ls -ln " + dir, "ls -l " + dir} ));
+		if (!argPath.equals("/")) {
+			String path = argPath.endsWith("/") ? argPath.substring(0, argPath.length() - 1) : argPath;
+			String dir = path.substring(0, path.lastIndexOf("/"));
+			item = path.substring(path.lastIndexOf("/") + 1);
+			
+			result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"ls -ln " + dir, "ls -l " + dir} ));
+			
+		} else {
+			item = ".";
+			/* 
+			 * We separate this from the rest as we could end up with toolbox or busybox versions not supporting -a
+			 */
+			result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"ls -lna /", "ls -la /"} ));
+		}
 		
 		if (result != null && result.getResultCode() == 0) {
 			String[] lines = result.getResult().getData(), parts;
