@@ -45,72 +45,80 @@ public final class Filesystem {
 		ROOTFW = argAccount;
 	}
 	
-	public FileInfo getFileInfo(String argPath) {
-		RootFW.log(TAG, "getFileInfo(): Getting file info on '" + argPath + "'");
+	private ArrayList<FileInfo> fileInfoBuilder(String argPath, String argItem) {
+		ArrayList<FileInfo> list = new ArrayList<FileInfo>();
 		
-		ShellResult result;
-		String item;
-		
-		if (!argPath.equals("/")) {
-			String path = argPath.endsWith("/") ? argPath.substring(0, argPath.length() - 1) : argPath;
-			String dir = path.substring(0, path.lastIndexOf("/"));
-			item = path.substring(path.lastIndexOf("/") + 1);
-			
-			result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"ls -ln " + dir, "ls -l " + dir} ));
-			
-		} else {
-			item = ".";
-			/* 
-			 * We separate this from the rest as we could end up with toolbox or busybox versions not supporting -a
-			 */
-			result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"ls -lna /", "ls -la /"} ));
-		}
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"ls -lna " + argPath, "ls -la " + argPath, "ls -ln " + argPath, "ls -l " + argPath} ));
 		
 		if (result != null && result.getResultCode() == 0) {
-			String[] lines = result.getResult().getData(), parts;
-			Integer y;
+			String[] resultLines = result.getResult().getData(), lineParts;
+			String partUser=null, partGroup=null, partPermission=null, partLink=null, partType=null, partName=null, partMod=null;
+			Integer y, x, i, z;
 			
-			for (int i=0; i < lines.length; i++) {
-				parts = RootFW.replaceAll(lines[i], "  ", " ").trim().split(" ");
+			for (i=0; i < resultLines.length; i++) {
+				lineParts = RootFW.replaceAll(resultLines[i], "  ", " ").trim().split(" ");
 				
-				if (parts.length > 4) {
-					y = parts[parts.length-2].equals("->") ? 3 : 1;
+				if (lineParts.length > 4) {
+					y = lineParts[ lineParts.length-2 ].equals("->") ? 3 : 1;
 					
-					if (parts[parts.length-y].equals(item)) {
-						RootFW.log(TAG, "getFileInfo(): Found the fallowing information '" + lines[i] + "'");
+					if (argItem == null || lineParts[ lineParts.length-y ].equals(argItem)) {
+						x = lineParts[4].matches("^[0-9]+$") ? 0 : 1;
 						
-						y = parts[4].matches("^[0-9]+$") ? 0 : 1;
+						partPermission = lineParts[0];
+						partUser = lineParts[ 2-x ];
+						partGroup = lineParts[ 3-x ];
+						partType = partPermission.substring(0, 1);
+						partLink = partType.equals("l") ? lineParts[ lineParts.length-1 ] : null;
+						partName = partType.equals("l") ? lineParts[ lineParts.length-3 ] : lineParts[ lineParts.length-1 ];
 						
-						String permissions = parts[0];
-						String user = parts[2-y];
-						String group = parts[3-y];
-						String type = permissions.substring(0, 1);
-						String link=null;
-						
-						if (type.equals("l")) {
-							link = parts[parts.length-1];
-						}
-						
-						String[] tmpPerms = {permissions.substring(1), permissions.substring(1, 4), permissions.substring(4, 7), permissions.substring(7, 10)};
-						Integer tmpNum;
-						String perms="";
-						for (int x=0; x < tmpPerms.length; x++) {
-							tmpNum = (x == 0 && tmpPerms[x].charAt(2) == 's') || (x > 0 && tmpPerms[x].charAt(0) == 'r') ? 4 : 0;
-							tmpNum += (x == 0 && tmpPerms[x].charAt(5) == 's') || (x > 0 && tmpPerms[x].charAt(1) == 'w') ? 2 : 0;
-							tmpNum += (x == 0 && tmpPerms[x].charAt(8) == 't') || (x > 0 && tmpPerms[x].charAt(2) == 'x') ? 1 : 0;
+						String[] permsPart = {partPermission.substring(1), partPermission.substring(1, 4), partPermission.substring(4, 7), partPermission.substring(7, 10)};
+						partMod="";
+						for (x=0; x < permsPart.length; x++) {
+							z = (x == 0 && permsPart[x].charAt(2) == 's') || (x > 0 && permsPart[x].charAt(0) == 'r') ? 4 : 0;
+							z += (x == 0 && permsPart[x].charAt(5) == 's') || (x > 0 && permsPart[x].charAt(1) == 'w') ? 2 : 0;
+							z += (x == 0 && permsPart[x].charAt(8) == 't') || (x > 0 && permsPart[x].charAt(2) == 'x') ? 1 : 0;
 							
-							perms += tmpNum;
+							partMod += z;
 						}
-						
-						return new FileInfo(type, user, group, perms, permissions, link);
 					}
+					
+					list.add( new FileInfo(partName, partType, partUser, partGroup, partMod, partPermission, partLink) );
 				}
 			}
 			
-			RootFW.log(TAG, "getFileInfo(): Could not get file info on " + argPath + "'. The item does not exist");
+			return list;
+		}
+		
+		return null;
+	}
+	
+	public FileInfo getFileInfo(String argPath) {
+		if (!"".equals(argPath)) {
+			String path, dir=null, item=null;
 			
-		} else if (result != null) {
-			RootFW.log(TAG, "getFileInfo(): Could not get file info on '" + argPath + "'. ls returned code '" + result.getResultCode() + "'");
+			if (!argPath.equals("/")) {
+				path = argPath.endsWith("/") ? argPath.substring(0, argPath.length() - 1) : argPath;
+				dir = path.substring(0, path.lastIndexOf("/"));
+				item = path.substring(path.lastIndexOf("/") + 1);
+				
+			} else {
+				dir = "/";
+				item = ".";
+			}
+			
+			ArrayList<FileInfo> list = fileInfoBuilder(dir, item);
+			
+			if (list != null) {
+				return list.get(0);
+			}
+		}
+		
+		return null;
+	}
+	
+	public ArrayList<FileInfo> getFileList(String argPath) {
+		if (!"".equals(argPath)) {
+			return fileInfoBuilder(argPath, null);
 		}
 		
 		return null;

@@ -20,6 +20,7 @@
 package com.spazedog.rootfw.containers;
 
 public final class FileInfo {
+	private String NAME;
 	private String TYPE;
 	private String USER;
 	private String GROUP;
@@ -27,13 +28,18 @@ public final class FileInfo {
 	private String STRINGPERMS;
 	private String LINK;
 	
-	public FileInfo(String argType, String argUser, String argGroup, String argPerms, String argStringPerms, String argLink) {
+	public FileInfo(String argName, String argType, String argUser, String argGroup, String argPerms, String argStringPerms, String argLink) {
+		NAME = argName;
 		TYPE = argType;
 		USER = argUser;
 		GROUP = argGroup;
 		PERMS = argPerms;
 		STRINGPERMS = argStringPerms;
 		LINK = argLink;
+	}
+	
+	public String getName() {
+		return NAME;
 	}
 	
 	public String getType() {
