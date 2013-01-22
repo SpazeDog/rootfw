@@ -259,8 +259,9 @@ public final class Filesystem {
 				
 			} catch (IOException e) { e.printStackTrace(); }
 			
-			if(moveFile("/data/data/" + argContext.getPackageName() + "/files/tmp.raw", argDes)) {
+			if(moveFile(argContext.getFilesDir().getAbsolutePath() + "/tmp.raw", argDes)) {
 				if (setPermissions(argDes, argPerms) && setOwner(argDes, argUser, argGroup)) {
+					
 					return true;
 				}
 			}
