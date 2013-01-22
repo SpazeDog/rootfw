@@ -708,4 +708,51 @@ public final class Filesystem {
 		
 		return null;
 	}
+	
+	public Long getFolderSize(String argPath) {
+		if (argPath.length() > 0 && isDir(argPath)) {
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("du -skx " + argPath));
+			
+			String output;
+			
+			if (result != null && result.getResultCode() == 0 && (output = result.getResult().getLastLine()) != null) {
+				output = RootFW.replaceAll(output, "  ", " ").trim().split(" ")[0];
+				
+				/*
+				 * Remove any size prefix like k or kb
+				 */
+				while (output.length() > 0 && !output.matches("^[0-9]+$")) {
+					output = output.substring(0, output.length()-1);
+				}
+				
+				try {
+					return (Long) (Long.parseLong(output) * 1024);
+					
+				} catch(Throwable e) { e.printStackTrace(); }
+			}
+		}
+		
+		return null;
+	}
+	
+	public Long getFileSize(String argFile) {
+		if (argFile.length() > 0 && isFile(argFile)) {
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"wc -c < " + argFile + "", "wc < " + argFile + ""}));
+			
+			String output;
+			
+			if (result != null && result.getResultCode() == 0 && (output = result.getResult().getLastLine()) != null) {
+				if (result.getCommandNumber() > ShellCommand.getCompatibleBinaries().length) {
+					output = RootFW.replaceAll(output, "  ", " ").trim().split(" ")[2];
+				}
+				
+				try {
+					return Long.parseLong(output);
+					
+				} catch(Throwable e) { e.printStackTrace(); }
+			}
+		}
+		
+		return null;
+	}
 }
