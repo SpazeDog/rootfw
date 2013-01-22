@@ -62,11 +62,15 @@ public final class Filesystem {
 					y = lineParts[ lineParts.length-2 ].equals("->") ? 3 : 1;
 					
 					if (argItem == null || lineParts[ lineParts.length-y ].equals(argItem)) {
-						x = lineParts[4].matches("^[0-9]+$") ? 0 : 1;
+						/* 
+						 * Locate the design of the tables
+						 */
+						z = lineParts[ lineParts.length-(y+2) ].matches("^[^-\\/]+$") ? (y+4) : (y+3);
+						x = (lineParts.length - z) > 3 ? (lineParts.length - z) : 3;
 						
 						partPermission = lineParts[0];
-						partUser = lineParts[ 2-x ];
-						partGroup = lineParts[ 3-x ];
+						partUser = lineParts[ x-2 ];
+						partGroup = lineParts[ x-1 ];
 						partType = partPermission.substring(0, 1);
 						partLink = partType.equals("l") ? lineParts[ lineParts.length-1 ] : null;
 						partName = partType.equals("l") ? lineParts[ lineParts.length-3 ] : lineParts[ lineParts.length-1 ];
