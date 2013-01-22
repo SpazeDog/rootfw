@@ -44,8 +44,10 @@ public final class Busybox {
 	public String getVersion() {
 		ShellResult result = ROOTFW.runShell("busybox 2>/dev/null");
 		
-		if (result != null && result.getResultCode() == 0) {
-			return RootFW.replaceAll(result.getResult().getFirstLine(), "  ", " ").trim().split(" ")[1];
+		String version;
+		
+		if (result != null && result.getResultCode() == 0 && (version = result.getResult().getFirstLine()) != null) {
+			return RootFW.replaceAll(version, "  ", " ").trim().split(" ")[1];
 		}
 		
 		return null;
