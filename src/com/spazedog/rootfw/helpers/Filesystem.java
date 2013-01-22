@@ -53,6 +53,7 @@ public final class Filesystem {
 		if (result != null && result.getResultCode() == 0) {
 			String[] resultLines = result.getResult().getData(), lineParts;
 			String partUser=null, partGroup=null, partPermission=null, partLink=null, partType=null, partName=null, partMod=null;
+			Long partSize=0L;
 			Integer y, x, i, z;
 			
 			for (i=0; i < resultLines.length; i++) {
@@ -71,6 +72,7 @@ public final class Filesystem {
 						partPermission = lineParts[0];
 						partUser = lineParts[ x-2 ];
 						partGroup = lineParts[ x-1 ];
+						partSize = (lineParts.length - z) > 3 ? (Long.parseLong(lineParts[ x ]) * 1024) : 0L;
 						partType = partPermission.substring(0, 1);
 						partLink = partType.equals("l") ? lineParts[ lineParts.length-1 ] : null;
 						partName = partType.equals("l") ? lineParts[ lineParts.length-3 ] : lineParts[ lineParts.length-1 ];
@@ -86,7 +88,7 @@ public final class Filesystem {
 						}
 					}
 					
-					list.add( new FileInfo(partName, partType, partUser, partGroup, partMod, partPermission, partLink) );
+					list.add( new FileInfo(partName, partType, partUser, partGroup, partMod, partPermission, partLink, partSize) );
 				}
 			}
 			

@@ -27,8 +27,9 @@ public final class FileInfo {
 	private String PERMS;
 	private String STRINGPERMS;
 	private String LINK;
+	private Long SIZE;
 	
-	public FileInfo(String argName, String argType, String argUser, String argGroup, String argPerms, String argStringPerms, String argLink) {
+	public FileInfo(String argName, String argType, String argUser, String argGroup, String argPerms, String argStringPerms, String argLink, Long argSize) {
 		NAME = argName;
 		TYPE = argType;
 		USER = argUser;
@@ -36,6 +37,7 @@ public final class FileInfo {
 		PERMS = argPerms;
 		STRINGPERMS = argStringPerms;
 		LINK = argLink;
+		SIZE = argSize;
 	}
 	
 	public String getName() {
@@ -64,5 +66,9 @@ public final class FileInfo {
 	
 	public String getLink() {
 		return LINK;
+	}
+	
+	public Long getSize() {
+		return SIZE;
 	}
 }
