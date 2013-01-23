@@ -122,7 +122,7 @@ public final class Filesystem {
 		return null;
 	}
 	
-	public ArrayList<FileInfo> getFileList(String argPath) {
+	public ArrayList<FileInfo> getFileListInfo(String argPath) {
 		if (!"".equals(argPath)) {
 			return fileInfoBuilder(argPath, null);
 		}
@@ -756,6 +756,34 @@ public final class Filesystem {
 					return Long.parseLong(output);
 					
 				} catch(Throwable e) { e.printStackTrace(); }
+			}
+		}
+		
+		return null;
+	}
+	
+	public String[] getFileList(String argPath) {
+		if (argPath.length() > 0) {
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"ls -1a " + argPath + "", "ls -a " + argPath + "", "ls " + argPath + ""}));
+			
+			String[] lines = null;
+			
+			if (result != null && result.getResultCode() == 0) {
+				if (result.getCommandNumber() > ShellCommand.getCompatibleBinaries().length) {
+					String tmp = result.getResult().getAssembled("  ", true);
+					
+					if (tmp != null) {
+						/*
+						 * If 'ls' did not work with the '1' argument, we need to locate files/folders with space in their names
+						 */
+						lines = tmp.replaceAll("\t+", "  ").replaceAll("[ ]{2,}", "\n").split("\n");
+					}
+					
+				} else {
+					lines = result.getResult().getData();
+				}
+				
+				return lines;
 			}
 		}
 		
