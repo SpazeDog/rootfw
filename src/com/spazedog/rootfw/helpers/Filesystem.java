@@ -32,6 +32,7 @@ import com.spazedog.rootfw.RootFW;
 import com.spazedog.rootfw.containers.DiskInfo;
 import com.spazedog.rootfw.containers.FileData;
 import com.spazedog.rootfw.containers.FileInfo;
+import com.spazedog.rootfw.containers.FileStat;
 import com.spazedog.rootfw.containers.MountInfo;
 import com.spazedog.rootfw.containers.ShellCommand;
 import com.spazedog.rootfw.containers.ShellResult;
@@ -785,6 +786,115 @@ public final class Filesystem {
 				
 				return lines;
 			}
+		}
+		
+		return null;
+	}
+	
+	private ArrayList<FileStat> fileStatBuilder(String[] argPaths) {
+		if (argPaths != null && argPaths.length > 0) {
+			
+			ArrayList<FileStat> list = new ArrayList<FileStat>();
+			
+			ShellResult result;
+			String output, lines[], part[], partFile, partType, partLink, partPerm, partMod, partGid, partUid, partGname, partUname, partAtime, partMtime, partCtime;
+			Long partSize;
+			Integer i, partBlocks, partIOBlock, partINode;
+			
+			for (int y=0; y < argPaths.length; y++) {
+				if (argPaths[y].length() > 0 && !argPaths[y].endsWith(".")) {
+					result = ROOTFW.runShell(ShellCommand.makeCompatibles("stat '" + argPaths[y] + "'"));
+					
+					partBlocks = partIOBlock = partINode = null;
+					partFile = partType = partLink = partPerm = partMod = partGid = partUid = partGname = partUname = partAtime = partMtime = partCtime = null;
+					partSize = null;
+				
+					if (result != null && result.getResultCode() == 0 && (output = result.getResult().getAssembled()) != null) {
+						lines = output.replaceAll("[ \t\n]+([A-Za-z ]+:)", "\n$1").split("\n");
+						
+						for (i=0; i < lines.length; i++) {
+							if (partFile == null && lines[i].startsWith("File")) {
+								part = lines[i].substring(6).split(" -> ");
+								
+								partFile = part[0].substring(1, part[0].length()-1);
+								
+								if (part.length > 1) {
+									partLink = part[1].substring(1, part[1].length()-1);
+								}
+								
+							} else if (partSize == null && lines[i].startsWith("Size")) {
+								partSize = Long.parseLong(lines[i].substring(6)) * 1024L;
+								
+							} else if (partBlocks == null && lines[i].startsWith("Blocks")) {
+								partBlocks = Integer.parseInt(lines[i].substring(8));
+								
+							} else if (partIOBlock == null && lines[i].startsWith("IO")) {
+								partIOBlock = Integer.parseInt(lines[i].substring(10, lines[i].indexOf(" ", 10)));
+								
+							} else if (partINode == null && lines[i].startsWith("Inode")) {
+								partINode = Integer.parseInt(lines[i].substring(7));
+								
+							} else if (partPerm == null && lines[i].startsWith("Access")) {
+								part = lines[i].substring(9, lines[i].length()-1).split("/");
+								
+								partMod = part[0].trim();
+								partPerm = part[1].trim();
+								partType = partPerm.substring(0, 1);
+								
+							} else if (partUid == null && lines[i].startsWith("Uid")) {
+								part = lines[i].substring(6, lines[i].length()-1).split("/");
+								
+								partUid = part[0].trim();
+								partUname = part[1].trim();
+								
+							} else if (partGid == null && lines[i].startsWith("Gid")) {
+								part = lines[i].substring(6, lines[i].length()-1).split("/");
+								
+								partGid = part[0].trim();
+								partGname = part[1].trim();
+								
+							} else if (partAtime == null && lines[i].startsWith("Access")) {
+								partAtime = lines[i].substring(8);
+								
+							} else if (partMtime == null && lines[i].startsWith("Modify")) {
+								partMtime = lines[i].substring(8);
+								
+							} else if (partCtime == null && lines[i].startsWith("Change")) {
+								partCtime = lines[i].substring(8);
+							}
+						}
+						
+						list.add( new FileStat(partFile, partType, partUid, partGid, partUname, partGname, partMod, partPerm, partLink, partSize, partAtime, partMtime, partCtime, partBlocks, partIOBlock, partINode) );
+					}
+				}
+			}
+			
+			return list.size() > 0 ? list : null;
+		}
+		
+		return null;
+	}
+	
+	public FileStat getFileStat(String argPath) {
+		ArrayList<FileStat> stat = fileStatBuilder( new String[] {argPath} );
+		
+		if (stat != null) {
+			return stat.get(0);
+		}
+		
+		return null;
+	}
+	
+	public ArrayList<FileStat> getFileStatList(String argPath) {
+		String[] files = getFileList(argPath);
+		String path = argPath.endsWith("/") ? argPath.substring(0, argPath.length()-1) : argPath;
+		
+		if (files != null) {
+			for (int i=0; i < files.length; i++) {
+				files[i] = path + "/" + files[i];
+			}
+		
+			return fileStatBuilder(files);
 		}
 		
 		return null;
