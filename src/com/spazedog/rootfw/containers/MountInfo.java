@@ -19,7 +19,7 @@
 
 package com.spazedog.rootfw.containers;
 
-public final class MountInfo {
+public class MountInfo {
 	private String DEVICE;
 	private String MOUNT;
 	private String FSTYPE;

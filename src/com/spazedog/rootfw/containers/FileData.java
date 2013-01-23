@@ -19,7 +19,7 @@
 
 package com.spazedog.rootfw.containers;
 
-public final class FileData {
+public class FileData {
 	private String[] DATA;
 	
 	public FileData(String[] argData) {

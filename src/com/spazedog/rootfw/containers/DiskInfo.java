@@ -19,7 +19,7 @@
 
 package com.spazedog.rootfw.containers;
 
-public final class DiskInfo {
+public class DiskInfo {
 	String DEVICE;
 	String MOUNTPOINT;
 	Integer PERCENTAGE;

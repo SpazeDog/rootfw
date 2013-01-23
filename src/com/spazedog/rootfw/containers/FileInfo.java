@@ -19,7 +19,7 @@
 
 package com.spazedog.rootfw.containers;
 
-public final class FileInfo {
+public class FileInfo {
 	private String NAME;
 	private String TYPE;
 	private String USER;

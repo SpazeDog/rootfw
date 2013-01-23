@@ -20,7 +20,7 @@
 package com.spazedog.rootfw.containers;
 
 
-public final class ShellResult {
+public class ShellResult {
 	private Integer RESULTCODE;
 	private FileData RESULT;
 	private Integer CMDNUM;
