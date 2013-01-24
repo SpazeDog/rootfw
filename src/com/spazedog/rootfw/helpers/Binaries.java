@@ -24,6 +24,8 @@ import com.spazedog.rootfw.containers.ShellCommand;
 import com.spazedog.rootfw.containers.ShellResult;
 
 public final class Binaries {
+	public final static String TAG = RootFW.TAG + "::Binaries";
+	
 	private RootFW ROOTFW;
 	
 	public Binaries(RootFW argAccount) {
@@ -31,10 +33,14 @@ public final class Binaries {
 	}
 	
 	public String getPath(String argBinary) {
+		RootFW.log(TAG + ".getPath", "Locating the binary " + argBinary);
+		
 		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("which " + argBinary));
 		ShellResult result2 = null;
 		
 		if (result == null || result.getResultCode() == 0) {
+			RootFW.log(TAG + ".getPath", "The binary was located at " + result.getResult().getLastLine() + " now fallowing link");
+			
 			result2 = ROOTFW.runShell(ShellCommand.makeCompatibles("readlink -f $(" + result.getResult().getLastLine() + ")"));
 		}
 		
@@ -44,7 +50,12 @@ public final class Binaries {
 			result != null && result.getResultCode() == 0 && (path = result.getResult().getLastLine()) != null ? path.trim() : null;
 		
 		if (path != null && path.length() > 0) {
+			RootFW.log(TAG + ".getPath", "The true path was located at " + path);
+			
 			return path;
+			
+		} else {
+			RootFW.log(TAG + ".getPath", "The binary could not be located", RootFW.LOG_WARNING);
 		}
 		
 		return null;

@@ -26,7 +26,7 @@ import com.spazedog.rootfw.containers.ShellCommand;
 import com.spazedog.rootfw.containers.ShellResult;
 
 public class Utils {
-	private final static String TAG = "RootFW:Utils";
+	public final static String TAG = RootFW.TAG + "::Utils";
 	
 	private RootFW ROOTFW;
 	
@@ -35,6 +35,8 @@ public class Utils {
 	}
 	
 	public String getMd5(String argFile) {
+		RootFW.log(TAG + ".getMd5", "Getting md5sum on the file " + argFile);
+		
 		/* It's very important to make sure that the string contains something. 
 		 * Otherwise the md5sum binary will start a process and everything will hang forever */
 		if (argFile.length() > 0 && ROOTFW.filesystem.exist(argFile)) {
@@ -43,11 +45,13 @@ public class Utils {
 			String md5;
 			
 			if (result != null && result.getResultCode() == 0 && (md5 = result.getResult().getLastLine()) != null) {
-				RootFW.log(TAG, "getMd5(): Returning md5sum '" + md5 + "' on '" + argFile + "'");
+				RootFW.log(TAG + ".getMd5", "Returning md5sum '" + md5 + "' on '" + argFile + "'");
 				
 				return md5.split(" ")[0].trim();
 			}
 		}
+		
+		RootFW.log(TAG + ".getMd5", "Could not get the md5sum on the file " + argFile, RootFW.LOG_WARNING);
 		
 		return null;
 	}
@@ -55,12 +59,14 @@ public class Utils {
 	public Boolean matchMd5(String argFile, String argSum) {
 		String md5 = getMd5(argFile);
 		
-		RootFW.log(TAG, "matchMd5(): Comparing argument '" + argSum + "' with file sum '" + md5 + "' on '" + argFile + "'");
+		RootFW.log(TAG + ".matchMd5", "Comparing argument '" + argSum + "' with file sum '" + md5 + "' on '" + argFile + "'");
 		
 		return md5 == null ? false : md5.equals(argSum);
 	}
 	
 	public Boolean recoveryInstall(Context argContext, Integer argResource) {
+		RootFW.log(TAG + ".recoveryInstall", "Starting recovery install process using resource " + argResource);
+		
 		if (ROOTFW.busybox.exist()) {
 			Boolean isWriteable = ROOTFW.filesystem.hasMountFlag("/", "rw");
 			
@@ -70,13 +76,13 @@ public class Utils {
 			
 			if(ROOTFW.filesystem.copyFileResource(argContext, argContext.getResources().getIdentifier("recovery_install_sh", "raw", argContext.getPackageName()), "/recoveryInstall.sh", "0770", "0", "0")) {
 				if(ROOTFW.filesystem.copyFileResource(argContext, argResource, "/update.zip", "0655", "0", "0")) {
+					RootFW.log(TAG + ".recoveryInstall", "Executing recoveryInstall.sh in order to prepare recovery resources and reboot the system");
+					
 					ShellResult result = ROOTFW.runShell("/recoveryInstall.sh");
 					
-					if (!isWriteable) {
-						ROOTFW.filesystem.remount("/", "ro");
+					if (result != null && result.getResultCode() == 0) {
+						return true;
 					}
-					
-					return result != null && result.getResultCode() == 0 ? true : false;
 				}
 			}
 			
@@ -84,6 +90,8 @@ public class Utils {
 				ROOTFW.filesystem.remount("/", "ro");
 			}
 		}
+		
+		RootFW.log(TAG + ".recoveryInstall", "Was not able to start recovery install", RootFW.LOG_WARNING);
 		
 		return false;
 	}

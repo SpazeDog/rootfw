@@ -38,7 +38,7 @@ import com.spazedog.rootfw.containers.ShellCommand;
 import com.spazedog.rootfw.containers.ShellResult;
 
 public final class Filesystem {
-	private final static String TAG = "RootFW:Filesystem";
+	public final static String TAG = RootFW.TAG + "::Filesystem";
 	
 	private RootFW ROOTFW;
 	
@@ -47,6 +47,8 @@ public final class Filesystem {
 	}
 	
 	private ArrayList<FileInfo> fileInfoBuilder(String argPath, String argItem) {
+		RootFW.log(TAG + "." + (argItem == null ? "getFileListInfo" : "getFileList"), "Getting info " + (argItem == null ? "list on path " + argPath : "on " + argItem));
+		
 		ArrayList<FileInfo> list = new ArrayList<FileInfo>();
 		
 		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"ls -lna " + argPath, "ls -la " + argPath, "ls -ln " + argPath, "ls -l " + argPath} ));
@@ -89,12 +91,16 @@ public final class Filesystem {
 						}
 					}
 					
+					RootFW.log(TAG + "." + (argItem == null ? "getFileListInfo" : "getFileList"), "Adding FileInfo(Name=" + partName + ", Type=" + partType + ", User=" + partUser + ", Group=" + partGroup + ", Mod=" + partMod + ", Permissions=" + partPermission + ", Link=" + partLink + ", Size=" + partSize + ")");
+					
 					list.add( new FileInfo(partName, partType, partUser, partGroup, partMod, partPermission, partLink, partSize) );
 				}
 			}
 			
 			return list;
 		}
+		
+		RootFW.log(TAG + "." + (argItem == null ? "getFileListInfo" : "getFileList"), "Failed getting info " + (argItem == null ? "list on path " + argPath : "on " + argItem), RootFW.LOG_WARNING);
 		
 		return null;
 	}
@@ -132,6 +138,8 @@ public final class Filesystem {
 	}
 	
 	public Boolean exist(String argPath) {
+		RootFW.log(TAG + ".exist", "Checking existence of " + argPath);
+		
 		ShellResult result = ROOTFW.runShell("( busybox [ -e " + argPath + " ] && echo true ) || ( busybox [ ! -e " + argPath + " ] && echo false )", "( [ -e " + argPath + " ] && echo true ) || ( [ ! -e " + argPath + " ] && echo false )");
 
 		Boolean status = false;
@@ -143,12 +151,14 @@ public final class Filesystem {
 			status = getFileInfo(argPath) != null ? true : false;
 		}
 		
-		RootFW.log(TAG, "exist(): Checking if " + argPath + " exists which it " + (status ? "seams" : "does not seam") + " to do");
+		RootFW.log(TAG + ".exist", argPath + " was " + (status ? "" : "not") + " found");
 		
 		return status;
 	}
 	
 	public Boolean isFile(String argPath) {
+		RootFW.log(TAG + ".isFile", "Checking if " + argPath + " is a file");
+		
 		ShellResult result = ROOTFW.runShell("( busybox [ -f " + argPath + " ] && echo true ) || ( busybox [ ! -f " + argPath + " ] && echo false )", "( [ -f " + argPath + " ] && echo true ) || ( [ ! -f " + argPath + " ] && echo false )");
 		
 		FileInfo fi;
@@ -161,12 +171,14 @@ public final class Filesystem {
 			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("-") ? true : false;
 		}
 
-		RootFW.log(TAG, "isFile(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a file");
+		RootFW.log(TAG + ".isFile", argPath + " was " + (status ? "" : "not") + " identified as a file");
 		
 		return status;
 	}
 	
 	public Boolean isDir(String argPath) {
+		RootFW.log(TAG + ".isDir", "Checking if " + argPath + " is a directory");
+		
 		ShellResult result = ROOTFW.runShell("( busybox [ -d " + argPath + " ] && echo true ) || ( busybox [ ! -d " + argPath + " ] && echo false )", "( [ -d " + argPath + " ] && echo true ) || ( [ ! -d " + argPath + " ] && echo false )");
 		
 		FileInfo fi;
@@ -179,12 +191,14 @@ public final class Filesystem {
 			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("d") ? true : false;
 		}
 
-		RootFW.log(TAG, "isDir(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a directory");
+		RootFW.log(TAG + ".isDir", argPath + " was " + (status ? "" : "not") + " identified as a directory");
 		
 		return status;
 	}
 	
 	public Boolean isLink(String argPath) {
+		RootFW.log(TAG + ".isLink", "Checking if " + argPath + " is a symbolic link");
+		
 		ShellResult result = ROOTFW.runShell("( busybox [ -L " + argPath + " ] && echo true ) || ( busybox [ ! -L " + argPath + " ] && echo false )", "( [ -L " + argPath + " ] && echo true ) || ( [ ! -L " + argPath + " ] && echo false )");
 		
 		FileInfo fi;
@@ -197,12 +211,14 @@ public final class Filesystem {
 			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("l") ? true : false;
 		}
 		
-		RootFW.log(TAG, "isLink(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a link");
+		RootFW.log(TAG + ".isLink", argPath + " was " + (status ? "" : "not") + " identified as a symbolic link");
 		
 		return status;
 	}
 	
 	public Boolean isBlockDevice(String argPath) {
+		RootFW.log(TAG + ".isBlockDevice", "Checking if " + argPath + " is a block device");
+		
 		ShellResult result = ROOTFW.runShell("( busybox [ -b " + argPath + " ] && echo true ) || ( busybox [ ! -b " + argPath + " ] && echo false )", "( [ -b " + argPath + " ] && echo true ) || ( [ ! -b " + argPath + " ] && echo false )");
 		
 		FileInfo fi;
@@ -215,12 +231,14 @@ public final class Filesystem {
 			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("b") ? true : false;
 		}
 		
-		RootFW.log(TAG, "isBlockDevice(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a block device");
+		RootFW.log(TAG + ".isBlockDevice", argPath + " was " + (status ? "" : "not") + " identified as a block device");
 		
 		return status;
 	}
 	
 	public Boolean isCharacterDevice(String argPath) {
+		RootFW.log(TAG + ".isCharacterDevice", "Checking if " + argPath + " is a character device");
+		
 		ShellResult result = ROOTFW.runShell("( busybox [ -c " + argPath + " ] && echo true ) || ( busybox [ ! -c " + argPath + " ] && echo false )", "( [ -c " + argPath + " ] && echo true ) || ( [ ! -c " + argPath + " ] && echo false )");
 		
 		FileInfo fi;
@@ -233,13 +251,13 @@ public final class Filesystem {
 			status = (fi = getFileInfo(argPath)) != null && fi.getType().equals("c") ? true : false;
 		}
 		
-		RootFW.log(TAG, "isCharacterDevice(): Checking type of " + argPath + " which " + (status ? "seams" : "does not seam") + " to be a character device");
+		RootFW.log(TAG + ".isCharacterDevice", argPath + " was " + (status ? "" : "not") + " identified as a character device");
 		
 		return status;
 	}
 	
 	public Boolean copyFileResource(Context argContext, Integer argSrc, String argDes, String argPerms, String argUser, String argGroup) {
-		RootFW.log(TAG, "copyFileResource(): Trying to copy resource into " + argDes);
+		RootFW.log(TAG + ".copyFileResource", "Starting file copy from " + argContext.getPackageName() + " resources into " + argDes);
 		
 		if (!isDir(argDes)) {
 			InputStream in = argContext.getResources().openRawResource( argSrc );
@@ -248,7 +266,11 @@ public final class Filesystem {
 			try {
 				out = argContext.openFileOutput("tmp.raw", 0);
 				
-			} catch (FileNotFoundException e) { e.printStackTrace(); return false; }
+			} catch (FileNotFoundException e) {
+				RootFW.log(TAG + ".copyFileResource", "Could not copy " + argContext.getPackageName() + " resources into " + argDes, RootFW.LOG_ERROR, e);
+				
+				return false; 
+			}
 			
 			byte[] buff = new byte[1024];
 			Integer read = 0;
@@ -258,59 +280,78 @@ public final class Filesystem {
 					out.write(buff, 0, read);
 				}
 				
-			} catch (IOException e) { e.printStackTrace(); return false; }
+			} catch (IOException e) {
+				RootFW.log(TAG + ".copyFileResource", "Could not copy " + argContext.getPackageName() + " resources into " + argDes, RootFW.LOG_ERROR, e);
+				
+				return false; 
+			}
 			
 			try {
 				in.close();
 				out.close();
 				
-			} catch (IOException e) { e.printStackTrace(); }
+			} catch (IOException e) {}
 			
 			if(moveFile(argContext.getFilesDir().getAbsolutePath() + "/tmp.raw", argDes)) {
 				if (setPermissions(argDes, argPerms) && setOwner(argDes, argUser, argGroup)) {
 					
+					RootFW.log(TAG + ".copyFileResource", "" + argContext.getPackageName() + " resource was successfully copied to " + argDes);
+					
 					return true;
 				}
-			}
+			}	
 		}
+		
+		RootFW.log(TAG + ".copyFileResource", "Could not copy " + argContext.getPackageName() + " resources into " + argDes, RootFW.LOG_WARNING);
 		
 		return false;
 	}
 	
 	public Boolean copyFile(String argSrc, String argDes) {
-		FileInfo fi = getFileInfo(argSrc);
-		
-		if (fi != null) {
-			return copyFile(argSrc, argDes, fi.getPermissions(), fi.getUser(), fi.getGroup());
-		}
-		
-		return false;
+		return copyFile(argSrc, argDes, null, null, null);
 	}
 	
 	public Boolean copyFile(String argSrc, String argDes, String argPerms, String argUser, String argGroup) {
-		try {
-			if (isFile(argSrc)) {
-				String dest = !exist(argDes) || !isDir(argDes) ? argDes : 
-					(argDes.endsWith("/") ? argDes.substring(0, argDes.length() - 1) : argDes) + "/" + argSrc.substring(argSrc.lastIndexOf("/") + 1);
-				
-				Boolean status = false;
-				ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"cp " + argSrc + " " + dest + "", "cat " + argSrc + " > " + dest + ""} ));
-				
-				if (result != null && result.getResultCode() == 0) {
-					if (setPermissions(dest, argPerms) && setOwner(dest, argUser, argGroup)) {
-						status = true;
+		RootFW.log(TAG + ".copyFile", "Start copying " + argSrc + " to " + argDes);
+		
+		if (argPerms == null || argUser == null || argGroup == null) {
+			FileInfo fi;
+
+			if ((fi = (FileInfo) getFileStat(argSrc)) != null || (fi = getFileInfo(argSrc)) != null) {
+				argPerms = fi.getPermissions();
+				argUser = fi.getUser();
+				argGroup = fi.getGroup();
+			}
+		}
+		
+		if (argPerms != null && argUser != null && argGroup != null) {
+			try {
+				if (isFile(argSrc)) {
+					String dest = !exist(argDes) || !isDir(argDes) ? argDes : 
+						(argDes.endsWith("/") ? argDes.substring(0, argDes.length() - 1) : argDes) + "/" + argSrc.substring(argSrc.lastIndexOf("/") + 1);
+
+					ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"cp " + argSrc + " " + dest + "", "cat " + argSrc + " > " + dest + ""} ));
+					
+					if (result != null && result.getResultCode() == 0) {
+						if (setPermissions(dest, argPerms) && setOwner(dest, argUser, argGroup)) {
+							RootFW.log(TAG + ".copyFile", "Successfully copied " + argSrc + " to " + dest);
+							
+							return true;
+						}
 					}
 				}
 				
-				return status;
-			}
-			
-		} catch(Throwable e) { e.printStackTrace(); }
+			} catch(Throwable e) { RootFW.log(TAG + ".copyFile", "Could not copy " + argSrc + " to " + argDes, RootFW.LOG_ERROR, e); return false; }
+		}
+		
+		RootFW.log(TAG + ".copyFile", "Could not copy " + argSrc + " to " + argDes, RootFW.LOG_WARNING);
 		
 		return false;
 	}
 	
 	public Boolean moveFile(String argSrc, String argDes) {
+		RootFW.log(TAG + ".moveFile", "Start moving " + argSrc + " to " + argDes);
+		
 		try {
 			if (isFile(argSrc)) {
 				String dest = !exist(argDes) || !isDir(argDes) ? argDes : 
@@ -332,17 +373,23 @@ public final class Filesystem {
 					status = true;
 				}
 				
-				RootFW.log(TAG, "moveFile(): " + (status ? "moved " + argSrc + " into " + argDes : "could not move " + argSrc + " into " + argDes), status ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
+				if (status) {
+					RootFW.log(TAG + ".moveFile", "Successfully moved " + argSrc + " to " + dest);
 				
-				return status;
+					return true;
+				}
 			}
 			
-		} catch(Throwable e) { e.printStackTrace(); }
+		} catch(Throwable e) { RootFW.log(TAG + ".moveFile", "Could not move " + argSrc + " to " + argDes, RootFW.LOG_WARNING, e); return false; }
+		
+		RootFW.log(TAG + ".moveFile", "Could not move " + argSrc + " to " + argDes, RootFW.LOG_WARNING);
 		
 		return false;
 	}
 	
 	public FileData readFile(String argFile) {
+		RootFW.log(TAG + ".readFile", "Reading content from " + argFile);
+		
 		if (exist(argFile)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("cat " + argFile));
 			
@@ -351,17 +398,25 @@ public final class Filesystem {
 			}
 		}
 		
+		RootFW.log(TAG + ".readFile", "Could not read content from " + argFile, RootFW.LOG_WARNING);
+		
 		return null;
 	}
 	
 	public String readFileLine(String argFile) {
+		RootFW.log(TAG + ".readFileLine", "Reading one line from " + argFile);
+		
 		if (exist(argFile)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"sed -n '1p' " + argFile + "", "cat " + argFile + ""}));
 			
 			if (result != null && result.getResultCode() == 0) {
+				RootFW.log(TAG + ".readFileLine", "Returning line content '" + result.getResult().getFirstLine() + "' from " + argFile);
+				
 				return result.getResult().getFirstLine();
 			}
 		}
+		
+		RootFW.log(TAG + ".readFileLine", "Could not read content from " + argFile, RootFW.LOG_WARNING);
 		
 		return null;
 	}
@@ -371,6 +426,8 @@ public final class Filesystem {
 	}
 	
 	public Boolean putFileLine(String argFile, String argLineData, Boolean argAppend) {
+		RootFW.log(TAG + ".putFileLine", "Appending data to " + argFile);
+		
 		if (!isDir(argFile)) {
 			String path = argFile.substring(0, argFile.lastIndexOf("/"));
 
@@ -390,6 +447,8 @@ public final class Filesystem {
 			}
 		}
 		
+		RootFW.log(TAG + ".putFileLine", "Could not append data to " + argFile);
+		
 		return false;
 	}
 	
@@ -398,6 +457,8 @@ public final class Filesystem {
 	}
 	
 	public Boolean setPermissions(String argPath, String argPerms, Boolean argRecursive) {
+		RootFW.log(TAG + ".setPermissions", "Setting permissions on " + argPath + " to " + argPerms + (argRecursive ? " recursively" : ""));
+		
 		if (argPath.length() > 0 && exist(argPath)) {
 			ShellResult result;
 			
@@ -408,10 +469,12 @@ public final class Filesystem {
 				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chmod " + argPerms + " " + argPath));
 			}
 			
-			RootFW.log(TAG, "setPermissions(): " + (result != null && result.getResultCode() == 0 ? "changed permission on " + argPath + " to '" + argPerms + "'" : "could not set permission on " + argPath + " to '" + argPerms + "'"), result.getResultCode() == 0 ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
-			
-			return result != null && result.getResultCode() == 0 ? true : false;
+			if (result != null && result.getResultCode() == 0) {
+				return true;
+			}
 		}
+		
+		RootFW.log(TAG + ".setPermissions", "Could not set permissions on " + argPath, RootFW.LOG_WARNING);
 		
 		return false;
 	}
@@ -421,6 +484,8 @@ public final class Filesystem {
 	}
 	
 	public Boolean setOwner(String argPath, String argUser, String argGroup, Boolean argRecursive) {
+		RootFW.log(TAG + ".setOwner", "Setting owner on " + argPath + " to " + argUser + "." + argGroup + (argRecursive ? " recursively" : ""));
+		
 		if (argPath.length() > 0 && exist(argPath)) {
 			ShellResult result;
 			
@@ -431,35 +496,47 @@ public final class Filesystem {
 				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chown " + (argUser + "." + argGroup) + " " + argPath));
 			}
 			
-			RootFW.log(TAG, "setPermissions(): " + (result != null && result.getResultCode() == 0 ? "changed owner on " + argPath + " to '" + argUser + "." + argGroup + "'" : "could not set owner on " + argPath + " to '" + argUser + "." + argGroup + "'"), result.getResultCode() == 0 ? RootFW.LOG_INFO : RootFW.LOG_WARNING);
-			
-			return result != null && result.getResultCode() == 0 ? true : false;
+			if (result != null && result.getResultCode() == 0) {
+				return true;
+			}
 		}
+		
+		RootFW.log(TAG + ".setOwner", "Could not set owner on " + argPath, RootFW.LOG_WARNING);
 		
 		return false;
 	}
 	
 	public Boolean rmFile(String argPath) {
+		RootFW.log(TAG + ".rmFile", "Deleting file " + argPath);
+		
 		if (argPath.length() > 0 && exist(argPath)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"unlink " + argPath + "", "rm -rf " + argPath + ""}));
 			
-			return result != null && result.getResultCode() == 0 ? true : false;
+			if (result == null || result.getResultCode() != 0) {
+				RootFW.log(TAG + ".rmFile", "Could not delete the file " + argPath, RootFW.LOG_WARNING); return false;
+			}
 		}
 		
 		return true;
 	}
 	
 	public Boolean rmDir(String argPath) {
+		RootFW.log(TAG + ".rmDir", "Deleting directory " + argPath);
+		
 		if (argPath.length() > 0 && isDir(argPath)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"rmdir " + argPath + "", "rm -rf " + argPath + ""}));
 			
-			return result != null && result.getResultCode() == 0 ? true : false;
+			if (result == null || result.getResultCode() != 0) {
+				RootFW.log(TAG + ".rmDir", "Could not delete the directory " + argPath, RootFW.LOG_WARNING); return false;
+			}
 		}
 		
 		return true;
 	}
 	
 	public Boolean mkDir(String argPath) {
+		RootFW.log(TAG + ".mkDir", "Creating directory " + argPath);
+		
 		if (argPath.length() > 0 && !isDir(argPath)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("mkdir -p " + argPath));
 			
@@ -482,21 +559,29 @@ public final class Filesystem {
 				}
 			}
 			
-			return result != null && result.getResultCode() == 0 ? true : false;
+			if(result == null || result.getResultCode() != 0) {
+				RootFW.log(TAG + ".mkDir", "Could not create the directory " + argPath, RootFW.LOG_WARNING); return false;
+			}
 			
-		} else {
-			return true;
 		}
+			
+		return true;
 	}
 	
 	public Boolean emptyDir(String argPath) {
+		RootFW.log(TAG + ".emptyDir", "Cleaning out the directory " + argPath);
+		
 		if (isDir(argPath)) {
 			String dir = argPath.endsWith("/") ? argPath.substring(0, argPath.length() - 1) : argPath;
 			
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("rm -rf " + dir + "/*"));
 			
-			return result != null && result.getResultCode() == 0 ? true : false;
+			if(result != null && result.getResultCode() == 0) {
+				return true;
+			}
 		}
+		
+		RootFW.log(TAG + ".emptyDir", "Could not clean out the directory " + argPath, RootFW.LOG_WARNING);
 		
 		return false;
 	}
@@ -522,12 +607,22 @@ public final class Filesystem {
 	public Boolean mount(String argDevice, String argMountPoint, String argFileSystem, String argOptions) {
 		String mount = "mount" + (argDevice != null ? " " + argDevice : "") + (argFileSystem != null ? " -t " + argFileSystem : "") + (argOptions != null ? " -o " + argOptions : "") + " " + argMountPoint;
 		
+		RootFW.log(TAG + ".mount", "Running mount '" + mount + "'");
+		
 		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(mount));
 		
-		return result != null && result.getResultCode() == 0 ? true : false;
+		if(result != null && result.getResultCode() == 0) {
+			return true;
+		}
+		
+		RootFW.log(TAG + ".mount", "Mounting failed", RootFW.LOG_WARNING);
+		
+		return false;
 	}
 	
 	public ArrayList<MountInfo> getMounts() {
+		RootFW.log(TAG + ".getMounts", "Collecting mount information");
+		
 		FileData filedata = readFile("/proc/mounts");
 		
 		if (filedata != null) {
@@ -539,6 +634,8 @@ public final class Filesystem {
 				for (int i=0; i < mounts.length; i++) {
 					line = RootFW.replaceAll(mounts[i], "  ", " ").trim().split(" ");
 					
+					RootFW.log(TAG + ".getMounts", "Adding MountInfo(Device=" + line[0] + ", MountPoint=" + line[1] + ", FSType=" + line[2] + ", Flags=" + line[3] + ")");
+					
 					list.add(new MountInfo(line[0], line[1], line[2], line[3].split(",")));
 				}
 				
@@ -546,10 +643,14 @@ public final class Filesystem {
 			}
 		}
 		
+		RootFW.log(TAG + ".getMounts", "Could not collect any mount information", RootFW.LOG_WARNING);
+		
 		return null;
 	}
 	
 	public MountInfo getDiskMount(String argDevice) {
+		RootFW.log(TAG + ".getDiskMount", "Getting mount information on " + argDevice);
+		
 		Boolean blockdevice;
 		
 		if ((blockdevice = isBlockDevice(argDevice)) || isDir(argDevice)) {
@@ -580,10 +681,14 @@ public final class Filesystem {
 			}
 		}
 		
+		RootFW.log(TAG + ".getDiskMount", "Could not get mount information on " + argDevice);
+		
 		return null;
 	}
 	
 	public Boolean hasMountFlag(String argDevice, String argOption) {
+		RootFW.log(TAG + ".hasMountFlag", "Checking if " + argDevice + " has the mount flag '" + argOption + "'");
+		
 		MountInfo mi = getDiskMount(argDevice);
 		
 		if (mi != null) {
@@ -591,9 +696,16 @@ public final class Filesystem {
 			
 			for (int i=0; i < mo.length; i++) {
 				if (mo[i].equals(argOption)) {
+					RootFW.log(TAG + ".hasMountFlag", "The mount flag '" + argOption + "' exists on " + argDevice);
+					
 					return true;
 				}
 			}
+			
+			RootFW.log(TAG + ".hasMountFlag", "The mount flag '" + argOption + "' does not exist on " + argDevice);
+			
+		} else {
+			RootFW.log(TAG + ".hasMountFlag", "Could not check mount flags on " + argDevice, RootFW.LOG_WARNING);
 		}
 		
 		return false;
@@ -608,6 +720,8 @@ public final class Filesystem {
 	 * even on systems with low supported toolbox df command.
 	 */
 	public DiskInfo getDiskInfo(String argPath) {
+		RootFW.log(TAG + ".getDiskInfo", "Getting disk information on " + argPath);
+		
 		Boolean blockdevice;
 		
 		if ((blockdevice = isBlockDevice(argPath)) || isDir(argPath)) {
@@ -643,13 +757,9 @@ public final class Filesystem {
 						if (parts[i].matches("^.*[A-Za-z]$")) {
 							prefix = parts[i].substring(parts[i].length()-1).toLowerCase(Locale.US);
 							tmpSize = Double.parseDouble(parts[i].substring(0, parts[i].length()-1));
-							
-							RootFW.log(TAG, "getDiskInfo(): Removing prefix '" + prefix + "' and calculating '" + parts[i] + "' into bytes");
-							
+
 							if (!prefix.equals("b") && tmpSize > 0) {
 								for (int x=0; x < prefixes.length; x++) {
-									RootFW.log(TAG, "getDiskInfo(): Converting " + tmpSize.toString() + prefixes[x]);
-									
 									tmpSize = tmpSize * 1024D;
 									
 									if (prefixes[x].equals(prefix)) {
@@ -687,8 +797,6 @@ public final class Filesystem {
 			}
 			
 			if (result != null && result.getResultCode() == 0) {
-				RootFW.log(TAG, "getDiskInfo(): Found disk info string '" + repacked + "'");
-				
 				if (parts.length >= 6 && isBlockDevice(parts[0])) {
 					percentage = Integer.parseInt(parts[4].endsWith("%") ? parts[4].substring(0, parts[4].length()-1) : parts[4]);
 					device = parts[0];
@@ -707,16 +815,21 @@ public final class Filesystem {
 					}
 				}
 				
-				RootFW.log(TAG, "getDiskInfo(): Found disk info Device(" + device + "), MountPoint(" + mountpoint + "), Size(" + size.intValue() + "), Usage(" + usage.intValue() + "), Remaining(" + remaining.intValue() + "), Percentage(" + percentage + ")");
+				RootFW.log(TAG + ".getDiskInfo", "Extracting information string (" + repacked + ")");
+				RootFW.log(TAG + ".getDiskInfo", "Adding DiskInfo(Device=" + device + ", Size=" + size.toString() + ", Usage=" + usage.toString() + ", Remaining=" + remaining.toString() + ", Percentage=" + percentage + ", MountPoint=" + mountpoint + ")");
 				
 				return new DiskInfo(device, size, usage, remaining, percentage, mountpoint);
 			}
 		}
 		
+		RootFW.log(TAG + ".getDiskInfo", "Could not get disk information on " + argPath, RootFW.LOG_WARNING);
+		
 		return null;
 	}
 	
 	public Long getFolderSize(String argPath) {
+		RootFW.log(TAG + ".getFolderSize", "Getting folder size on " + argPath);
+		
 		if (argPath.length() > 0 && isDir(argPath)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("du -skx " + argPath));
 			
@@ -733,16 +846,24 @@ public final class Filesystem {
 				}
 				
 				try {
-					return (Long) (Long.parseLong(output) * 1024);
+					Long size = (Long) (Long.parseLong(output) * 1024);
+							
+					RootFW.log(TAG + ".getFolderSize", "Calculated folder size on " + argPath + " to " + size.toString());
 					
-				} catch(Throwable e) { e.printStackTrace(); }
+					return size;
+					
+				} catch(Throwable e) { RootFW.log(TAG + ".getFolderSize", "Could not get folder size on " + argPath, RootFW.LOG_ERROR, e); return null; }
 			}
 		}
+		
+		RootFW.log(TAG + ".getFolderSize", "Could not get folder size on " + argPath);
 		
 		return null;
 	}
 	
 	public Long getFileSize(String argFile) {
+		RootFW.log(TAG + ".getFileSize", "Getting file size on " + argFile);
+		
 		if (argFile.length() > 0 && isFile(argFile)) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"wc -c < " + argFile + "", "wc < " + argFile + ""}));
 			
@@ -754,16 +875,24 @@ public final class Filesystem {
 				}
 				
 				try {
-					return Long.parseLong(output);
+					Long size = Long.parseLong(output);
+							
+					RootFW.log(TAG + ".getFileSize", "Calculated file size on " + argFile + " to " + size.toString());
 					
-				} catch(Throwable e) { e.printStackTrace(); }
+					return size;
+					
+				} catch(Throwable e) { RootFW.log(TAG + ".getFileSize", "Could not get folder size on " + argFile, RootFW.LOG_ERROR, e); return null; }
 			}
 		}
+		
+		RootFW.log(TAG + ".getFileSize", "Could not get file size on " + argFile);
 		
 		return null;
 	}
 	
 	public String[] getFileList(String argPath) {
+		RootFW.log(TAG + ".getFileList", "Getting getting file list for " + argPath);
+		
 		if (argPath.length() > 0) {
 			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"ls -1a " + argPath + "", "ls -a " + argPath + "", "ls " + argPath + ""}));
 			
@@ -787,6 +916,8 @@ public final class Filesystem {
 				return lines;
 			}
 		}
+		
+		RootFW.log(TAG + ".getFileList", "Could not get file list for " + argPath, RootFW.LOG_WARNING);
 		
 		return null;
 	}
@@ -864,6 +995,8 @@ public final class Filesystem {
 							}
 						}
 						
+						RootFW.log(TAG + ".FileStat", "Adding FileStat(Name=" + partFile + ", Type=" + partType + ", UID=" + partUid + ", GID=" + partGid + ", UserName=" + partUname + ", GroupName=" + partGname + ", Mod=" + partMod + ", Permissions=" + partPerm + ", Link=" + partLink + ", Size=" + partSize.toString() + ", ATime=" + partAtime + ", MTime=" + partMtime + ", CTime=" + partCtime + ", Blocks=" + partBlocks + ", IOBlock=" + partIOBlock + ", Inode=" + partINode + ")");
+						
 						list.add( new FileStat(partFile, partType, partUid, partGid, partUname, partGname, partMod, partPerm, partLink, partSize, partAtime, partMtime, partCtime, partBlocks, partIOBlock, partINode) );
 					}
 				}
@@ -876,16 +1009,22 @@ public final class Filesystem {
 	}
 	
 	public FileStat getFileStat(String argPath) {
+		RootFW.log(TAG + ".getFileStat", "Getting file stat on " + argPath);
+		
 		ArrayList<FileStat> stat = fileStatBuilder( new String[] {argPath} );
 		
 		if (stat != null) {
 			return stat.get(0);
 		}
 		
+		RootFW.log(TAG + ".getFileStat", "Could not get file stat on " + argPath, RootFW.LOG_WARNING);
+		
 		return null;
 	}
 	
 	public ArrayList<FileStat> getFileStatList(String argPath) {
+		RootFW.log(TAG + ".getFileStatList", "Getting file stat list on " + argPath);
+		
 		String[] files = getFileList(argPath);
 		String path = argPath.endsWith("/") ? argPath.substring(0, argPath.length()-1) : argPath;
 		
@@ -896,6 +1035,8 @@ public final class Filesystem {
 		
 			return fileStatBuilder(files);
 		}
+		
+		RootFW.log(TAG + ".getFileStatList", "Could not get file stat list on " + argPath, RootFW.LOG_WARNING);
 		
 		return null;
 	}

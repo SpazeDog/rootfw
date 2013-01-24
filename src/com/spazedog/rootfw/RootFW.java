@@ -100,7 +100,7 @@ public final class RootFW {
 	 * Just a small hack which allows the class alone
 	 * to get an instance without opening a process at the same time
 	 */
-	private RootFW(Integer hack) {}
+	private RootFW(Integer hack) { log("Getting an empty RootFW instance"); }
 	
 	/* 
 	 * This will return a nameless object.
@@ -114,6 +114,8 @@ public final class RootFW {
 	
 	public RootFW(Boolean argUseRoot) {
 		SHELL_IS_ROOT = argUseRoot;
+		
+		log("Opening a new " + (argUseRoot ? "root" : "user") + " shell");
 		
 		try {
 			ProcessBuilder builder;
@@ -131,7 +133,11 @@ public final class RootFW {
 			SHELL = builder.start();
 			
 			if (argUseRoot) {
+				log("Checking root connection");
+				
 				if ((result = runShell("id")) != null && result.getResult().getLastLine().contains("uid=0")) {
+					log("Connection was successful");
+					
 					SHELL_IS_CONNECTED = true;
 				}
 				
@@ -140,9 +146,9 @@ public final class RootFW {
 			}
 			
 		} catch(Throwable e) { 
-			SHELL_IS_CONNECTED = false;
+			log(TAG, "Connection failed", LOG_WARNING, e);
 			
-			e.printStackTrace(); 
+			SHELL_IS_CONNECTED = false;
 		}
 	}
 	
@@ -194,10 +200,14 @@ public final class RootFW {
 	public void close() {
 		if (!COPY) {
 			try {
+				log(TAG + ".close", "Closing " + (NAME != null ? " shell named '" + NAME + "'" : "nameless shell") + "");
+				
 				runShell("exit");
 				SHELL.destroy();
 				
-			} catch(Throwable e) { e.printStackTrace(); }
+			} catch(Throwable e) { 
+				log(TAG + ".close", "Failed while closing the shell", LOG_ERROR, e);
+			}
 			
 			if (NAME != null) {
 				String name = NAME + (SHELL_IS_ROOT ? ":root" : ":user");
@@ -280,6 +290,8 @@ public final class RootFW {
 	}
 	
 	public ShellResult runShell(ShellCommand argCommand) {
+		log(TAG + ".runShell", "Executing shell commands");
+		
 		try {
 			DataOutputStream output = new DataOutputStream(SHELL.getOutputStream());
 			BufferedReader buffer = new BufferedReader(new InputStreamReader(SHELL.getInputStream()));
@@ -298,6 +310,8 @@ public final class RootFW {
 				for (int i=0; i < commands.length; i++) {
 					cmd += commands[i] + "\n";
 				}
+				
+				log(TAG + ".runShell", "Executing command series {" + cmd.substring(0, cmd.length()-1).replaceAll("\n", "}, {") + "}");
 				
 				cmd += "\n";
 				cmd += "status=$? && EOL:a00c38d8:EOL\n";
@@ -350,16 +364,20 @@ public final class RootFW {
 							}
 						}
 						
+						log(TAG + ".runShell", "Shell exited with status " + iResult + ", continue with next command series");
+						
 					} else {
 						break;
 					}
 					
-				} catch(Throwable e) { e.printStackTrace(); }
+				} catch(Throwable e) { log(TAG + ".runShell", "Failed executing the command series", LOG_ERROR, e); }
 			}
+			
+			log(TAG + ".runShell", "Shell exited with status " + iResult);
 				
 			return new ShellResult(commandNum, iResult, data.split("\n"));
 			
-		} catch(Throwable e) { e.printStackTrace(); }
+		} catch(Throwable e) { log(TAG + ".runShell", "Failed while setting up stream buffers", LOG_ERROR, e); }
 		
 		return null;
 	}
