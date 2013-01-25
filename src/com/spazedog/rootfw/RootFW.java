@@ -32,6 +32,7 @@ import com.spazedog.rootfw.containers.ShellResult;
 import com.spazedog.rootfw.helpers.Binaries;
 import com.spazedog.rootfw.helpers.Busybox;
 import com.spazedog.rootfw.helpers.Filesystem;
+import com.spazedog.rootfw.helpers.Processes;
 import com.spazedog.rootfw.helpers.Utils;
 import com.spazedog.rootfw.tools.AsyncProcess;
 import com.spazedog.rootfw.tools.AsyncProcess.AsyncProcessReceiver;
@@ -58,6 +59,7 @@ public final class RootFW {
 	public final Filesystem filesystem = new Filesystem(this);
 	public final Binaries binaries = new Binaries(this);
 	public final Utils utils = new Utils(this);
+	public final Processes processes = new Processes(this);
 	
 	public static void log(String argMsg) {
 		log(null, argMsg, LOG_INFO, null);
