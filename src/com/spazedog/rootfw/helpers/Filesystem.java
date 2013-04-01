@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 import android.content.Context;
 
@@ -40,89 +41,50 @@ import com.spazedog.rootfw.containers.ShellResult;
 public final class Filesystem {
 	public final static String TAG = RootFW.TAG + "::Filesystem";
 	
+	public final static Pattern FILELIST_PATTERN = Pattern.compile("^([a-z-]+)(?:[ \t]+([0-9]+))?[ \t]+([0-9a-z_]+)[ \t]+([0-9a-z_]+)(?:[ \t]+([0-9]+[a-z]?))?[ \t]+([A-Za-z]+[ \t]+[0-9]+[ \t]+[0-9:]+|[0-9-/]+[ \t]+[0-9:]+)[ \t]+(?:(.*) -> )?(.*)$");
+	public final static Pattern FILELIST_SPLITTER = Pattern.compile("\\|");
+	
 	private RootFW ROOTFW;
 	
 	public Filesystem(RootFW argAccount) {
 		ROOTFW = argAccount;
 	}
-	
-	private ArrayList<FileInfo> fileInfoBuilder(String argPath, String argItem) {
-		RootFW.log(TAG + "." + (argItem == null ? "getFileListInfo" : "getFileList"), "Getting info " + (argItem == null ? "list on path " + argPath : "on " + argItem));
+
+	public FileInfo getFileInfo(String argPath) {
+		ArrayList<FileInfo> fileList = getFileListInfo(argPath, 1);
+		String name = argPath;
 		
-		ArrayList<FileInfo> list = new ArrayList<FileInfo>();
-		
-		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"%binary ls -lna " + argPath, "%binary ls -la " + argPath, "%binary ls -ln " + argPath, "%binary ls -l " + argPath} ));
-		
-		if (result != null && result.getResultCode() == 0) {
-			String[] resultLines = result.getResult().getData(), lineParts;
-			String partUser=null, partGroup=null, partPermission=null, partLink=null, partType=null, partName=null, partMod=null;
-			Long partSize=0L;
-			Integer y, x, i, z;
-			
-			for (i=0; i < resultLines.length; i++) {
-				lineParts = RootFW.replaceAll(resultLines[i], "  ", " ").trim().split(" ");
-				
-				if (lineParts.length > 4) {
-					y = lineParts[ lineParts.length-2 ].equals("->") ? 3 : 1;
-					
-					if (argItem == null || lineParts[ lineParts.length-y ].equals(argItem)) {
-						/* 
-						 * Locate the design of the tables
-						 */
-						z = lineParts[ lineParts.length-(y+2) ].matches("^[^-\\/]+$") ? (y+4) : (y+3);
-						x = (lineParts.length - z) > 3 ? (lineParts.length - z) : 3;
-						
-						partPermission = lineParts[0];
-						partUser = lineParts[ x-2 ];
-						partGroup = lineParts[ x-1 ];
-						partSize = (lineParts.length - z) > 3 ? (Long.parseLong(lineParts[ x ]) * 1024) : 0L;
-						partType = partPermission.substring(0, 1);
-						partLink = partType.equals("l") ? lineParts[ lineParts.length-1 ] : null;
-						partName = partType.equals("l") ? lineParts[ lineParts.length-3 ] : lineParts[ lineParts.length-1 ];
-						
-						String[] permsPart = {partPermission.substring(1), partPermission.substring(1, 4), partPermission.substring(4, 7), partPermission.substring(7, 10)};
-						partMod="";
-						for (x=0; x < permsPart.length; x++) {
-							z = (x == 0 && permsPart[x].charAt(2) == 's') || (x > 0 && permsPart[x].charAt(0) == 'r') ? 4 : 0;
-							z += (x == 0 && permsPart[x].charAt(5) == 's') || (x > 0 && permsPart[x].charAt(1) == 'w') ? 2 : 0;
-							z += (x == 0 && permsPart[x].charAt(8) == 't') || (x > 0 && permsPart[x].charAt(2) == 'x') ? 1 : 0;
-							
-							partMod += z;
-						}
-					}
-					
-					RootFW.log(TAG + "." + (argItem == null ? "getFileListInfo" : "getFileList"), "Adding FileInfo(Name=" + partName + ", Type=" + partType + ", User=" + partUser + ", Group=" + partGroup + ", Mod=" + partMod + ", Permissions=" + partPermission + ", Link=" + partLink + ", Size=" + partSize + ")");
-					
-					list.add( new FileInfo(partName, partType, partUser, partGroup, partMod, partPermission, partLink, partSize) );
-				}
+		if (!argPath.equals("/")) {
+			if (argPath.endsWith("/")) {
+				argPath = argPath.substring(0, argPath.length() - 1);
 			}
 			
-			return list;
+			name = argPath.substring(argPath.lastIndexOf("/") + 1);
 		}
 		
-		RootFW.log(TAG + "." + (argItem == null ? "getFileListInfo" : "getFileList"), "Failed getting info " + (argItem == null ? "list on path " + argPath : "on " + argItem), RootFW.LOG_WARNING);
-		
-		return null;
-	}
-	
-	public FileInfo getFileInfo(String argPath) {
-		if (!"".equals(argPath)) {
-			String path, dir=null, item=null;
-			
-			if (!argPath.equals("/")) {
-				path = argPath.endsWith("/") ? argPath.substring(0, argPath.length() - 1) : argPath;
-				dir = path.substring(0, path.lastIndexOf("/"));
-				item = path.substring(path.lastIndexOf("/") + 1);
+		if (fileList != null && (fileList.get(0).getName().equals(".") || fileList.get(0).getName().equals(name))) {
+			if (fileList.get(0).getName().equals(".")) {
+				FileInfo fileInfo = fileList.get(0);
 				
-			} else {
-				dir = "/";
-				item = ".";
+				return new FileInfo(name, fileInfo.getType(), fileInfo.getUser(), fileInfo.getGroup(), fileInfo.getPermissions(), fileInfo.getPermissionString(), fileInfo.getLink(), fileInfo.getSize());
 			}
 			
-			ArrayList<FileInfo> list = fileInfoBuilder(dir, item);
+			return fileList.get(0);
 			
-			if (list != null) {
-				return list.get(0);
+		} else if (fileList != null && !argPath.equals("/")) {
+			/* Some toolbox versions does not support the "-a" argument in "ls". 
+			 * In this case we need to loop through all the content in the parent in order to find the correct one
+			 */
+			String path = argPath.substring(0, argPath.lastIndexOf("/"));
+			fileList = getFileListInfo(path);
+			Integer i;
+			
+			if (fileList != null) {
+				for (i=0; i < fileList.size(); i++) {
+					if (fileList.get(i).getName().equals(name)) {
+						return fileList.get(i);
+					}
+				}
 			}
 		}
 		
@@ -130,11 +92,57 @@ public final class Filesystem {
 	}
 	
 	public ArrayList<FileInfo> getFileListInfo(String argPath) {
-		if (!"".equals(argPath)) {
-			return fileInfoBuilder(argPath, null);
+		return getFileListInfo(argPath, null);
+	}
+	
+	public ArrayList<FileInfo> getFileListInfo(String argPath, Integer argMax) {
+		ArrayList<FileInfo> list = new ArrayList<FileInfo>();
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"%binary ls -lna " + argPath, "%binary ls -la " + argPath, "%binary ls -ln " + argPath, "%binary ls -l " + argPath} ));
+		
+		if (result != null && result.getResultCode() == 0) {
+			String[] lines = result.getResult().getData(), lineParts;
+			String partUser=null, partGroup=null, partPermission=null, partLink=null, partType=null, partName=null, partMod=null;
+			Long partSize = 0L;
+			Integer i = 0, x, z, count = 1, max = argMax == null ? lines.length : (argMax > 0 ? argMax : lines.length - argMax);
+			
+			while (count <= max && (i += 1) < lines.length) {
+				RootFW.log(TAG + ".getFileListInfo", "Checking (" + lines[i] + ")");
+				
+				lineParts = FILELIST_SPLITTER.split( FILELIST_PATTERN.matcher(lines[i]).replaceAll("$1|$3|$4|$5|$7|$8") );
+				
+				if (lineParts.length == 6) {
+					partType = lineParts[0].substring(0, 1);
+					partPermission = lineParts[0];
+					partUser = lineParts[1];
+					partGroup = lineParts[2];
+					partSize = lineParts[3].equals("null") ? 0L : Long.parseLong(lineParts[3]);
+					partName = lineParts[4].equals("null") ? lineParts[5] : lineParts[4];
+					partLink = lineParts[4].equals("null") ? null : lineParts[5];
+					
+					String[] permsPart = {partPermission.substring(1), partPermission.substring(1, 4), partPermission.substring(4, 7), partPermission.substring(7, 10)};
+					partMod="";
+					for (x=0; x < permsPart.length; x++) {
+						z = (x == 0 && permsPart[x].charAt(2) == 's') || (x > 0 && permsPart[x].charAt(0) == 'r') ? 4 : 0;
+						z += (x == 0 && permsPart[x].charAt(5) == 's') || (x > 0 && permsPart[x].charAt(1) == 'w') ? 2 : 0;
+						z += (x == 0 && permsPart[x].charAt(8) == 't') || (x > 0 && permsPart[x].charAt(2) == 'x') ? 1 : 0;
+						
+						partMod += z;
+					}
+					
+					RootFW.log(TAG + ".getFileListInfo", "Adding FileInfo(Name=" + partName + ", Type=" + partType + ", User=" + partUser + ", Group=" + partGroup + ", Mod=" + partMod + ", Permissions=" + partPermission + ", Link=" + partLink + ", Size=" + partSize + ")");
+					
+					list.add( new FileInfo(partName, partType, partUser, partGroup, partMod, partPermission, partLink, partSize) );
+					
+					count += 1;
+				}
+			}
 		}
 		
-		return null;
+		if (list.size() == 0) {
+			RootFW.log(TAG + ".getFileListInfo", "No items was added to FileInfo");
+		}
+		
+		return list.size() > 0 ? list : null;
 	}
 	
 	public Boolean exist(String argPath) {
