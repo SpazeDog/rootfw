@@ -34,7 +34,7 @@ public final class Busybox {
 	public Boolean exist() {
 		RootFW.log(TAG + ".exist", "Checking if busybox exists");
 		
-		ShellResult result = ROOTFW.runShell("busybox > /dev/null 2>&1");
+		ShellResult result = ROOTFW.runShell("busybox test true > /dev/null 2>&1");
 		Boolean status = result != null && result.getResultCode() == 0 ? true : false;
 		
 		RootFW.log(TAG + ".exist", "Busybox " + (status ? "was" : "could not be") + " located");
