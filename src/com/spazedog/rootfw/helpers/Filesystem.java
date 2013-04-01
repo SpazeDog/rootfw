@@ -925,26 +925,23 @@ public final class Filesystem {
 		RootFW.log(TAG + ".getFileList", "Getting getting file list for " + argPath);
 		
 		if (argPath.length() > 0) {
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"%binary ls -1a '" + argPath + "'", "%binary ls -a '" + argPath + "'", "%binary ls '" + argPath + "'"}));
-			
-			String[] lines = null;
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"%binary ls -1a '" + argPath + "'", "%binary ls -1 '" + argPath + "'"}));
 			
 			if (result != null && result.getResultCode() == 0) {
-				if (result.getCommandNumber() > ShellCommand.getCompatibleBinaries().length) {
-					String tmp = result.getResult().getAssembled("  ", true);
+				return result.getResult().getData();
+				
+			} else {
+				ArrayList<FileInfo> fileList = getFileListInfo(argPath);
+				
+				if (fileList != null) {
+					String[] lines = new String[fileList.size()];
 					
-					if (tmp != null) {
-						/*
-						 * If 'ls' did not work with the '1' argument, we need to locate files/folders with space in their names
-						 */
-						lines = tmp.replaceAll("\t+", "  ").replaceAll("[ ]{2,}", "\n").split("\n");
+					for (int i=0; i < fileList.size(); i++) {
+						lines[i] = fileList.get(i).getName();
 					}
 					
-				} else {
-					lines = result.getResult().getData();
+					return fileList.size() > 0 ? lines : null;
 				}
-				
-				return lines;
 			}
 		}
 		
