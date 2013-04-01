@@ -169,7 +169,7 @@ public final class RootFW {
 	 * will be allowed to close the process.
 	 */
 	public static RootFW getInstance(String argName) {
-		return getInstance(argName, true);
+		return getInstance(argName, SHELLS.get(argName + ":user") == null);
 	}
 	
 	public static RootFW getInstance(String argName, Boolean argUseRoot) {
