@@ -40,7 +40,7 @@ public class Utils {
 		/* It's very important to make sure that the string contains something. 
 		 * Otherwise the md5sum binary will start a process and everything will hang forever */
 		if (argFile.length() > 0 && ROOTFW.filesystem.exist(argFile)) {
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary md5sum " + argFile));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary md5sum '" + argFile + "'"));
 			
 			String md5;
 			
