@@ -148,7 +148,7 @@ public final class Filesystem {
 	public Boolean exist(String argPath) {
 		RootFW.log(TAG + ".exist", "Checking existence of " + argPath);
 		
-		ShellResult result = ROOTFW.runShell("( busybox [ -e " + argPath + " ] && echo true ) || ( busybox [ ! -e " + argPath + " ] && echo false )", "( [ -e " + argPath + " ] && echo true ) || ( [ ! -e " + argPath + " ] && echo false )");
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("( %binary test -e '" + argPath + "' && %binary echo true ) || ( %binary test ! -e '" + argPath + "' && %binary echo false )"));
 
 		Boolean status = false;
 		
@@ -167,7 +167,7 @@ public final class Filesystem {
 	public Boolean isFile(String argPath) {
 		RootFW.log(TAG + ".isFile", "Checking if " + argPath + " is a file");
 		
-		ShellResult result = ROOTFW.runShell("( busybox [ -f " + argPath + " ] && echo true ) || ( busybox [ ! -f " + argPath + " ] && echo false )", "( [ -f " + argPath + " ] && echo true ) || ( [ ! -f " + argPath + " ] && echo false )");
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("( %binary test -f '" + argPath + "' && %binary echo true ) || ( %binary test ! -f '" + argPath + "' && %binary echo false )"));
 		
 		FileInfo fi;
 		Boolean status = false;
@@ -187,7 +187,7 @@ public final class Filesystem {
 	public Boolean isDir(String argPath) {
 		RootFW.log(TAG + ".isDir", "Checking if " + argPath + " is a directory");
 		
-		ShellResult result = ROOTFW.runShell("( busybox [ -d " + argPath + " ] && echo true ) || ( busybox [ ! -d " + argPath + " ] && echo false )", "( [ -d " + argPath + " ] && echo true ) || ( [ ! -d " + argPath + " ] && echo false )");
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("( %binary test -d '" + argPath + "' && %binary echo true ) || ( %binary test ! -d '" + argPath + "' && %binary echo false )"));
 		
 		FileInfo fi;
 		Boolean status = false;
@@ -207,7 +207,7 @@ public final class Filesystem {
 	public Boolean isLink(String argPath) {
 		RootFW.log(TAG + ".isLink", "Checking if " + argPath + " is a symbolic link");
 		
-		ShellResult result = ROOTFW.runShell("( busybox [ -L " + argPath + " ] && echo true ) || ( busybox [ ! -L " + argPath + " ] && echo false )", "( [ -L " + argPath + " ] && echo true ) || ( [ ! -L " + argPath + " ] && echo false )");
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("( %binary test -L '" + argPath + "' && %binary echo true ) || ( %binary test ! -L '" + argPath + "' && %binary echo false )"));
 		
 		FileInfo fi;
 		Boolean status = false;
@@ -227,7 +227,7 @@ public final class Filesystem {
 	public Boolean isBlockDevice(String argPath) {
 		RootFW.log(TAG + ".isBlockDevice", "Checking if " + argPath + " is a block device");
 		
-		ShellResult result = ROOTFW.runShell("( busybox [ -b " + argPath + " ] && echo true ) || ( busybox [ ! -b " + argPath + " ] && echo false )", "( [ -b " + argPath + " ] && echo true ) || ( [ ! -b " + argPath + " ] && echo false )");
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("( %binary test -b '" + argPath + "' && %binary echo true ) || ( %binary test ! -b '" + argPath + "' && %binary echo false )"));
 		
 		FileInfo fi;
 		Boolean status = false;
@@ -247,7 +247,7 @@ public final class Filesystem {
 	public Boolean isCharacterDevice(String argPath) {
 		RootFW.log(TAG + ".isCharacterDevice", "Checking if " + argPath + " is a character device");
 		
-		ShellResult result = ROOTFW.runShell("( busybox [ -c " + argPath + " ] && echo true ) || ( busybox [ ! -c " + argPath + " ] && echo false )", "( [ -c " + argPath + " ] && echo true ) || ( [ ! -c " + argPath + " ] && echo false )");
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("( %binary test -c '" + argPath + "' && %binary echo true ) || ( %binary test ! -c '" + argPath + "' && %binary echo false )"));
 		
 		FileInfo fi;
 		Boolean status = false;
