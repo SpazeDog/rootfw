@@ -20,12 +20,16 @@
 package com.spazedog.rootfw.containers;
 
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 
 public class ShellCommand {
 	private ArrayList<String[]> CMD = new ArrayList<String[]>();
 	private ArrayList<Integer> RESULT = new ArrayList<Integer>();
 	
 	private static String[] BINARIES = {"busybox", "toolbox"};
+	
+	public final static Pattern BINARY_REPLACE_PATTERN = Pattern.compile("%binary");
+	public final static Pattern BINARY_REMOVE_PATTERN = Pattern.compile("%binary |%binary");
 	
 	public static ShellCommand makeCompatibles(String argCommands) {
 		return makeCompatibles(new String[] {argCommands}, null);
@@ -44,10 +48,10 @@ public class ShellCommand {
 		
 		for (int x=0; x < argCommands.length; x++) {
 			for (int y=0; y < BINARIES.length; y++) {
-				command.addCommand(argCommands[x].replaceAll("%binary", BINARIES[y]) + " 2>/dev/null");
+				command.addCommand(BINARY_REPLACE_PATTERN.matcher(argCommands[x]).replaceAll(BINARIES[y]) + " 2>/dev/null");
 			}
 			
-			command.addCommand(argCommands[x].replaceAll("%binary |%binary", "") + " 2>/dev/null");
+			command.addCommand(BINARY_REMOVE_PATTERN.matcher(argCommands[x]).replaceAll("") + " 2>/dev/null");
 		}
 		
 		if (argResults != null) {
