@@ -594,6 +594,27 @@ public final class Filesystem {
 		return false;
 	}
 	
+	public Boolean mvmount(String argOldMountPoint, String argNewMountPoint) {
+		RootFW.log(TAG + ".mvmount", "Moving mount point " + argOldMountPoint + " to " + argNewMountPoint);
+		
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary mount --move '" + argOldMountPoint + "' '" + argNewMountPoint + "'"));
+		
+		if(result != null && result.getResultCode() == 0) {
+			return true;
+			
+		} else {
+			RootFW.log(TAG + ".mvmount", "Failed to move the mount point, trying manunal unmount/remount", RootFW.LOG_WARNING);
+			
+			MountInfo mountInfo = getDiskMount(argOldMountPoint);
+			
+			if (mountInfo != null && unmount(argOldMountPoint)) {
+				return mount(mountInfo.getDevice(), argNewMountPoint, mountInfo.getFsType(), mountInfo.getFlags().toString());
+			}
+		}
+		
+		return false;
+	}
+	
 	public Boolean remount(String argMountPoint, String argOptions) {
 		return mount(argMountPoint, "remount," + argOptions);
 	}
