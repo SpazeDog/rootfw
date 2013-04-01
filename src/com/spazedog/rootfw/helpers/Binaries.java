@@ -35,13 +35,13 @@ public final class Binaries {
 	public String getPath(String argBinary) {
 		RootFW.log(TAG + ".getPath", "Locating the binary " + argBinary);
 		
-		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("which " + argBinary));
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary which " + argBinary));
 		ShellResult result2 = null;
 		
 		if (result == null || result.getResultCode() == 0) {
 			RootFW.log(TAG + ".getPath", "The binary was located at " + result.getResult().getLastLine() + " now fallowing link");
 			
-			result2 = ROOTFW.runShell(ShellCommand.makeCompatibles("readlink -f $(" + result.getResult().getLastLine() + ")"));
+			result2 = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary readlink -f $(" + result.getResult().getLastLine() + ")"));
 		}
 		
 		String path;

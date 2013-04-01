@@ -55,7 +55,7 @@ public final class Processes {
 			
 			RootFW.log(TAG + ".kill<Process>", "Killing the process " + process);
 			
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("killall " + process));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary killall " + process));
 			Boolean status = result.getResultCode() == 0 ? true : false;
 			
 			if (!status) {
@@ -71,7 +71,7 @@ public final class Processes {
 	public Boolean kill(Integer argPid) {
 		RootFW.log(TAG + ".kill<PID>", "Killing the process id " + argPid);
 		
-		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("kill -9 " + argPid));
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary kill -9 " + argPid));
 		Boolean status = result.getResultCode() == 0 ? true : false;
 		
 		if (!status) {

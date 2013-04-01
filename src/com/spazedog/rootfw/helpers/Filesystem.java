@@ -51,7 +51,7 @@ public final class Filesystem {
 		
 		ArrayList<FileInfo> list = new ArrayList<FileInfo>();
 		
-		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"ls -lna " + argPath, "ls -la " + argPath, "ls -ln " + argPath, "ls -l " + argPath} ));
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"%binary ls -lna " + argPath, "%binary ls -la " + argPath, "%binary ls -ln " + argPath, "%binary ls -l " + argPath} ));
 		
 		if (result != null && result.getResultCode() == 0) {
 			String[] resultLines = result.getResult().getData(), lineParts;
@@ -330,7 +330,7 @@ public final class Filesystem {
 					String dest = !exist(argDes) || !isDir(argDes) ? argDes : 
 						(argDes.endsWith("/") ? argDes.substring(0, argDes.length() - 1) : argDes) + "/" + argSrc.substring(argSrc.lastIndexOf("/") + 1);
 
-					ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"cp " + argSrc + " " + dest + "", "cat " + argSrc + " > " + dest + ""} ));
+					ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"%binary cp " + argSrc + " " + dest + "", "%binary cat " + argSrc + " > " + dest + ""} ));
 					
 					if (result != null && result.getResultCode() == 0) {
 						if (setPermissions(dest, argPerms) && setOwner(dest, argUser, argGroup)) {
@@ -358,7 +358,7 @@ public final class Filesystem {
 					(argDes.endsWith("/") ? argDes.substring(0, argDes.length() - 1) : argDes) + "/" + argSrc.substring(argSrc.lastIndexOf("/") + 1);
 				
 				Boolean status = false;
-				ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"mv " + argSrc + " " + dest + "", "cat " + argSrc + " > " + dest + ""} ));
+				ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles( new String[] {"%binary mv " + argSrc + " " + dest + "", "%binary cat " + argSrc + " > " + dest + ""} ));
 				
 				if (result != null && result.getCommandNumber() > ShellCommand.getCompatibleBinaries().length) {
 					FileInfo fi;
@@ -391,7 +391,7 @@ public final class Filesystem {
 		RootFW.log(TAG + ".readFile", "Reading content from " + argFile);
 		
 		if (exist(argFile)) {
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("cat " + argFile));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary cat " + argFile));
 			
 			if (result != null && result.getResultCode() == 0) {
 				return result.getResult();
@@ -407,7 +407,7 @@ public final class Filesystem {
 		RootFW.log(TAG + ".readFileLine", "Reading one line from " + argFile);
 		
 		if (exist(argFile)) {
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"sed -n '1p' " + argFile + "", "cat " + argFile + ""}));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"%binary sed -n '1p' " + argFile + "", "%binary cat " + argFile + ""}));
 			
 			if (result != null && result.getResultCode() == 0) {
 				RootFW.log(TAG + ".readFileLine", "Returning line content '" + result.getResult().getFirstLine() + "' from " + argFile);
@@ -435,10 +435,10 @@ public final class Filesystem {
 				ShellResult result; 
 				
 				if (argAppend) {
-					result = ROOTFW.runShell(ShellCommand.makeCompatibles("echo " + argLineData + " >> " + argFile));
+					result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary echo " + argLineData + " >> " + argFile));
 				
 				} else {
-					result = ROOTFW.runShell(ShellCommand.makeCompatibles("echo " + argLineData + " > " + argFile));
+					result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary echo " + argLineData + " > " + argFile));
 				}
 				
 				if (result != null && result.getResultCode() == 0) {
@@ -463,10 +463,10 @@ public final class Filesystem {
 			ShellResult result;
 			
 			if (argRecursive) { 
-				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chmod -R " + argPerms + " " + argPath));
+				result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary chmod -R " + argPerms + " " + argPath));
 				
 			} else {
-				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chmod " + argPerms + " " + argPath));
+				result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary chmod " + argPerms + " " + argPath));
 			}
 			
 			if (result != null && result.getResultCode() == 0) {
@@ -490,10 +490,10 @@ public final class Filesystem {
 			ShellResult result;
 			
 			if (argRecursive) {
-				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chown -R " + (argUser + "." + argGroup) + " " + argPath));
+				result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary chown -R " + (argUser + "." + argGroup) + " " + argPath));
 			
 			} else {
-				result = ROOTFW.runShell(ShellCommand.makeCompatibles("chown " + (argUser + "." + argGroup) + " " + argPath));
+				result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary chown " + (argUser + "." + argGroup) + " " + argPath));
 			}
 			
 			if (result != null && result.getResultCode() == 0) {
@@ -510,7 +510,7 @@ public final class Filesystem {
 		RootFW.log(TAG + ".rmFile", "Deleting file " + argPath);
 		
 		if (argPath.length() > 0 && exist(argPath)) {
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"unlink " + argPath + "", "rm -rf " + argPath + ""}));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"%binary unlink " + argPath + "", "%binary rm -rf " + argPath + ""}));
 			
 			if (result == null || result.getResultCode() != 0) {
 				RootFW.log(TAG + ".rmFile", "Could not delete the file " + argPath, RootFW.LOG_WARNING); return false;
@@ -524,7 +524,7 @@ public final class Filesystem {
 		RootFW.log(TAG + ".rmDir", "Deleting directory " + argPath);
 		
 		if (argPath.length() > 0 && isDir(argPath)) {
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"rmdir " + argPath + "", "rm -rf " + argPath + ""}));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"%binary rmdir " + argPath + "", "%binary rm -rf " + argPath + ""}));
 			
 			if (result == null || result.getResultCode() != 0) {
 				RootFW.log(TAG + ".rmDir", "Could not delete the directory " + argPath, RootFW.LOG_WARNING); return false;
@@ -538,7 +538,7 @@ public final class Filesystem {
 		RootFW.log(TAG + ".mkDir", "Creating directory " + argPath);
 		
 		if (argPath.length() > 0 && !isDir(argPath)) {
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("mkdir -p " + argPath));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary mkdir -p " + argPath));
 			
 			if (result != null && result.getResultCode() != 0) {
 				String path = argPath.endsWith("/") ? argPath.substring(0, -1) : argPath;
@@ -550,7 +550,7 @@ public final class Filesystem {
 					path += paths[i] + "/";
 					
 					if (!isDir(path)) {
-						result = ROOTFW.runShell(ShellCommand.makeCompatibles("mkdir " + argPath));
+						result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary mkdir " + argPath));
 	
 						if (result.getResultCode() != 0) {
 							break;
@@ -574,7 +574,7 @@ public final class Filesystem {
 		if (isDir(argPath)) {
 			String dir = argPath.endsWith("/") ? argPath.substring(0, argPath.length() - 1) : argPath;
 			
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("rm -rf " + dir + "/*"));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary rm -rf " + dir + "/*"));
 			
 			if(result != null && result.getResultCode() == 0) {
 				return true;
@@ -591,7 +591,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean unmount(String argDevice) {
-		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"umount " + argDevice + "", "umount -f " + argDevice + ""}));
+		ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"%binary umount " + argDevice + "", "%binary umount -f " + argDevice + ""}));
 		
 		return result != null && result.getResultCode() == 0 ? true : false;
 	}
@@ -605,7 +605,7 @@ public final class Filesystem {
 	}
 	
 	public Boolean mount(String argDevice, String argMountPoint, String argFileSystem, String argOptions) {
-		String mount = "mount" + (argDevice != null ? " " + argDevice : "") + (argFileSystem != null ? " -t " + argFileSystem : "") + (argOptions != null ? " -o " + argOptions : "") + " " + argMountPoint;
+		String mount = "%binary mount" + (argDevice != null ? " " + argDevice : "") + (argFileSystem != null ? " -t " + argFileSystem : "") + (argOptions != null ? " -o " + argOptions : "") + " " + argMountPoint;
 		
 		RootFW.log(TAG + ".mount", "Running mount '" + mount + "'");
 		
@@ -735,7 +735,7 @@ public final class Filesystem {
 				}
 			}
 			
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"df -k " + argPath + "", "df " + argPath + ""}));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"%binary df -k " + argPath + "", "%binary df " + argPath + ""}));
 
 			String[] parts = null, data = null;
 			Long size=null, usage=null, remaining=null;
@@ -831,7 +831,7 @@ public final class Filesystem {
 		RootFW.log(TAG + ".getFolderSize", "Getting folder size on " + argPath);
 		
 		if (argPath.length() > 0 && isDir(argPath)) {
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("du -skx " + argPath));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary du -skx " + argPath));
 			
 			String output;
 			
@@ -865,7 +865,7 @@ public final class Filesystem {
 		RootFW.log(TAG + ".getFileSize", "Getting file size on " + argFile);
 		
 		if (argFile.length() > 0 && isFile(argFile)) {
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"wc -c < " + argFile + "", "wc < " + argFile + ""}));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"%binary wc -c < " + argFile + "", "%binary wc < " + argFile + ""}));
 			
 			String output;
 			
@@ -894,7 +894,7 @@ public final class Filesystem {
 		RootFW.log(TAG + ".getFileList", "Getting getting file list for " + argPath);
 		
 		if (argPath.length() > 0) {
-			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"ls -1a " + argPath + "", "ls -a " + argPath + "", "ls " + argPath + ""}));
+			ShellResult result = ROOTFW.runShell(ShellCommand.makeCompatibles(new String[] {"%binary ls -1a " + argPath + "", "%binary ls -a " + argPath + "", "%binary ls " + argPath + ""}));
 			
 			String[] lines = null;
 			
@@ -934,7 +934,7 @@ public final class Filesystem {
 			
 			for (int y=0; y < argPaths.length; y++) {
 				if (argPaths[y].length() > 0 && !argPaths[y].endsWith(".")) {
-					result = ROOTFW.runShell(ShellCommand.makeCompatibles("stat '" + argPaths[y] + "'"));
+					result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary stat '" + argPaths[y] + "'"));
 					
 					partBlocks = partIOBlock = partINode = null;
 					partFile = partType = partLink = partPerm = partMod = partGid = partUid = partGname = partUname = partAtime = partMtime = partCtime = null;

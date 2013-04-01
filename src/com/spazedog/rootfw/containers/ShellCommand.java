@@ -44,10 +44,10 @@ public class ShellCommand {
 		
 		for (int x=0; x < argCommands.length; x++) {
 			for (int y=0; y < BINARIES.length; y++) {
-				command.addCommand(BINARIES[y] + " " + argCommands[x] + " 2>/dev/null");
+				command.addCommand(argCommands[x].replaceAll("%binary", BINARIES[y]) + " 2>/dev/null");
 			}
 			
-			command.addCommand(argCommands[x] + " 2>/dev/null");
+			command.addCommand(argCommands[x].replaceAll("%binary |%binary", "") + " 2>/dev/null");
 		}
 		
 		if (argResults != null) {
