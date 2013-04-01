@@ -661,21 +661,21 @@ public final class Filesystem {
 				
 				if (!blockdevice) {
 					path = argDevice.endsWith("/") ? argDevice.substring(0, argDevice.length()-1) : argDevice;
-				}
-				
-				for (int i=0; i < mounts.size(); i++) {
-					if (blockdevice) {
-						if (mounts.get(i).getDevice().equals(argDevice)) {
-							return mounts.get(i);
-						}
-						
-					} else {
-						do {
+					
+					do {
+						for (int i=0; i < mounts.size(); i++) {
 							if (mounts.get(i).getMountPoint().equals(path)) {
 								return mounts.get(i);
 							}
-							
-						} while (path.lastIndexOf("/") > 0 && !(path = path.substring(0, path.lastIndexOf("/"))).equals(""));
+						}
+						
+					} while (path.lastIndexOf("/") > 0 && !(path = path.substring(0, path.lastIndexOf("/"))).equals(""));
+					
+				} else {
+					for (int i=0; i < mounts.size(); i++) {
+						if (mounts.get(i).getDevice().equals(argDevice)) {
+							return mounts.get(i);
+						}
 					}
 				}
 			}
