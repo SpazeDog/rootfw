@@ -717,6 +717,31 @@ public final class Filesystem {
 		return null;
 	}
 	
+	public Boolean isMounted(String argDevice) {
+		RootFW.log(TAG + ".isMounted", "Checking whether or not " + argDevice + " is mounted");
+		
+		Boolean blockdevice;
+		
+		if ((blockdevice = isBlockDevice(argDevice)) || isDir(argDevice)) {
+			ArrayList<MountInfo> mounts = getMounts();
+			String path = null;
+			
+			if (!blockdevice) {
+				path = argDevice.endsWith("/") ? argDevice.substring(0, argDevice.length()-1) : argDevice;
+			}
+			
+			if (mounts != null) {
+				for (int i=0; i < mounts.size(); i++) {
+					if ((blockdevice && mounts.get(i).getDevice().equals(argDevice)) || (!blockdevice && mounts.get(i).getMountPoint().equals(path))) {
+						return true;
+					}
+				}
+			}
+		}
+		
+		return false;
+	}
+	
 	public Boolean hasMountFlag(String argDevice, String argOption) {
 		RootFW.log(TAG + ".hasMountFlag", "Checking if " + argDevice + " has the mount flag '" + argOption + "'");
 		
