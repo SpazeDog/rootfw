@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
 import android.content.Context;
 
 import com.spazedog.rootfw.RootFW;
+import com.spazedog.rootfw.containers.DeviceList;
 import com.spazedog.rootfw.containers.DiskInfo;
 import com.spazedog.rootfw.containers.FileData;
 import com.spazedog.rootfw.containers.FileInfo;
@@ -41,7 +42,7 @@ import com.spazedog.rootfw.containers.ShellResult;
 public final class Filesystem {
 	public final static String TAG = RootFW.TAG + "::Filesystem";
 	
-	public final static Pattern FILELIST_PATTERN = Pattern.compile("^([a-z-]+)(?:[ \t]+([0-9]+))?[ \t]+([0-9a-z_]+)[ \t]+([0-9a-z_]+)(?:[ \t]+([0-9]+[a-z]?))?[ \t]+([A-Za-z]+[ \t]+[0-9]+[ \t]+[0-9:]+|[0-9-/]+[ \t]+[0-9:]+)[ \t]+(?:(.*) -> )?(.*)$");
+	public final static Pattern FILELIST_PATTERN = Pattern.compile("^([a-z-]+)(?:[ \t]+([0-9]+))?[ \t]+([0-9a-z_]+)[ \t]+([0-9a-z_]+)(?:[ \t]+(?:([0-9]+),[ \t]+)?([0-9]+))?[ \t]+([A-Za-z]+[ \t]+[0-9]+[ \t]+[0-9:]+|[0-9-/]+[ \t]+[0-9:]+)[ \t]+(?:(.*) -> )?(.*)$");
 	public final static Pattern FILELIST_SPLITTER = Pattern.compile("\\|");
 	public final static Pattern FILESTAT_LINE_REPLACE = Pattern.compile("[ \t\n]+([A-Za-z ]+:)");
 	
@@ -67,7 +68,7 @@ public final class Filesystem {
 			if (fileList.get(0).getName().equals(".")) {
 				FileInfo fileInfo = fileList.get(0);
 				
-				return new FileInfo(name, fileInfo.getType(), fileInfo.getUser(), fileInfo.getGroup(), fileInfo.getPermissions(), fileInfo.getPermissionString(), fileInfo.getLink(), fileInfo.getSize());
+				return new FileInfo(name, fileInfo.getType(), fileInfo.getUser(), fileInfo.getGroup(), fileInfo.getPermissions(), fileInfo.getPermissionString(), fileInfo.getLink(), fileInfo.getSize(), fileInfo.getMM());
 			}
 			
 			return fileList.get(0);
@@ -102,23 +103,24 @@ public final class Filesystem {
 		
 		if (result != null && result.getResultCode() == 0) {
 			String[] lines = result.getResult().getData(), lineParts;
-			String partUser=null, partGroup=null, partPermission=null, partLink=null, partType=null, partName=null, partMod=null;
+			String partUser=null, partGroup=null, partPermission=null, partLink=null, partType=null, partName=null, partMod=null, partMM=null;
 			Long partSize = 0L;
 			Integer i = 0, x, z, count = 1, max = argMax == null ? lines.length : (argMax > 0 ? argMax : lines.length - argMax);
 			
 			while (count <= max && i < lines.length) {
 				RootFW.log(TAG + ".getFileListInfo", "Checking (" + lines[i] + ")");
 				
-				lineParts = FILELIST_SPLITTER.split( FILELIST_PATTERN.matcher(lines[i]).replaceAll("$1|$3|$4|$5|$7|$8") );
+				lineParts = FILELIST_SPLITTER.split( FILELIST_PATTERN.matcher(lines[i]).replaceAll("$1|$3|$4|$5|$6|$8|$9") );
 				
-				if (lineParts.length == 6) {
+				if (lineParts.length == 7) {
 					partType = lineParts[0].substring(0, 1);
 					partPermission = lineParts[0];
 					partUser = lineParts[1];
 					partGroup = lineParts[2];
-					partSize = lineParts[3].equals("null") ? 0L : Long.parseLong(lineParts[3]);
-					partName = lineParts[4].equals("null") ? lineParts[5] : lineParts[4];
-					partLink = lineParts[4].equals("null") ? null : lineParts[5];
+					partSize = lineParts[4].equals("null") || !lineParts[3].equals("null") ? 0L : Long.parseLong(lineParts[4]);
+					partMM = lineParts[3].equals("null") ? null : lineParts[3] + ":" + lineParts[4];
+					partName = lineParts[5].equals("null") ? lineParts[6] : lineParts[5];
+					partLink = lineParts[5].equals("null") ? null : lineParts[6];
 					
 					String[] permsPart = {partPermission.substring(1), partPermission.substring(1, 4), partPermission.substring(4, 7), partPermission.substring(7, 10)};
 					partMod="";
@@ -130,9 +132,9 @@ public final class Filesystem {
 						partMod += z;
 					}
 					
-					RootFW.log(TAG + ".getFileListInfo", "Adding FileInfo(Name=" + partName + ", Type=" + partType + ", User=" + partUser + ", Group=" + partGroup + ", Mod=" + partMod + ", Permissions=" + partPermission + ", Link=" + partLink + ", Size=" + partSize + ")");
+					RootFW.log(TAG + ".getFileListInfo", "Adding FileInfo(Name=" + partName + ", Type=" + partType + ", User=" + partUser + ", Group=" + partGroup + ", Mod=" + partMod + ", Permissions=" + partPermission + ", Link=" + partLink + ", Size=" + partSize + ", MM=" + partMM + ")");
 					
-					list.add( new FileInfo(partName, partType, partUser, partGroup, partMod, partPermission, partLink, partSize) );
+					list.add( new FileInfo(partName, partType, partUser, partGroup, partMod, partPermission, partLink, partSize, partMM) );
 					
 					count += 1;
 				}
@@ -986,15 +988,18 @@ public final class Filesystem {
 		
 		if (fileList != null) {
 			ShellResult result;
-			String output, outputLines[], parts[], partCategory, partFile = null, partType = null, partLink = null, partPerm = null, partMod = null, partGid = null, partUid = null, partGname = null, partUname = null, partAtime = null, partMtime = null, partCtime = null;
+			String output, outputLines[], parts[], partMM, partMMName, partCategory, partFile = null, partType = null, partLink = null, partPerm = null, partMod = null, partGid = null, partUid = null, partGname = null, partUname = null, partAtime = null, partMtime = null, partCtime = null;
 			Integer x, i = 0, count = 1, max = argMax == null ? fileList.length : (argMax > 0 ? argMax : fileList.length - argMax), partBlocks = null, partIOBlock = null, partINode = null;
 			Long partSize = null;
+			FileInfo fileinfo;
 			
 			while (count <= max && i < fileList.length) {
 				result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary stat '" + fileList[i] + "'"));
 				
 				if (result != null && result.getResultCode() == 0 && (output = result.getResult().getAssembled()) != null) {
 					outputLines = FILESTAT_LINE_REPLACE.matcher(output).replaceAll("\n$1").split("\n");
+					
+					partMM = partMMName = null;
 					
 					for (x=0; x < outputLines.length; x++) {
 						if (outputLines[x].indexOf(":") > 0) {
@@ -1054,9 +1059,26 @@ public final class Filesystem {
 						}
 					}
 					
-					RootFW.log(TAG + ".getFileStatList", "Adding FileStat(Name=" + partFile + ", Type=" + partType + ", UID=" + partUid + ", GID=" + partGid + ", UserName=" + partUname + ", GroupName=" + partGname + ", Mod=" + partMod + ", Permissions=" + partPerm + ", Link=" + partLink + ", Size=" + partSize.toString() + ", ATime=" + partAtime + ", MTime=" + partMtime + ", CTime=" + partCtime + ", Blocks=" + partBlocks + ", IOBlock=" + partIOBlock + ", Inode=" + partINode + ")");
+					if ("b".equals(partType) || "c".equals(partType)) {
+						fileinfo = getFileInfo(fileList[i]);
+						
+						if (fileinfo != null) {
+							partMM = fileinfo.getMM();
+							ArrayList<DeviceList> deviceList = getDeviceList();
+							
+							if (deviceList != null) {
+								for (int p=0; p < deviceList.size(); p++) {
+									if (deviceList.get(p).getType().startsWith(partType) && partMM.startsWith(deviceList.get(p).getNumber() + ":")) {
+										partMMName = deviceList.get(p).getName(); break;
+									}
+								}
+							}
+						}
+					}
 					
-					list.add( new FileStat(partFile, partType, partUid, partGid, partUname, partGname, partMod, partPerm, partLink, partSize, partAtime, partMtime, partCtime, partBlocks, partIOBlock, partINode) );
+					RootFW.log(TAG + ".getFileStatList", "Adding FileStat(Name=" + partFile + ", Type=" + partType + ", UID=" + partUid + ", GID=" + partGid + ", UserName=" + partUname + ", GroupName=" + partGname + ", Mod=" + partMod + ", Permissions=" + partPerm + ", Link=" + partLink + ", Size=" + partSize.toString() + ", ATime=" + partAtime + ", MTime=" + partMtime + ", CTime=" + partCtime + ", Blocks=" + partBlocks + ", IOBlock=" + partIOBlock + ", Inode=" + partINode + ", MM=" + partMM + ", partMMType=" + partMMName + ")");
+					
+					list.add( new FileStat(partFile, partType, partUid, partGid, partUname, partGname, partMod, partPerm, partLink, partSize, partAtime, partMtime, partCtime, partBlocks, partIOBlock, partINode, partMM, partMMName) );
 					
 					count += 1;
 				}
@@ -1088,7 +1110,7 @@ public final class Filesystem {
 			if (filestatList.get(0).getName().equals(".")) {
 				FileStat fileStat = filestatList.get(0);
 				
-				return new FileStat(name, fileStat.getType(), fileStat.getUser(), fileStat.getGroup(), fileStat.getUserName(), fileStat.getGroupName(), fileStat.getPermissions(), fileStat.getPermissionString(), fileStat.getLink(), fileStat.getSize(), fileStat.getAtime(), fileStat.getMtime(), fileStat.getCtime(), fileStat.getBlocks(), fileStat.getIOBlock(), fileStat.getInode());
+				return new FileStat(name, fileStat.getType(), fileStat.getUser(), fileStat.getGroup(), fileStat.getUserName(), fileStat.getGroupName(), fileStat.getPermissions(), fileStat.getPermissionString(), fileStat.getLink(), fileStat.getSize(), fileStat.getAtime(), fileStat.getMtime(), fileStat.getCtime(), fileStat.getBlocks(), fileStat.getIOBlock(), fileStat.getInode(), fileStat.getMM(), fileStat.getMMType());
 			}
 			
 			return filestatList.get(0);
@@ -1111,5 +1133,31 @@ public final class Filesystem {
 		}
 		
 		return null;
+	}
+	
+	public ArrayList<DeviceList> getDeviceList() {
+		FileData data = ROOTFW.filesystem.readFile("/proc/devices");
+		ArrayList<DeviceList> list = new ArrayList<DeviceList>();
+		
+		if (data != null && data.getLength() > 0) {
+			String[] lines = data.getData(), parts;
+			String type = null;
+			
+			for (int i=0; i < lines.length; i++) {
+				if (lines[i].startsWith("Character")) {
+					type = "character";
+					
+				} else if (lines[i].startsWith("Block")) {
+					type = "block";
+					
+				} else if (type != null && lines[i].length() > 0) {
+					parts = lines[i].replaceAll("^[ \t]+", "").split(" ");
+					
+					list.add( new DeviceList(type, parts[1], Integer.parseInt(parts[0])) );
+				}
+			}
+		}
+		
+		return list.size() > 0 ? list : null;
 	}
 }
