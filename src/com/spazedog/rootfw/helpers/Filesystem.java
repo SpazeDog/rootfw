@@ -43,6 +43,7 @@ public final class Filesystem {
 	
 	public final static Pattern FILELIST_PATTERN = Pattern.compile("^([a-z-]+)(?:[ \t]+([0-9]+))?[ \t]+([0-9a-z_]+)[ \t]+([0-9a-z_]+)(?:[ \t]+([0-9]+[a-z]?))?[ \t]+([A-Za-z]+[ \t]+[0-9]+[ \t]+[0-9:]+|[0-9-/]+[ \t]+[0-9:]+)[ \t]+(?:(.*) -> )?(.*)$");
 	public final static Pattern FILELIST_SPLITTER = Pattern.compile("\\|");
+	public final static Pattern FILESTAT_LINE_REPLACE = Pattern.compile("[ \t\n]+([A-Za-z ]+:)");
 	
 	private RootFW ROOTFW;
 	
@@ -975,121 +976,139 @@ public final class Filesystem {
 		return null;
 	}
 	
-	private ArrayList<FileStat> fileStatBuilder(String[] argPaths) {
-		if (argPaths != null && argPaths.length > 0) {
-			
-			ArrayList<FileStat> list = new ArrayList<FileStat>();
-			
+	public ArrayList<FileStat> getFileStatList(String argPath) {
+		return getFileStatList(argPath, null);
+	}
+	
+	public ArrayList<FileStat> getFileStatList(String argPath, Integer argMax) {
+		String[] fileList = getFileList(argPath);
+		ArrayList<FileStat> list = new ArrayList<FileStat>();
+		
+		if (fileList != null) {
 			ShellResult result;
-			String output, lines[], part[], partFile, partType, partLink, partPerm, partMod, partGid, partUid, partGname, partUname, partAtime, partMtime, partCtime;
-			Long partSize;
-			Integer i, partBlocks, partIOBlock, partINode;
+			String output, outputLines[], parts[], partCategory, partFile = null, partType = null, partLink = null, partPerm = null, partMod = null, partGid = null, partUid = null, partGname = null, partUname = null, partAtime = null, partMtime = null, partCtime = null;
+			Integer x, i = 0, count = 1, max = argMax == null ? fileList.length : (argMax > 0 ? argMax : fileList.length - argMax), partBlocks = null, partIOBlock = null, partINode = null;
+			Long partSize = null;
 			
-			for (int y=0; y < argPaths.length; y++) {
-				if (argPaths[y].length() > 0 && !argPaths[y].endsWith(".")) {
-					result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary stat '" + argPaths[y] + "'"));
-					
-					partBlocks = partIOBlock = partINode = null;
-					partFile = partType = partLink = partPerm = partMod = partGid = partUid = partGname = partUname = partAtime = partMtime = partCtime = null;
-					partSize = null;
+			while (count <= max && i < fileList.length) {
+				result = ROOTFW.runShell(ShellCommand.makeCompatibles("%binary stat '" + fileList[i] + "'"));
 				
-					if (result != null && result.getResultCode() == 0 && (output = result.getResult().getAssembled()) != null) {
-						lines = output.replaceAll("[ \t\n]+([A-Za-z ]+:)", "\n$1").split("\n");
-						
-						for (i=0; i < lines.length; i++) {
-							if (partFile == null && lines[i].startsWith("File")) {
-								part = lines[i].substring(6).split(" -> ");
+				if (result != null && result.getResultCode() == 0 && (output = result.getResult().getAssembled()) != null) {
+					outputLines = FILESTAT_LINE_REPLACE.matcher(output).replaceAll("\n$1").split("\n");
+					
+					for (x=0; x < outputLines.length; x++) {
+						if (outputLines[x].indexOf(":") > 0) {
+							partCategory = outputLines[x].substring(0, outputLines[x].indexOf(":"));
+							
+							if ("File".equals(partCategory)) {
+								parts = outputLines[x].substring(6).split(" -> ");
+								partFile = parts[0].substring(1, parts[0].length()-1);
+								partLink = parts.length > 1 ? parts[1].substring(1, parts[1].length()-1) : null;
 								
-								partFile = part[0].substring(1, part[0].length()-1);
-								
-								if (part.length > 1) {
-									partLink = part[1].substring(1, part[1].length()-1);
+								if (partFile != "/") {
+									if (partFile.endsWith("/")) {
+										partFile = partFile.substring(0, partFile.length() - 1);
+									}
+									
+									partFile = partFile.substring(partFile.lastIndexOf("/") + 1);
 								}
 								
-							} else if (partSize == null && lines[i].startsWith("Size")) {
-								partSize = Long.parseLong(lines[i].substring(6)) * 1024L;
+							} else if ("Size".equals(partCategory)) {
+								partSize = Long.parseLong(outputLines[x].substring(6)) * 1024L;
 								
-							} else if (partBlocks == null && lines[i].startsWith("Blocks")) {
-								partBlocks = Integer.parseInt(lines[i].substring(8));
+							} else if ("Blocks".equals(partCategory)) {
+								partBlocks = Integer.parseInt(outputLines[x].substring(8));
 								
-							} else if (partIOBlock == null && lines[i].startsWith("IO")) {
-								partIOBlock = Integer.parseInt(lines[i].substring(10, lines[i].indexOf(" ", 10)));
+							} else if ("IO Block".equals(partCategory)) {
+								partIOBlock = Integer.parseInt(outputLines[x].substring(10, outputLines[x].indexOf(" ", 10)));
 								
-							} else if (partINode == null && lines[i].startsWith("Inode")) {
-								partINode = Integer.parseInt(lines[i].substring(7));
+							} else if ("Inode".equals(partCategory)) {
+								partINode = Integer.parseInt(outputLines[x].substring(7));
 								
-							} else if (partPerm == null && lines[i].startsWith("Access")) {
-								part = lines[i].substring(9, lines[i].length()-1).split("/");
-								
-								partMod = part[0].trim();
-								partPerm = part[1].trim();
+							} else if ("Access".equals(partCategory) && outputLines[x].indexOf("(") > 0) {
+								RootFW.log(TAG + ".getFileStatList", "CHECKINIG LINE (" + outputLines[x] + ")");
+								parts = outputLines[x].substring(9, outputLines[x].length()-1).split("/");
+								partMod = parts[0].trim();
+								partPerm = parts[1].trim();
 								partType = partPerm.substring(0, 1);
 								
-							} else if (partUid == null && lines[i].startsWith("Uid")) {
-								part = lines[i].substring(6, lines[i].length()-1).split("/");
+							} else if ("Uid".equals(partCategory)) {
+								parts = outputLines[x].substring(6, outputLines[x].length()-1).split("/");
+								partUid = parts[0].trim();
+								partUname = parts[1].trim();
 								
-								partUid = part[0].trim();
-								partUname = part[1].trim();
+							} else if ("Gid".equals(partCategory)) {
+								parts = outputLines[x].substring(6, outputLines[x].length()-1).split("/");
+								partGid = parts[0].trim();
+								partGname = parts[1].trim();
 								
-							} else if (partGid == null && lines[i].startsWith("Gid")) {
-								part = lines[i].substring(6, lines[i].length()-1).split("/");
+							} else if ("Access".equals(partCategory)) {
+								partAtime = outputLines[x].substring(8);
 								
-								partGid = part[0].trim();
-								partGname = part[1].trim();
+							} else if ("Modify".equals(partCategory)) {
+								partMtime = outputLines[x].substring(8);
 								
-							} else if (partAtime == null && lines[i].startsWith("Access")) {
-								partAtime = lines[i].substring(8);
-								
-							} else if (partMtime == null && lines[i].startsWith("Modify")) {
-								partMtime = lines[i].substring(8);
-								
-							} else if (partCtime == null && lines[i].startsWith("Change")) {
-								partCtime = lines[i].substring(8);
+							} else if ("Change".equals(partCategory)) {
+								partCtime = outputLines[x].substring(8);
 							}
 						}
-						
-						RootFW.log(TAG + ".FileStat", "Adding FileStat(Name=" + partFile + ", Type=" + partType + ", UID=" + partUid + ", GID=" + partGid + ", UserName=" + partUname + ", GroupName=" + partGname + ", Mod=" + partMod + ", Permissions=" + partPerm + ", Link=" + partLink + ", Size=" + partSize.toString() + ", ATime=" + partAtime + ", MTime=" + partMtime + ", CTime=" + partCtime + ", Blocks=" + partBlocks + ", IOBlock=" + partIOBlock + ", Inode=" + partINode + ")");
-						
-						list.add( new FileStat(partFile, partType, partUid, partGid, partUname, partGname, partMod, partPerm, partLink, partSize, partAtime, partMtime, partCtime, partBlocks, partIOBlock, partINode) );
 					}
+					
+					RootFW.log(TAG + ".getFileStatList", "Adding FileStat(Name=" + partFile + ", Type=" + partType + ", UID=" + partUid + ", GID=" + partGid + ", UserName=" + partUname + ", GroupName=" + partGname + ", Mod=" + partMod + ", Permissions=" + partPerm + ", Link=" + partLink + ", Size=" + partSize.toString() + ", ATime=" + partAtime + ", MTime=" + partMtime + ", CTime=" + partCtime + ", Blocks=" + partBlocks + ", IOBlock=" + partIOBlock + ", Inode=" + partINode + ")");
+					
+					list.add( new FileStat(partFile, partType, partUid, partGid, partUname, partGname, partMod, partPerm, partLink, partSize, partAtime, partMtime, partCtime, partBlocks, partIOBlock, partINode) );
+					
+					count += 1;
 				}
+				
+				i += 1;
 			}
-			
-			return list.size() > 0 ? list : null;
 		}
 		
-		return null;
+		if (list.size() == 0) {
+			RootFW.log(TAG + ".getFileStatList", "No items was added to FileStat");
+		}
+		
+		return list.size() > 0 ? list : null;
 	}
 	
 	public FileStat getFileStat(String argPath) {
-		RootFW.log(TAG + ".getFileStat", "Getting file stat on " + argPath);
+		ArrayList<FileStat> filestatList = getFileStatList(argPath, 1);
+		String name = argPath;
 		
-		ArrayList<FileStat> stat = fileStatBuilder( new String[] {argPath} );
-		
-		if (stat != null) {
-			return stat.get(0);
-		}
-		
-		RootFW.log(TAG + ".getFileStat", "Could not get file stat on " + argPath, RootFW.LOG_WARNING);
-		
-		return null;
-	}
-	
-	public ArrayList<FileStat> getFileStatList(String argPath) {
-		RootFW.log(TAG + ".getFileStatList", "Getting file stat list on " + argPath);
-		
-		String[] files = getFileList(argPath);
-		String path = argPath.endsWith("/") ? argPath.substring(0, argPath.length()-1) : argPath;
-		
-		if (files != null) {
-			for (int i=0; i < files.length; i++) {
-				files[i] = path + "/" + files[i];
+		if (!argPath.equals("/")) {
+			if (argPath.endsWith("/")) {
+				argPath = argPath.substring(0, argPath.length() - 1);
 			}
-		
-			return fileStatBuilder(files);
+			
+			name = argPath.substring(argPath.lastIndexOf("/") + 1);
 		}
 		
-		RootFW.log(TAG + ".getFileStatList", "Could not get file stat list on " + argPath, RootFW.LOG_WARNING);
+		if (filestatList != null && (filestatList.get(0).getName().equals(".") || filestatList.get(0).getName().equals(name))) {
+			if (filestatList.get(0).getName().equals(".")) {
+				FileStat fileStat = filestatList.get(0);
+				
+				return new FileStat(name, fileStat.getType(), fileStat.getUser(), fileStat.getGroup(), fileStat.getUserName(), fileStat.getGroupName(), fileStat.getPermissions(), fileStat.getPermissionString(), fileStat.getLink(), fileStat.getSize(), fileStat.getAtime(), fileStat.getMtime(), fileStat.getCtime(), fileStat.getBlocks(), fileStat.getIOBlock(), fileStat.getInode());
+			}
+			
+			return filestatList.get(0);
+			
+		} else if (filestatList != null && !argPath.equals("/")) {
+			/* Some toolbox versions does not support the "-a" argument in "ls". 
+			 * In this case we need to loop through all the content in the parent in order to find the correct one
+			 */
+			String path = argPath.substring(0, argPath.lastIndexOf("/"));
+			filestatList = getFileStatList(path);
+			Integer i;
+			
+			if (filestatList != null) {
+				for (i=0; i < filestatList.size(); i++) {
+					if (filestatList.get(i).getName().equals(name)) {
+						return filestatList.get(i);
+					}
+				}
+			}
+		}
 		
 		return null;
 	}
