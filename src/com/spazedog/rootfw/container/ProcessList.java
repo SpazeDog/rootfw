@@ -17,34 +17,42 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw.containers;
+package com.spazedog.rootfw.container;
 
-public class MountInfo {
-	private String DEVICE;
-	private String MOUNT;
-	private String FSTYPE;
-	private String[] FLAGS;
+import com.spazedog.rootfw.iface.Container;
+
+public class ProcessList implements Container {
 	
-	public MountInfo(String argDevice, String argMount, String argFstype, String[] argFlags) {
-		DEVICE = argDevice;
-		MOUNT = argMount;
-		FSTYPE = argFstype;
-		FLAGS = argFlags;
+	private String mProcess;
+	private Integer mProcessId;
+	
+	/**
+	 * Create a new FileStat instance
+	 * 
+	 * @param aProcess
+	 *     The name of the process
+	 *    
+	 * @param aProcessId
+	 *     The pid of the process
+	 */
+	public ProcessList(String aProcess, Integer aProcessId) {
+		mProcess = aProcess;
+		mProcessId = aProcessId;
 	}
 	
-	public String getDevice() {
-		return DEVICE;
+	/** 
+	 * @return
+	 *     The name of the process
+	 */
+	public String name() {
+		return mProcess;
 	}
 	
-	public String getMountPoint() {
-		return MOUNT;
-	}
-	
-	public String getFsType() {
-		return FSTYPE;
-	}
-	
-	public String[] getFlags() {
-		return FLAGS;
+	/** 
+	 * @return
+	 *     The pid of the process
+	 */
+	public Integer pid() {
+		return mProcessId;
 	}
 }

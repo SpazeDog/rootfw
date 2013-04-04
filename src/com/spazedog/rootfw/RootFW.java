@@ -19,416 +19,280 @@
 
 package com.spazedog.rootfw;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.InputStreamReader;
 import java.util.HashMap;
+import java.util.Map;
 
-import android.os.Bundle;
 import android.util.Log;
 
-import com.spazedog.rootfw.containers.ShellCommand;
-import com.spazedog.rootfw.containers.ShellResult;
-import com.spazedog.rootfw.helpers.Binaries;
-import com.spazedog.rootfw.helpers.Busybox;
-import com.spazedog.rootfw.helpers.Filesystem;
-import com.spazedog.rootfw.helpers.Processes;
-import com.spazedog.rootfw.helpers.Utils;
-import com.spazedog.rootfw.tools.AsyncProcess;
-import com.spazedog.rootfw.tools.AsyncProcess.AsyncProcessReceiver;
+import com.spazedog.rootfw.container.ShellResult;
+import com.spazedog.rootfw.extender.Binary;
+import com.spazedog.rootfw.extender.Busybox;
+import com.spazedog.rootfw.extender.File;
+import com.spazedog.rootfw.extender.Filesystem;
+import com.spazedog.rootfw.extender.Processes;
+import com.spazedog.rootfw.extender.Shell;
 
 public final class RootFW {
-	
 	public final static String TAG = "RootFW";
 	
-	public static Boolean DEBUG = false;
+	public final static Integer E_DEBUG = 2;
+	public final static Integer E_INFO = 4;
+	public final static Integer E_WARNING = 8;
+	public final static Integer E_ERROR = 16;
 	
-	public final static Integer LOG_INFO = 1;
-	public final static Integer LOG_WARNING = 2;
-	public final static Integer LOG_ERROR = 3;
+	/**
+	 * Define which log levels should be enabled.
+	 * <p/>
+	 * Default: <code>E_ERROR|E_WARNING</code>
+	 */
+	public static Integer LOG = E_ERROR|E_WARNING;
 	
-	private static HashMap<String, RootFW> SHELLS = new HashMap<String, RootFW>();
+	/**
+	 * This property can be used to extend the shells PATH variable. Just create a new String[] containing the paths that you need.
+	 * <p/>
+	 * The original locations will not be deleted, but your new once will have main priority. Just note that this needs to be set BEFORE you create the RootFW instance.
+	 */
+	public static String[] PATH = null;
 	
-	private Process SHELL = null;
-	private Boolean SHELL_IS_CONNECTED = false;
-	private Boolean SHELL_IS_ROOT = false;
-	private Boolean COPY = false;
-	private String NAME = null;
+	private static Map<String, RootFW> oInstance = new HashMap<String, RootFW>();
 	
+	private Process mProcess = null;
+	private Boolean mRootAccount = false;
+	private Boolean mIsCopy = false;
+	private String mName = null;
+	
+	/**
+	 * An instance of the Shell extender class
+	 */
+	public final Shell shell = new Shell(this);
+	
+	/**
+	 * An instance of the File extender class
+	 */
+	public final File file = new File(this);
+	
+	/**
+	 * An instance of the Busybox extender class
+	 */
 	public final Busybox busybox = new Busybox(this);
-	public final Filesystem filesystem = new Filesystem(this);
-	public final Binaries binaries = new Binaries(this);
-	public final Utils utils = new Utils(this);
+	
+	/**
+	 * An instance of the Binary extender class
+	 */
+	public final Binary binary = new Binary(this);
+	
+	/**
+	 * An instance of the Processes extender class
+	 */
 	public final Processes processes = new Processes(this);
 	
-	public static void log(String argMsg) {
-		log(null, argMsg, LOG_INFO, null);
-	}
-	
-	public static void log(String argTag, String argMsg) {
-		log(argTag, argMsg, LOG_INFO, null);
-	}
-	
-	public static void log(String argTag, String argMsg, Integer argLevel) {
-		log(argTag, argMsg, argLevel, null);
-	}
-	
-	public static void log(String argTag, String argMsg, Integer argLevel, Throwable e) {
-		if (DEBUG) {
-			String tag = argTag == null ? TAG : argTag;
-			
-			switch (argLevel) {
-				case 1: Log.v(tag, argMsg, e); break;
-				case 2: Log.w(tag, argMsg, e); break;
-				case 3: Log.e(tag, argMsg, e); break;
-			}
-		}
-	}
-	
-	public static String replaceAll(String argString, String argSearch, String argReplace) {
-		String ret = argString;
-		
-		if (!argSearch.equals(argReplace)) {
-			do {
-				ret = ret.replaceAll(argSearch, argReplace);
-				
-			} while(ret.contains(argSearch));
-		}
-		
-		return ret;
-	}
-	
-	/*
-	 * Just a small hack which allows the class alone
-	 * to get an instance without opening a process at the same time
+	/**
+	 * An instance of the Filesystem extender class
 	 */
-	private RootFW(Integer hack) { log("Getting an empty RootFW instance"); }
+	public final Filesystem filesystem = new Filesystem(this);
 	
-	/* 
-	 * This will return a nameless object.
-	 * If you need to use the same process in different places, 
-	 * like different methods which calls one another, 
-	 * use the getInstance() below instead. 
+	/**
+	 * This is a hack which allows the class it self to create an 
+	 * instance with no shell connection.
+	 */
+	private RootFW(Integer hack) {}
+	
+	/**
+	 * Create a new instance of RootFW and establish a root connection to the shell
 	 */
 	public RootFW() {
 		this(true);
 	}
 	
-	public RootFW(Boolean argUseRoot) {
-		SHELL_IS_ROOT = argUseRoot;
+	/**
+	 * Create a new instance of RootFW and establish a connection to the shell
+	 *    
+	 * @param aRoot
+	 *     Whether to connect as root or as a regular user
+	 */
+	public RootFW(Boolean aRoot) {
+		mRootAccount = aRoot;
 		
-		log("Opening a new " + (argUseRoot ? "root" : "user") + " shell");
+		ProcessBuilder lBuilder = new ProcessBuilder( aRoot ? "su" : "sh" );
+		lBuilder.redirectErrorStream(true);
 		
 		try {
-			ProcessBuilder builder;
-			ShellResult result;
+			log(TAG, "Starting a new process");
 			
-			if (argUseRoot) {
-				builder = new ProcessBuilder("su");
+			mProcess = lBuilder.start();
+			
+			if (PATH != null && PATH.length > 0) {
+				String lPathVariable = "$PATH";
 				
-			} else {
-				builder = new ProcessBuilder("sh");
-			}
-			
-			builder.redirectErrorStream(true);
-			
-			SHELL = builder.start();
-			
-			if (argUseRoot) {
-				log("Checking root connection");
-				
-				if ((result = runShell("id")) != null && result.getResult().getLastLine().contains("uid=0")) {
-					log("Connection was successful");
-					
-					SHELL_IS_CONNECTED = true;
+				for (int i=0; i < PATH.length; i++) {
+					lPathVariable = PATH[i] + ":" + lPathVariable;
 				}
 				
-			} else {
-				SHELL_IS_CONNECTED = true;
+				shell.execute("PATH=\"" + lPathVariable + "\"");
 			}
 			
-		} catch(Throwable e) { 
-			log(TAG, "Connection failed", LOG_WARNING, e);
-			
-			SHELL_IS_CONNECTED = false;
-		}
+		} catch (Throwable e) { log(TAG, "Failed while starting the new process", E_ERROR, e); }
 	}
 	
-	/* 
-	 * This method allows you to get a copy of an already existing instance 
-	 * containing a reference to an already opened shell process. The object itself
-	 * is a new instance, but it will use the same shell process as the parent object.
-	 * 
-	 * Note that copy objects will not be allowed to close the shell process. 
-	 * This is meant to be used when one code with an open process calls
-	 * another code that needs a process. This way both can use the same,
-	 * but the closing will be done from the parent code. 
-	 * 
-	 * If there is no open shell with the parsed name, a new process will be
-	 * returned instead. In this case this will be used as the parent and 
-	 * will be allowed to close the process.
+	/**
+	 * See <code>instance(String aName, Boolean aRoot)</code>
 	 */
-	public static RootFW getInstance(String argName) {
-		return getInstance(argName, SHELLS.get(argName + ":user") == null);
+	public static RootFW instance(String aName) {
+		return instance(aName, oInstance.get(aName + ":user") == null);
 	}
 	
-	public static RootFW getInstance(String argName, Boolean argUseRoot) {
-		String name = argName + (argUseRoot ? ":root" : ":user");
+	/**
+	 * This is the same as using "RootFW(Boolean aRoot)", only this one will
+	 * create a named instance. If an instance with the parsed name already exist,
+	 * a clone will be provided instead using the same shell connection as the main instance.
+	 * This will allow you to reuse connections across classes and methods without the
+	 * need to manually parse them.
+	 * <p/>
+	 * Note: Clones are not allows to close a connection. So calling "close()" from a cloned
+	 * instance will not close the shell connection. It will not be closed until "close()"
+	 * is called from the main instance. 
+	 * 
+	 * @param aName
+	 *     The name of the instance
+	 *    
+	 * @param aRoot
+	 *     Whether to connect as root or as a regular user
+	 *    
+	 * @return
+	 *     Returns a new or cloned instance of RootFW
+	 */
+	public static RootFW instance(String aName, Boolean aRoot) {
+		String lName = aName + (aRoot ? ":root" : ":user");
+		RootFW lInstance = null;
 		
-		if (SHELLS.get(name) == null || !SHELLS.get(name).isConnected() || SHELLS.get(name).SHELL == null) {
-			SHELLS.put(name, new RootFW(argUseRoot));
-			SHELLS.get(name).NAME = argName;
+		if (oInstance.get(lName) == null || !oInstance.get(lName).connected()) {
+			log(TAG + ".instance", "Creating new instance " + lName);
+			
+			lInstance = new RootFW(aRoot);
+			lInstance.mName = aName;
+			
+			oInstance.put(lName, lInstance);
 			
 		} else {
-			RootFW rfw = new RootFW(0);
-			rfw.SHELL = SHELLS.get(name).SHELL;
-			rfw.SHELL_IS_CONNECTED = SHELLS.get(name).SHELL_IS_CONNECTED;
-			rfw.SHELL_IS_ROOT = SHELLS.get(name).SHELL_IS_ROOT;
-			rfw.NAME = SHELLS.get(name).NAME;
-			rfw.COPY = true;
+			log(TAG + ".instance", "Cloning the instance " + lName);
 			
-			return rfw;
+			lInstance = new RootFW(0);
+			lInstance.mRootAccount = aRoot;
+			lInstance.mName = lName;
+			lInstance.mIsCopy = true;
+			
+			/* Give the clone access to the connected process */
+			lInstance.mProcess = oInstance.get(lName).mProcess;
 		}
 		
-		return SHELLS.get(name);
+		return lInstance;
 	}
 	
-	/*
-	 * This will close the shell process inside the object.
-	 * Note that only the initiating object can close it,
-	 * clones are not allowed to, as these are meant to be used
-	 * in between the initial opening and closing.
+	/**
+	 * Close the shell connection.
+	 * <p/>
+	 * Note: that this will be ignored if called from a cloned instance.
+	 * Only the main instance are allowed to close the shell connection.
 	 */
 	public void close() {
-		if (!COPY) {
+		if (!mIsCopy) {
 			try {
-				log(TAG + ".close", "Closing " + (NAME != null ? " shell named '" + NAME + "'" : "nameless shell") + "");
+				shell.execute("exit");
+				mProcess.destroy();
 				
-				runShell("exit");
-				SHELL.destroy();
-				
-			} catch(Throwable e) { 
-				log(TAG + ".close", "Failed while closing the shell", LOG_ERROR, e);
-			}
+			} catch (Throwable e) {}
 			
-			if (NAME != null) {
-				String name = NAME + (SHELL_IS_ROOT ? ":root" : ":user");
+			if (mName != null) {
+				String lName = mName + (mRootAccount ? ":root" : ":user");
 				
-				if (SHELLS.get(name) != null) {
-					SHELLS.remove(name);
-				}
-			}
-			
-			SHELL = null;
-			SHELL_IS_CONNECTED = false;
-		}
-	}
-	
-	/*
-	 * Check whether the current object is a clone or an initiating object
-	 */
-	public Boolean isCopy() {
-		return COPY;
-	}
-	
-	/*
-	 * Check whether this shell process was opened with root access or not.
-	 * This does not check whether or not root is available on a device.
-	 * It just checks to see if 'su' was called instead of 'sh' during
-	 * the initiation of the process
-	 */
-	public Boolean isRootShell() {
-		return SHELL_IS_ROOT;
-	}
-	
-	/*
-	 * Check whether or not the shell is ready to be used or not
-	 */
-	public Boolean isConnected() {
-		return SHELL_IS_CONNECTED;
-	}
-	
-	/*
-	 * Get the name of this object. It will return null
-	 * if this instance of was created nameless
-	 */
-	public String getShellName() {
-		return NAME;
-	}
-	
-	/*
-	 * This will execute one or more commands in the shell process
-	 * and return the data and result code. 
-	 * 
-	 * Commands can be passed in singles as a String or
-	 * you can parse multiple commands using String[] instead.
-	 * Just note that the result code will be from the last command.
-	 * So if you are depended on the result code, you should parse one command
-	 * at a time and check the result code before parsing another command.
-	 * 
-	 * Also note that the result data will be from all entered commands
-	 * 
-	 * @ Example: runShell("ls -l /data")
-	 * @ Example: runShell( new String[] {"command1", "command2"} )
-	 */
-	public ShellResult runShell(String[]... arg) {
-		ShellCommand cmd = new ShellCommand(0);
-		
-		for (int i=0; i < arg.length; i++) {
-			cmd.addCommand(arg[i]);
-		}
-		
-		return runShell(cmd);
-	}
-	
-	public ShellResult runShell(String... arg) {
-		ShellCommand cmd = new ShellCommand(0);
-		
-		for (int i=0; i < arg.length; i++) {
-			cmd.addCommand(arg[i]);
-		}
-		
-		return runShell(cmd);
-	}
-	
-	public ShellResult runShell(ShellCommand argCommand) {
-		log(TAG + ".runShell", "Executing shell commands");
-		
-		try {
-			DataOutputStream output = new DataOutputStream(SHELL.getOutputStream());
-			BufferedReader buffer = new BufferedReader(new InputStreamReader(SHELL.getInputStream()));
-			String cmd="", data="", line, result=null;
-			String[] commands, resultParts;
-			Integer iResult = -1, commandNum = 0;
-			
-			outerloop:
-			for (int x=0; x < argCommand.getCommandLength(); x++) {
-				cmd = data = line = result = "";
-				iResult = -1;
-				commandNum = x;
-				
-				commands = argCommand.getCommand(x);
-							
-				for (int i=0; i < commands.length; i++) {
-					cmd += commands[i] + "\n";
+				if (oInstance.get(mName) != null) {
+					oInstance.remove(mName);
 				}
 				
-				log(TAG + ".runShell", "Executing command series {" + cmd.substring(0, cmd.length()-1).replaceAll("\n", "}, {") + "}");
+				log(TAG + ".close", "Closing instance " + lName);
 				
-				cmd += "\n";
-				cmd += "status=$? && EOL:a00c38d8:EOL\n";
-				cmd += "\\|$status\\|\n";
-				cmd += "EOL:a00c38d8:EOL\n";
-				
-				/* The problem with BufferedReader.readLine, is that it will block as soon as it reaches the end, as it will be waiting
-				 * for the next line to be printed. In this case it will never return NULL at any point. So we add a little ID at the end
-				 * that we can look for and then manually break the loop when that ID is returned, while getting the last line, which is what we need
-				 */
-				output.write(cmd.getBytes());
-				output.flush();
-				
-				try {
-					while ((line = buffer.readLine()) != null) {
-						if (!line.contains("EOL:a00c38d8:EOL")) {
-							data += line + "\n";
-							
-						} else {
-							while ((line = buffer.readLine()) != null && !line.contains("EOL:a00c38d8:EOL")) {
-								if (line.length() > 0) {
-									resultParts = line.split("|");
-									
-									for (int i=0; i < resultParts.length; i++) {
-										if (resultParts[i].matches("^[0-9]+$")) {
-											result = resultParts[i];
-										}
-									}
-								}
-							}
-							
-							break;
-						}
-					}
-					
-					while(data.endsWith("\n") && data.length() > 0) {
-						data = data.substring(0, data.length()-1);
-					}
-					
-					while(data.startsWith("\n") && data.length() > 0) {
-						data = data.substring(1);
-					}
-
-					try { iResult = Integer.parseInt(result); } catch(Throwable e) { iResult = -1; }
-					
-					if (argCommand.getCommandLength() > 0 && x < argCommand.getCommandLength()-1) {
-						for (int y=0; y < argCommand.getResultLength(); y++) {
-							if (argCommand.getResult(y) == iResult) {
-								break outerloop;
-							}
-						}
-						
-						log(TAG + ".runShell", "Shell exited with status " + iResult + ", continue with next command series");
-						
-					} else {
-						break;
-					}
-					
-				} catch(Throwable e) { log(TAG + ".runShell", "Failed executing the command series", LOG_ERROR, e); }
+			} else {
+				log(TAG + ".close", "Closing instance");
 			}
 			
-			log(TAG + ".runShell", "Shell exited with status " + iResult);
-				
-			return new ShellResult(commandNum, iResult, data.split("\n"));
-			
-		} catch(Throwable e) { log(TAG + ".runShell", "Failed while setting up stream buffers", LOG_ERROR, e); }
-		
-		return null;
+			mProcess = null;
+		}
 	}
 	
-	/*
-	 * These methods will start a new shell process which will be executed
-	 * in the background. 
+	/**
+	 * Check to see if the instance has successfully established
+	 * a connection to the shell. If you created the instance with root
+	 * permissions, it will also check to make sure that the connection
+	 * has these permissions. 
 	 * 
-	 * By implementing the AsyncProcessReceiver interface into your main class and parsing it along,
-	 * you can execute code before and after the process executes.
-	 * 
-	 * If you parse a bundle, then this will be parsed to both the pre and post
-	 * methods in your AsyncProcessReceiver class
-	 * 
-	 * @ Example: RootFW.startProcess("/system/bin/process", true, mybundle, myclass);
+	 * @return
+	 *     Whether or not a shell connection has been established
 	 */
-	public static AsyncProcess startProcess(String[] argCmd) {
-		return AsyncProcess.injectInstance(argCmd, true, null, null);
+	public Boolean connected() {
+		if (mRootAccount && mProcess != null) {
+			ShellResult lResult = shell.execute("id");
+			
+			if (lResult != null && lResult.code() == 0 && lResult.output().line(-1).contains("uid=0")) {
+				return true;
+			}
+			
+			return false;
+		}
+		
+		return mProcess != null;
 	}
 	
-	public static AsyncProcess startProcess(String argCmd) {
-		return AsyncProcess.injectInstance(new String[] {argCmd}, true, null, null);
+	/**
+	 * Return the process belonging to the shell connection
+	 * 
+	 * @return
+	 *     The shell process of the instance
+	 */
+	public Process process() {
+		return mProcess;
 	}
 	
-	public static AsyncProcess startProcess(String[] argCmd, Boolean argUseroot) {
-		return AsyncProcess.injectInstance(argCmd, argUseroot, null, null);
+	/**
+	 * See <code>log(String aTag, String aMsg, Integer aLevel, Throwable e)</code>
+	 */
+	public static void log(String aTag, String aMsg) {
+		log(aTag, aMsg, E_INFO, null);
 	}
 	
-	public static AsyncProcess startProcess(String argCmd, Boolean argUseroot) {
-		return AsyncProcess.injectInstance(new String[] {argCmd}, argUseroot, null, null);
+	/**
+	 * See <code>log(String aTag, String aMsg, Integer aLevel, Throwable e)</code>
+	 */
+	public static void log(String aTag, String aMsg, Integer aLevel) {
+		log(aTag, aMsg, aLevel, null);
 	}
 	
-	public static AsyncProcess startProcess(String[] argCmd, Boolean argUseroot, Bundle argBundle) {
-		return AsyncProcess.injectInstance(argCmd, argUseroot, argBundle, null);
-	}
-	
-	public static AsyncProcess startProcess(String argCmd, Boolean argUseroot, Bundle argBundle) {
-		return AsyncProcess.injectInstance(new String[] {argCmd}, argUseroot, argBundle, null);
-	}
-	
-	public static AsyncProcess startProcess(String[] argCmd, Boolean argUseroot, Bundle argBundle, AsyncProcessReceiver argReciever) {
-		return AsyncProcess.injectInstance(argCmd, argUseroot, argBundle, argReciever);
-	}
-	
-	public static AsyncProcess startProcess(String argCmd, Boolean argUseroot, Bundle argBundle, AsyncProcessReceiver argReciever) {
-		return AsyncProcess.injectInstance(new String[] {argCmd}, argUseroot, argBundle, argReciever);
-	}
-	
-	public static AsyncProcess injectAsyncProcess(AsyncProcess argProcess) {
-		return (AsyncProcess) argProcess.execute("");
+	/**
+	 * Generate logcat output.
+	 * The method will only generate logcat output for levels
+	 * enabled in <code>com.spazedog.rootfw.RootFW.LOG</code>
+	 * 
+	 * @param aTag
+	 *     The name of the logger
+	 *    
+	 * @param aMsg
+	 *     The message to output
+	 *    
+	 * @param aLevel
+	 *     The level of the log (<code>E_INFO</code>, <code>E_WARNING</code>, <code>E_ERROR</code>, <code>E_DEBUG</code>)
+	 *    
+	 * @param e
+	 *     A <code>Throwable</code> error output
+	 */
+	public static void log(String aTag, String aMsg, Integer aLevel, Throwable e) {
+		if ((LOG & aLevel) != 0) {
+			String tag = aTag == null ? TAG : aTag;
+			
+			switch (aLevel) {
+				case 2: Log.d(tag, aMsg, e); break;
+				case 4: Log.i(tag, aMsg, e); break;
+				case 8: Log.w(tag, aMsg, e); break;
+				case 16: Log.e(tag, aMsg, e); break;
+			}
+		}
 	}
 }
