@@ -123,7 +123,7 @@ public final class Filesystem implements Extender {
 		}
 		
 		if (aDevice == null || !mParent.file.check(aDevice, "d")) {
-			lCommand = "%binary mount" + (aDevice != null ? " '" + aDevice : "'") + (aFstype != null ? " -t '" + aFstype : "'") + (aOptions != null ? " -o '" + lOptions : "'") + " '" + aLocation + "'";
+			lCommand = "%binary mount" + (aDevice != null ? " '" + aDevice + "'" : "") + (aFstype != null ? " -t '" + aFstype + "'" : "") + (aOptions != null ? " -o '" + lOptions + "'" : "") + " '" + aLocation + "'";
 		
 		} else {
 			lCommand = "%binary mount --bind '" + aDevice + "' '" + aLocation + "'";
