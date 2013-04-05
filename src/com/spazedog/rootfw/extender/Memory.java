@@ -19,6 +19,7 @@
 
 package com.spazedog.rootfw.extender;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -26,6 +27,7 @@ import java.util.regex.Pattern;
 import com.spazedog.rootfw.RootFW;
 import com.spazedog.rootfw.container.Data;
 import com.spazedog.rootfw.container.MemStat;
+import com.spazedog.rootfw.container.SwapStat;
 import com.spazedog.rootfw.iface.Extender;
 
 public final class Memory implements Extender {
@@ -70,6 +72,34 @@ public final class Memory implements Extender {
 			}
 			
 			return new MemStat(lMemLines.get("MemTotal"), lMemLines.get("MemFree"), lMemLines.get("Cached"), lMemLines.get("SwapTotal"), lMemLines.get("SwapFree"), lMemLines.get("SwapCached"));
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Get a list of all active swap devices, their sizes and usage
+	 *    
+	 * @return
+	 *     An ArrayList with SwapStat containers
+	 */
+	public ArrayList<SwapStat> swaps() {
+		Data lSwapInfo = mParent.file.read("/proc/swaps");
+		
+		if (lSwapInfo != null && lSwapInfo.length() > 1) {
+			String[] lSections, lSwaps = lSwapInfo.raw();
+			ArrayList<SwapStat> list = new ArrayList<SwapStat>();
+			
+			for (int i=1; i < lSwaps.length; i++) {
+				try {
+					lSections = oPatternSpaceSearch.split(lSwaps[i].trim());
+					
+					list.add( new SwapStat(lSections[0], Long.parseLong(lSections[2]) * 1024L, Long.parseLong(lSections[3]) * 1024L) );
+					
+				} catch(Throwable e) {}
+			}
+			
+			return list.size() > 0 ? list : null;
 		}
 		
 		return null;
