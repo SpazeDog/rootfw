@@ -123,7 +123,7 @@ public final class Filesystem implements Extender {
 		}
 		
 		if (aDevice == null || !mParent.file.check(aDevice, "d")) {
-			lCommand = "%binary mount" + (aDevice != null ? " '" + aDevice : "'") + (aFstype != null ? " -t '" + aFstype : "'") + (aOptions != null ? " -o '" + lOptions : "'") + " '" + aLocation + "'";
+			lCommand = "%binary mount" + (aDevice != null ? " '" + aDevice + "'" : "") + (aFstype != null ? " -t '" + aFstype + "'" : "") + (aOptions != null ? " -o '" + lOptions + "'" : "") + " '" + aLocation + "'";
 		
 		} else {
 			lCommand = "%binary mount --bind '" + aDevice + "' '" + aLocation + "'";
@@ -306,11 +306,12 @@ public final class Filesystem implements Extender {
 					lPercentage = Integer.parseInt(lStatSections[4].substring(0, lStatSections[4].length()-1));
 					
 				} else {
-					lLocation = lStatSections[0];
-					MountStat stat = statMount(lLocation);
+					/* Depending on Toolbox version, index 0 can be both the device or the mount location */
+					MountStat stat = statMount(lStatSections[0]);
 					
 					if (stat != null) {
 						lDevice = stat.device();
+						lLocation = stat.location();
 					}
 				}
 				

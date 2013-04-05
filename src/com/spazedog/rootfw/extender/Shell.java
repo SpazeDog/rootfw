@@ -171,10 +171,8 @@ public final class Shell implements Extender {
 			}
 			
 			RootFW.log(TAG + ".execute", "Done executing shell. Finished at command number " + (lCommandCount+1) + " with result code " + lResultCode + "");
-			
-			if (lInputData != null && lInputData.length() > 0) {
-				return new ShellResult(lInputData, lResultCode, lCommandCount+1);
-			}
+
+			return new ShellResult(lInputData, lResultCode, lCommandCount+1);
 			
 		} catch(Throwable e) { RootFW.log(TAG + ".execute", "Failed executing shell commands", RootFW.E_ERROR, e); }
 		

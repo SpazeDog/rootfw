@@ -32,6 +32,7 @@ import com.spazedog.rootfw.extender.Filesystem;
 import com.spazedog.rootfw.extender.Memory;
 import com.spazedog.rootfw.extender.Processes;
 import com.spazedog.rootfw.extender.Shell;
+import com.spazedog.rootfw.extender.Utils;
 
 public final class RootFW {
 	public final static String TAG = "RootFW";
@@ -96,6 +97,11 @@ public final class RootFW {
 	 * An instance of the Memory extender class
 	 */
 	public final Memory memory = new Memory(this);
+	
+	/**
+	 * An instance of the Utils extender class
+	 */
+	public final Utils utils = new Utils(this);
 	
 	/**
 	 * This is a hack which allows the class it self to create an 
