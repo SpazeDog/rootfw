@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 
 import com.spazedog.rootfw.RootFW;
 import com.spazedog.rootfw.container.Data;
+import com.spazedog.rootfw.container.DeviceList;
 import com.spazedog.rootfw.container.DiskStat;
 import com.spazedog.rootfw.container.MountStat;
 import com.spazedog.rootfw.container.ShellProcess;
@@ -342,6 +343,43 @@ public final class Filesystem implements Extender {
 				return new DiskStat(lDevice, lLocation, lSize, lUsage, lRemaining, lPercentage);
 				
 			} catch(Throwable e) { RootFW.log(TAG + ".statDisk", "Failed while grabbing disk stat", RootFW.E_ERROR, e); }
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Return a list of all device types from /proc/devices 
+	 * containing type (Block Device 'b' or Character Device 'c'), name and major number
+	 *    
+	 * @return
+	 *     An ArrayList of DeviceList containers with all the device information
+	 */
+	public ArrayList<DeviceList> devices() {
+		Data lOutput = mParent.file.read("/proc/devices");
+		
+		if (lOutput != null && lOutput.length() > 0) {
+			String[] lSections, lDevices = lOutput.raw();
+			String lType = null;
+			ArrayList<DeviceList> list = new ArrayList<DeviceList>();
+			
+			for (int i=0; i < lDevices.length; i++) {
+				if (lDevices[i].length() > 0) {
+					if (lDevices[i].startsWith("B") || lDevices[i].startsWith("C")) {
+						lType = lDevices[i].substring(0, 1).toLowerCase(Locale.US);
+						
+					} else {
+						try {
+							lSections = oPatternSpaceSearch.split(lDevices[i].trim());
+							
+							list.add( new DeviceList(lSections[1], Integer.parseInt(lSections[0]), lType) );
+							
+						} catch(Throwable e) {}
+					}
+				}
+			}
+			
+			return list.size() > 0 ? list : null;
 		}
 		
 		return null;
