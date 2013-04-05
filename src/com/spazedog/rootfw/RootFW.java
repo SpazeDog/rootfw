@@ -29,6 +29,7 @@ import com.spazedog.rootfw.extender.Binary;
 import com.spazedog.rootfw.extender.Busybox;
 import com.spazedog.rootfw.extender.File;
 import com.spazedog.rootfw.extender.Filesystem;
+import com.spazedog.rootfw.extender.Memory;
 import com.spazedog.rootfw.extender.Processes;
 import com.spazedog.rootfw.extender.Shell;
 
@@ -90,6 +91,11 @@ public final class RootFW {
 	 * An instance of the Filesystem extender class
 	 */
 	public final Filesystem filesystem = new Filesystem(this);
+	
+	/**
+	 * An instance of the Memory extender class
+	 */
+	public final Memory memory = new Memory(this);
 	
 	/**
 	 * This is a hack which allows the class it self to create an 
