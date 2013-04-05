@@ -20,10 +20,12 @@
 package com.spazedog.rootfw.extender;
 
 import java.util.ArrayList;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 import com.spazedog.rootfw.RootFW;
 import com.spazedog.rootfw.container.Data;
+import com.spazedog.rootfw.container.DiskStat;
 import com.spazedog.rootfw.container.MountStat;
 import com.spazedog.rootfw.container.ShellProcess;
 import com.spazedog.rootfw.container.ShellResult;
@@ -34,6 +36,7 @@ public final class Filesystem implements Extender {
 	
 	private final static Pattern oPatternSpaceSearch = Pattern.compile("[ \t]+");
 	private final static Pattern oPatternSeparatorSearch = Pattern.compile(",");
+	private final static Pattern oPatternPrefixSearch = Pattern.compile("^.*[A-Za-z]$");
 	
 	private RootFW mParent;
 	
@@ -272,5 +275,75 @@ public final class Filesystem implements Extender {
 		}
 		
 		return false;
+	}
+	
+	/**
+	 * Return disk information on a device or location. 
+	 * This includes things like device path, mount location, size, usage etc...
+	 * 
+	 * @param aDevice
+	 *     A device or a location
+	 *    
+	 * @return
+	 *     A DiskStat container with all the disk information
+	 */
+	public DiskStat statDisk(String aDevice) {
+		ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary df -k '" + aDevice + "'", "%binary df '" + aDevice + "'"} ) );
+		
+		if (lResult != null && lResult.code() == 0) {
+			try {
+				String[] lStatSections = oPatternSpaceSearch.split(lResult.output().line().trim());
+				
+				String lDevice=null, lLocation=null, lPrefix, lPrefixes[] = {"k", "m", "g", "t"};
+				Integer lPercentage=null;
+				Long lUsage, lSize, lRemaining;
+				Double[] lUsageSections = new Double[3];
+				
+				if (lStatSections.length > 5) {
+					lDevice = lStatSections[0];
+					lLocation = lStatSections[5];
+					lPercentage = Integer.parseInt(lStatSections[4].substring(0, lStatSections[4].length()-1));
+					
+				} else {
+					lLocation = lStatSections[0];
+					MountStat stat = statMount(lLocation);
+					
+					if (stat != null) {
+						lDevice = stat.device();
+					}
+				}
+				
+				for (int i=1; i < 4; i++) {
+					if (oPatternPrefixSearch.matcher(lStatSections[i]).matches()) {
+						lUsageSections[i-1] = Double.parseDouble( lStatSections[i].substring(0, lStatSections[i].length()-1) );
+						lPrefix = lStatSections[i].substring(lStatSections[i].length()-1).toLowerCase(Locale.US);
+						
+						for (int x=0; x < lPrefixes.length; x++) {
+							lUsageSections[i-1] = lUsageSections[i-1] * 1024D;
+							
+							if (lPrefixes[x].equals(lPrefix)) {
+								break;
+							}
+						}
+						
+					} else {
+						lUsageSections[i-1] = Double.parseDouble(lStatSections[i]) * 1024D;
+					}
+				}
+				
+				lSize = lUsageSections[0].longValue();
+				lUsage = lUsageSections[1].longValue();
+				lRemaining = lUsageSections[2].longValue();
+				
+				if (lPercentage == null) {
+					lPercentage = ((Long) ((lUsage * 100L) / lSize)).intValue();
+				}
+				
+				return new DiskStat(lDevice, lLocation, lSize, lUsage, lRemaining, lPercentage);
+				
+			} catch(Throwable e) { RootFW.log(TAG + ".statDisk", "Failed while grabbing disk stat", RootFW.E_ERROR, e); }
+		}
+		
+		return null;
 	}
 }
