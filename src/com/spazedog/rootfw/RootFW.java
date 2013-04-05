@@ -229,17 +229,23 @@ public final class RootFW {
 	 *     Whether or not a shell connection has been established
 	 */
 	public Boolean connected() {
+		ShellResult lResult;
+		
 		if (mRootAccount && mProcess != null) {
-			ShellResult lResult = shell.execute("id");
+			// Return true even though the 'id' command is missing as we are still connected using 'su'
+			lResult = shell.execute("id", "echo 'uid=0'");
 			
-			if (lResult != null && lResult.code() == 0 && lResult.output().line(-1).contains("uid=0")) {
+			if (lResult != null && lResult.output().line().contains("uid=0")) {
 				return true;
 			}
 			
 			return false;
+			
+		} else {
+			lResult = shell.execute("echo 'uid=unknown'");
 		}
 		
-		return mProcess != null;
+		return mProcess != null && lResult.output().line().contains("uid=unknown");
 	}
 	
 	/**
