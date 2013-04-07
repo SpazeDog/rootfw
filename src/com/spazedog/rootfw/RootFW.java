@@ -62,6 +62,7 @@ public final class RootFW {
 	private Boolean mRootAccount = false;
 	private Boolean mIsCopy = false;
 	private String mName = null;
+	private Object mLock = new Object();
 	
 	/**
 	 * An instance of the Shell extender class
@@ -195,6 +196,7 @@ public final class RootFW {
 			
 			/* Give the clone access to the connected process */
 			lInstance.mProcess = oInstance.get(lName).mProcess;
+			lInstance.mLock = oInstance.get(lName).mLock;
 		}
 		
 		return lInstance;
@@ -268,6 +270,16 @@ public final class RootFW {
 	 */
 	public Process process() {
 		return mProcess;
+	}
+	
+	/**
+	 * Return the lock object which can tell whether the connection is being used or not
+	 * 
+	 * @return
+	 *     The lock object
+	 */
+	public Object lock() {
+		return mLock;
 	}
 	
 	/**
