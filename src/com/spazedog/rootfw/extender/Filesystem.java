@@ -293,7 +293,7 @@ public final class Filesystem implements Extender {
 		
 		if (lResult != null && lResult.code() == 0) {
 			try {
-				String[] lStatSections = oPatternSpaceSearch.split(lResult.output().line().trim());
+				String[] lStatSections = oPatternSpaceSearch.split(lResult.output().toString(" ", 1, true).trim());
 				
 				String lDevice=null, lLocation=null, lPrefix, lPrefixes[] = {"k", "m", "g", "t"};
 				Integer lPercentage=null;
