@@ -49,31 +49,77 @@ public class Data implements Container {
 	}
 	
 	/**
-	 * Convert the data array into a string and return it
-	 *    
-	 * @return
-	 *     A string containing the data
+	 * See <code>toString(String aSeperator, Integer aIndex, Boolean aSkipEmpty)</code>
 	 */
 	public String toString() {
-		return toString(false);
+		return toString("\n", 0, false);
+	}
+	
+	/**
+	 * See <code>toString(String aSeperator, Integer aIndex, Boolean aSkipEmpty)</code>
+	 */
+	public String toString(String aSeperator, Integer aIndex) {
+		return toString(aSeperator, aIndex, false);
+	}
+	
+	/**
+	 * See <code>toString(String aSeperator, Integer aIndex, Boolean aSkipEmpty)</code>
+	 */
+	public String toString(String aSeperator, Boolean aSkipEmpty) {
+		return toString(aSeperator, 0, aSkipEmpty);
+	}
+	
+	/**
+	 * See <code>toString(String aSeperator, Integer aIndex, Boolean aSkipEmpty)</code>
+	 */
+	public String toString(Integer aIndex, Boolean aSkipEmpty) {
+		return toString("\n", aIndex, aSkipEmpty);
+	}
+	
+	/**
+	 * See <code>toString(String aSeperator, Integer aIndex, Boolean aSkipEmpty)</code>
+	 */
+	public String toString(String aSeperator) {
+		return toString(aSeperator, 0, false);
+	}
+	
+	/**
+	 * See <code>toString(String aSeperator, Integer aIndex, Boolean aSkipEmpty)</code>
+	 */
+	public String toString(Integer aIndex) {
+		return toString("\n", aIndex, false);
+	}
+	
+	/**
+	 * See <code>toString(String aSeperator, Integer aIndex, Boolean aSkipEmpty)</code>
+	 */
+	public String toString(Boolean aSkipEmpty) {
+		return toString("\n", 0, aSkipEmpty);
 	}
 	
 	/**
 	 * Convert the data array into a string and return it
 	 * 
+	 * @param aSeperator
+	 *     A separator used to separate each line
+	 *     
+	 * @param aIndex
+	 *     The line number to start from, can also be a negative
+	 *     
 	 * @param aSkipEmpty
 	 *     Do not include empty lines
 	 *    
 	 * @return
 	 *     A string containing the data
 	 */
-	public String toString(Boolean aSkipEmpty) {
+	public String toString(String aSeperator, Integer aIndex, Boolean aSkipEmpty) {
 		if (mData != null) {
+			Integer count = aIndex < 0 ? (mData.length + aIndex) : aIndex;
 			String output = "";
 
-			for (int i=0; i < mData.length; i++) {
+			for (int i=count; i < mData.length; i++) {
 				if (!aSkipEmpty || mData[i].trim().length() > 0) {
-					output += (i > 0 ? "\n" : "") + mData[i];
+					output += (i > 0 ? aSeperator : "") + mData[i];
 				}
 			}
 			

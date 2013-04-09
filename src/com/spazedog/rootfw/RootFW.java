@@ -62,6 +62,7 @@ public final class RootFW {
 	private Boolean mRootAccount = false;
 	private Boolean mIsCopy = false;
 	private String mName = null;
+	private Object mLock = new Object();
 	
 	/**
 	 * An instance of the Shell extender class
@@ -195,6 +196,7 @@ public final class RootFW {
 			
 			/* Give the clone access to the connected process */
 			lInstance.mProcess = oInstance.get(lName).mProcess;
+			lInstance.mLock = oInstance.get(lName).mLock;
 		}
 		
 		return lInstance;
@@ -241,23 +243,27 @@ public final class RootFW {
 	 *     Whether or not a shell connection has been established
 	 */
 	public Boolean connected() {
-		ShellResult lResult;
-		
-		if (mRootAccount && mProcess != null) {
-			// Return true even though the 'id' command is missing as we are still connected using 'su'
-			lResult = shell.execute("id", "echo 'uid=0'");
+		if (mProcess != null) {
+			ShellResult lResult;
 			
-			if (lResult != null && lResult.output().line().contains("uid=0")) {
-				return true;
+			if (mRootAccount) {
+				// Return true even though the 'id' command is missing as we are still connected using 'su'
+				lResult = shell.execute("id", "echo 'uid=0'");
+				
+				if (lResult != null && lResult.output().line().contains("uid=0")) {
+					return true;
+				}
+				
+				return false;
+				
+			} else {
+				lResult = shell.execute("echo 'uid=unknown'");
 			}
 			
-			return false;
-			
-		} else {
-			lResult = shell.execute("echo 'uid=unknown'");
+			return mProcess != null && lResult.output().line().contains("uid=unknown");
 		}
 		
-		return mProcess != null && lResult.output().line().contains("uid=unknown");
+		return false;
 	}
 	
 	/**
@@ -268,6 +274,16 @@ public final class RootFW {
 	 */
 	public Process process() {
 		return mProcess;
+	}
+	
+	/**
+	 * Return the lock object which can tell whether the connection is being used or not
+	 * 
+	 * @return
+	 *     The lock object
+	 */
+	public Object lock() {
+		return mLock;
 	}
 	
 	/**

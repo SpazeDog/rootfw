@@ -293,7 +293,7 @@ public final class Filesystem implements Extender {
 		
 		if (lResult != null && lResult.code() == 0) {
 			try {
-				String[] lStatSections = oPatternSpaceSearch.split(lResult.output().line().trim());
+				String[] lStatSections = oPatternSpaceSearch.split(lResult.output().toString(" ", 1, true).trim());
 				
 				String lDevice=null, lLocation=null, lPrefix, lPrefixes[] = {"k", "m", "g", "t"};
 				Integer lPercentage=null;
@@ -384,5 +384,32 @@ public final class Filesystem implements Extender {
 		}
 		
 		return null;
+	}
+	
+	/**
+	 * Check if a specific file system type is supported on the device
+	 * 
+	 * @param aFstype
+	 *     The type of file system to check for
+	 *    
+	 * @return
+	 *     <code>True</code> if the file system is supported
+	 */
+	public Boolean typeSupported(String aFstype) {
+		Data lOutput = mParent.file.read("/proc/filesystems");
+		
+		if (lOutput != null && lOutput.length() > 0) {
+			String[] lSections, lTypes = lOutput.raw();
+			
+			for (int i=0; i < lTypes.length; i++) {
+				lSections = oPatternSpaceSearch.split(lTypes[i].trim());
+				
+				if (lSections[ lSections.length-1 ].equals(aFstype)) {
+					return true;
+				}
+			}
+		}
+		
+		return false;
 	}
 }
