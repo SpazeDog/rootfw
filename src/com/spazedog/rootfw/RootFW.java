@@ -148,10 +148,17 @@ public final class RootFW {
 	}
 	
 	/**
-	 * See <code>instance(String aName, Boolean aRoot)</code>
+	 * See <code>instance(String aName, Boolean aRoot, Boolean aOwner)</code>
 	 */
 	public static RootFW instance(String aName) {
-		return instance(aName, oInstance.get(aName + ":user") == null);
+		return instance(aName, oInstance.get(aName + ":user") == null, false);
+	}
+	
+	/**
+	 * See <code>instance(String aName, Boolean aRoot, Boolean aOwner)</code>
+	 */
+	public static RootFW instance(String aName, Boolean aRoot) {
+		return instance(aName, aRoot, false);
 	}
 	
 	/**
@@ -170,11 +177,14 @@ public final class RootFW {
 	 *    
 	 * @param aRoot
 	 *     Whether to connect as root or as a regular user
+	 *     
+	 * @param aOwner
+	 *     Whether to return the owner instance (Instead of a copy)
 	 *    
 	 * @return
 	 *     Returns a new or cloned instance of RootFW
 	 */
-	public static RootFW instance(String aName, Boolean aRoot) {
+	public static RootFW instance(String aName, Boolean aRoot, Boolean aOwner) {
 		String lName = aName + (aRoot ? ":root" : ":user");
 		RootFW lInstance = null;
 		
@@ -186,6 +196,9 @@ public final class RootFW {
 			
 			oInstance.put(lName, lInstance);
 			
+		} else if(aOwner) {
+			lInstance = oInstance.get(lName);
+
 		} else {
 			log(TAG + ".instance", "Cloning the instance " + lName);
 			
