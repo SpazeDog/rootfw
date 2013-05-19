@@ -491,4 +491,28 @@ public final class Filesystem implements Extender {
 		
 		return mFstabEntry != null && mFstabEntry.size() > 0 ? mFstabEntry : null;
 	}
+	
+	/**
+	 * Return an fstab entry of a device or mount location 
+	 * This includes things like device path, mount location, file system and mount options etc...
+	 * 
+	 * @param aDevice
+	 *     A device or a location
+	 *    
+	 * @return
+	 *     A FstabEntry container with all the fstab information
+	 */
+	public FstabEntry statFstab(String aDevice) {
+		ArrayList<FstabEntry> lFstab = listFstab();
+		
+		if (lFstab != null) {
+			for (int i=0; i < lFstab.size(); i++) {
+				if (lFstab.get(i).device().equals(aDevice) || lFstab.get(i).location().equals(aDevice)) {
+					return lFstab.get(i);
+				}
+			}
+		}
+		
+		return null;
+	}
 }
