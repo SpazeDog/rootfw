@@ -20,13 +20,16 @@
 package com.spazedog.rootfw.extender;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import com.spazedog.rootfw.RootFW;
 import com.spazedog.rootfw.container.Data;
 import com.spazedog.rootfw.container.DeviceList;
 import com.spazedog.rootfw.container.DiskStat;
+import com.spazedog.rootfw.container.FstabEntry;
 import com.spazedog.rootfw.container.MountStat;
 import com.spazedog.rootfw.container.ShellProcess;
 import com.spazedog.rootfw.container.ShellResult;
@@ -411,5 +414,79 @@ public final class Filesystem implements Extender {
 		}
 		
 		return false;
+	}
+	
+	/**
+	 * This is almost the same as <code>listMounts</code>.
+	 * However, this does not provide information about currently mounted devices,
+	 * instead it lists devices and locations defined in the available fstab and init.rc files.
+	 * 
+	 * It is a great way of making sure that you get a correct device for a correct location,
+	 * even if a script or similar has changed it since the device was booted. 
+	 *    
+	 * @return
+	 *     A complete list of defined file systems
+	 */
+	public ArrayList<FstabEntry> listFstab() {
+		/* The easiest way of searching for these files, and which is supported in all shell types without busybox or toolbox support */
+		ShellResult lResult = mParent.shell.execute("for DIR in /fstab.* /fstab /init.*.rc /init.rc; do echo $DIR; done");
+		
+		if (lResult != null) {
+			ArrayList<FstabEntry> lOutout = new ArrayList<FstabEntry>();
+			String[] lFiles = lResult.output().raw();
+			Set<String> lCache = new HashSet<String>();
+			
+			for (int i=0; i < lFiles.length; i++) {
+				Data lData = mParent.file.read(lFiles[i]);
+				
+				if (lData != null) {
+					String[] lLines = lData.raw();
+					
+					for (int x=0; x < lLines.length; x++) {
+						String[] lSection;
+						
+						if (!lLines[x].contains("#") && (lSection = oPatternSpaceSearch.split(lLines[x].trim(), 5)).length > 3) {
+							if (lFiles[i].contains("fstab")) {
+								if (!lCache.contains(lSection[1])) {
+									lOutout.add( new FstabEntry(lSection[0], lSection[1], lSection[2], oPatternSeparatorSearch.split(lSection[3])) );
+								}
+								
+								lCache.add(lSection[1]);
+								
+							} else {
+								if (!lCache.contains(lSection[3]) && lSection[0].equals("mount")) {
+									if (lSection[2].contains("mtd@")) {
+										if (mParent.file.check("/dev/mtd", "d")) {
+											ShellResult lInnerResult = mParent.shell.execute( ShellProcess.generate("%binary grep -e '\\\"" + lSection[2].substring(4) + "\\\"' /proc/mtd") );
+											
+											if (lInnerResult != null) {
+												String lLine = lInnerResult.output().line();
+												lOutout.add( new FstabEntry("/dev/block/mtdblock" + lLine.substring(3, lLine.indexOf(":")), lSection[3], lSection[1], lSection.length > 4 ? oPatternSeparatorSearch.split(lSection[4].replace(" ", ",")) : null) );
+											}
+										}
+										
+									} else {
+										String lOptions = lSection.length > 4 ? lSection[4] : "";
+										
+										if (lSection[2].contains("loop@")) {
+											lSection[2] = lSection[2].substring(5);
+											lOptions += " loop";
+										}
+										
+										lOutout.add( new FstabEntry(lSection[2], lSection[3], lSection[1], lOptions.length() > 0 ? oPatternSeparatorSearch.split(lOptions.trim().replace(" ", ",")) : null) );
+									}
+									
+									lCache.add(lSection[3]);
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			return lOutout.size() > 0 ? lOutout : null;
+		}
+		
+		return null;
 	}
 }
