@@ -262,7 +262,7 @@ public final class Filesystem implements Extender {
 		ArrayList<MountStat> lMounts = listMounts();
 		
 		if (lMounts != null) {
-			if (mParent.file.check(aLocation, "b")) {
+			if (!mParent.file.check(aLocation, "d")) {
 				for (int i=0; i < lMounts.size(); i++) {
 					if (lMounts.get(i).device().equals(aLocation)) {
 						return true;
