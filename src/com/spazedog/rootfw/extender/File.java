@@ -694,6 +694,28 @@ public final class File implements Extender {
 	}
 	
 	/**
+	 * See <code>diskUsage(String aFile)</code>
+	 */
+	public Long diskUsage(String[] aFiles) {
+		Long lUsage = null;
+		
+		for (int i=0; i < aFiles.length; i++) {
+			Long tUsage = diskUsage(aFiles[i]);
+			
+			if (tUsage != null) {
+				if (lUsage != null) {
+					lUsage += tUsage;
+					
+				} else {
+					lUsage = tUsage;
+				}
+			}
+		}
+		
+		return lUsage;
+	}
+	
+	/**
 	 * Get the disk usage of a file or folder
 	 * 
 	 * @param aFile
