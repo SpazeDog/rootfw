@@ -419,6 +419,31 @@ public final class Filesystem implements Extender {
 	}
 	
 	/**
+	 * Get the file system type of a device
+	 * <code>Note that some older busybox binaries does not provide accurate information. Some could report ext4 as ext3 or ext3 as ext2. Also some does not provide the type at all.</code>
+	 * 
+	 * @param aDevice
+	 *     The device to check the file system type on
+	 *    
+	 * @return
+	 *     The device file system type
+	 */
+	public String getType(String aDevice) {
+		ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary blkid '" + aDevice + "'"} ) );
+		
+		if (lResult != null && lResult.code() == 0 && lResult.output().length() > 0) {
+			if (lResult.output().line().contains("TYPE")) {
+				String lParts[] = oPatternSpaceSearch.split(lResult.output().line());
+				Integer lIndex = lParts.length-1;
+				
+				return lParts[lIndex].substring(6, lParts[lIndex].length()-1);
+			}
+		}
+		
+		return null;
+	}
+	
+	/**
 	 * This is almost the same as <code>listMounts</code>.
 	 * However, this does not provide information about currently mounted devices,
 	 * instead it lists devices and locations defined in the available fstab and init.rc files.

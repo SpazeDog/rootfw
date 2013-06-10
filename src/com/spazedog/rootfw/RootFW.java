@@ -126,7 +126,17 @@ public final class RootFW {
 	public RootFW(Boolean aRoot) {
 		mRootAccount = aRoot;
 		
-		ProcessBuilder lBuilder = new ProcessBuilder( aRoot ? "su" : "sh" );
+		establish();
+	}
+	
+	/**
+	 * Internal method for establishing a connection
+	 *    
+	 * @return
+	 *     <code>True</code> on successful connection
+	 */
+	private Boolean establish() {
+		ProcessBuilder lBuilder = new ProcessBuilder( mRootAccount ? "su" : "sh" );
 		lBuilder.redirectErrorStream(true);
 		
 		try {
@@ -144,7 +154,11 @@ public final class RootFW {
 				shell.execute("PATH=\"" + lPathVariable + "\"");
 			}
 			
+			return true;
+			
 		} catch (Throwable e) { log(TAG, "Failed while starting the new process", E_ERROR, e); }
+		
+		return false;
 	}
 	
 	/**
@@ -188,7 +202,7 @@ public final class RootFW {
 		String lName = aName + (aRoot ? ":root" : ":user");
 		RootFW lInstance = null;
 		
-		if (oInstance.get(lName) == null || !oInstance.get(lName).connected()) {
+		if (oInstance.get(lName) == null || !oInstance.get(lName).connected(true)) {
 			log(TAG + ".instance", "Creating new instance " + lName);
 			
 			lInstance = new RootFW(aRoot);
@@ -247,33 +261,50 @@ public final class RootFW {
 	}
 	
 	/**
+	 * See <code>connected(Boolean aForceReconnect)</code>
+	 */
+	public Boolean connected() {
+		return connected(false);
+	}
+	
+	/**
 	 * Check to see if the instance has successfully established
 	 * a connection to the shell. If you created the instance with root
 	 * permissions, it will also check to make sure that the connection
-	 * has these permissions. 
+	 * has these permissions.
+	 * 
+	 * @param aForceReconnect
+	 *     Whether to force a reconnect if the connection is not established
 	 * 
 	 * @return
 	 *     Whether or not a shell connection has been established
 	 */
-	public Boolean connected() {
+	public Boolean connected(Boolean aForceReconnect) {
 		if (mProcess != null) {
-			ShellResult lResult;
+			Integer lTries = aForceReconnect ? 2 : 1;
+			String lName = mName + (mRootAccount ? ":root" : ":user");
 			
-			if (mRootAccount) {
-				// Return true even though the 'id' command is missing as we are still connected using 'su'
-				lResult = shell.execute("id", "echo 'uid=0'");
-				
-				if (lResult != null && lResult.output().line().contains("uid=0")) {
-					return true;
+			for (int i=0; i < lTries; i++) {
+				if (i == 0 || (oInstance.get(lName) != null && oInstance.get(lName).establish())) {
+					ShellResult lResult;
+					
+					if (mRootAccount) {
+						// Return true even though the 'id' command is missing as we are still connected using 'su'
+						lResult = shell.execute("id", "echo 'uid=0'");
+						
+						if (lResult != null && lResult.output().line().contains("uid=0")) {
+							return true;
+						}
+						
+					} else { 
+						lResult = shell.execute("echo 'uid=unknown'");
+						
+						if (lResult != null && lResult.output().line().contains("uid=unknown")) {
+							return true;
+						}
+					}
 				}
-				
-				return false;
-				
-			} else {
-				lResult = shell.execute("echo 'uid=unknown'");
 			}
-			
-			return mProcess != null && lResult.output().line().contains("uid=unknown");
 		}
 		
 		return false;
