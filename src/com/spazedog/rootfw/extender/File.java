@@ -331,6 +331,48 @@ public final class File implements Extender {
 	}
 	
 	/**
+	 * See <code>copyResource(Context aContext, String aAssetsPath, String aDestination, String aPermission, String aUser, String aGroup)</code>
+	 */
+	public Boolean copyResource(Context aContext, String aAssetsPath, String aDestination) {
+		return copyResource(aContext, aAssetsPath, aDestination, null, null, null);
+	}
+	
+	/**
+	 * See <code>copyResource(Context aContext, InputStream aResource, String aDestination, String aPermission, String aUser, String aGroup)</code>
+	 */
+	public Boolean copyResource(Context aContext, InputStream aResource, String aDestination) {
+		return copyResource(aContext, aResource, aDestination, null, null, null);
+	}
+	
+	/**
+	 * See <code>copyResource(Context aContext, InputStream aResource, String aDestination, String aPermission, String aUser, String aGroup)</code>
+	 */
+	public Boolean copyResource(Context aContext, Integer aResourceId, String aDestination, String aPermission, String aUser, String aGroup) {
+		try {
+			InputStream lInputStream = aContext.getResources().openRawResource(aResourceId);
+			Boolean status = copyResource(aContext, lInputStream, aDestination, aPermission, aUser, aGroup);
+			lInputStream.close();
+			
+			return status;
+			
+		} catch(Throwable e) { return false; }
+	}
+	
+	/**
+	 * See <code>copyResource(Context aContext, InputStream aResource, String aDestination, String aPermission, String aUser, String aGroup)</code>
+	 */
+	public Boolean copyResource(Context aContext, String aAssetsPath, String aDestination, String aPermission, String aUser, String aGroup) {
+		try {
+			InputStream lInputStream = aContext.getAssets().open(aAssetsPath);
+			Boolean status = copyResource(aContext, lInputStream, aDestination, aPermission, aUser, aGroup);
+			lInputStream.close();
+			
+			return status;
+			
+		} catch(Throwable e) { return false; }
+	}
+	
+	/**
 	 * Copy a file from application resources into the file system on the device
 	 * 
 	 * @param aContext
@@ -354,20 +396,18 @@ public final class File implements Extender {
 	 * @return
 	 *     <code>True</code> if it copied successfully 
 	 */
-	public Boolean copyResource(Context aContext, Integer aResourceId, String aDestination, String aPermission, String aUser, String aGroup) {
+	public Boolean copyResource(Context aContext, InputStream aResource, String aDestination, String aPermission, String aUser, String aGroup) {
 		if (!check(aDestination, "d")) {
 			try {
-				InputStream lInputStream = aContext.getResources().openRawResource(aResourceId);
 				FileOutputStream lOutputStream = aContext.openFileOutput("rootfw.tmp.raw", 0);
 				
 				byte[] lBuffer = new byte[1024];
 				Integer lLocation = 0;
 				
-				while ((lLocation = lInputStream.read(lBuffer)) > 0) {
+				while ((lLocation = aResource.read(lBuffer)) > 0) {
 					lOutputStream.write(lBuffer, 0, lLocation);
 				}
 				
-				lInputStream.close();
 				lOutputStream.close();
 				
 			} catch(Throwable e) { return false; }
