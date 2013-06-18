@@ -487,7 +487,7 @@ public final class Filesystem implements Extender {
 											if (mParent.file.check("/dev/mtd", "d")) {
 												ShellResult lInnerResult = mParent.shell.execute( ShellProcess.generate("%binary grep -e '\\\"" + lSection[2].substring(4) + "\\\"' /proc/mtd") );
 												
-												if (lInnerResult != null) {
+												if (lInnerResult != null && lInnerResult.code() == 0) {
 													String lLine = lInnerResult.output().line();
 													mFstabEntry.add( new FstabEntry("/dev/block/mtdblock" + lLine.substring(3, lLine.indexOf(":")), lSection[3], lSection[1], lSection.length > 4 ? oPatternSeparatorSearch.split(lSection[4].replace(" ", ",")) : null) );
 												}
