@@ -88,6 +88,31 @@ public final class Processes implements Extender {
 	}
 	
 	/**
+	 * Get the pid of a process
+	 * 
+	 * @param aProcess
+	 *     The name of the process
+	 *    
+	 * @return
+	 *     The pid of the first found process or 0 if none was found
+	 */
+	public Integer pidof(String aProcess) {
+		ArrayList<ProcessList> processes = list();
+		
+		if (processes != null) {
+			for (int i=0; i < processes.size(); i++) {
+				String name = processes.get(i).name();
+				
+				if (name != null && (name.equals(aProcess) || (name.contains("/") && name.substring(name.lastIndexOf("/")+1).equals(aProcess)))) {
+					return processes.get(i).pid();
+				}
+			}
+		}
+		
+		return 0;
+	}
+	
+	/**
 	 * Kill a process based on it's name
 	 * 
 	 * @param aProcess
