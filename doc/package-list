@@ -1,4 +1,4 @@
-com.spazedog.rootfw
-com.spazedog.rootfw.container
-com.spazedog.rootfw.extender
-com.spazedog.rootfw.iface
+com.spazedog.lib.rootfw
+com.spazedog.lib.rootfw.container
+com.spazedog.lib.rootfw.extender
+com.spazedog.lib.rootfw.iface
