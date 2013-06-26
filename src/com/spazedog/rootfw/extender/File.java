@@ -19,8 +19,14 @@
 
 package com.spazedog.rootfw.extender;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -231,28 +237,42 @@ public final class File implements Extender {
 	 *     An Array with all the folder content or NULL if no such folder exists
 	 */
 	public String[] list(String aFile) {
-		ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary ls -1a '" + aFile + "'", "%binary ls -1 '" + aFile + "'"} ) );
+		java.io.File file = new java.io.File(aFile);
 		
-		if (lResult != null && lResult.code() == 0) {
-			return lResult.output().raw();
+		if (file.isDirectory()) {
+			String[] lLines = file.list();
 			
-		} else {
-			ArrayList<FileStat> list = statList(aFile);
-			
-			/* Most toolbox versions does not support the "-1" argument in the "ls" command.
-			 * In these cases without busybox, we fall back to using the statList() method
-			 * and manually create our list.
-			 */
-			
-			if (list != null) {
-				String[] lLines = new String[list.size()];
+			if (lLines == null) {
+				ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary ls -1a '" + aFile + "'", "%binary ls -1 '" + aFile + "'"} ) );
 				
-				for (int i=0; i < list.size(); i++) {
-					lLines[i] = list.get(i).name();
+				if (lResult != null && lResult.code() == 0) {
+					return lResult.output().raw();
+					
+				} else {
+					ArrayList<FileStat> list = statList(aFile);
+					
+					/* Most toolbox versions does not support the "-1" argument in the "ls" command.
+					 * In these cases without busybox, we fall back to using the statList() method
+					 * and manually create our list.
+					 */
+					
+					if (list != null) {
+						lLines = new String[list.size()];
+						
+						for (int i=0; i < list.size(); i++) {
+							lLines[i] = list.get(i).name();
+						}
+						
+						return lLines.length > 0 ? lLines : null;
+					}
 				}
 				
+			} else {
 				return lLines.length > 0 ? lLines : null;
 			}
+			
+		} else if (file.exists()) {
+			return new String[] { aFile.substring(aFile.lastIndexOf("/")+1) };
 		}
 		
 		return null;
@@ -301,26 +321,73 @@ public final class File implements Extender {
 	 *     <code>True</code> if it copied successfully 
 	 */
 	public Boolean copy(String aSrcFile, String aDstFile) {
-		ShellResult lResult = null;
+		java.io.File fileSrc = new java.io.File(aSrcFile);
+		java.io.File fileDst = new java.io.File(aDstFile);
 		
-		if (check(aSrcFile, "d")) {
-			lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary cp -a '" + aSrcFile + "' '" + aDstFile + "'", "%binary cp -fa '" + aSrcFile + "' '" + aDstFile + "'"} ) );
+		if (fileSrc.exists()) {
+			Boolean status = true;
 			
-		} else if (!check(aDstFile, "d")) {
-			lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary cp '" + aSrcFile + "' '" + aDstFile + "'", "%binary cp -f '" + aSrcFile + "' '" + aDstFile + "'"} ) );
+			if (fileSrc.isDirectory() && !fileDst.isDirectory()) {
+				status = fileDst.mkdir();
+				
+			} else {
+				try {
+					InputStream input = new FileInputStream(fileSrc);
+					OutputStream output = new FileOutputStream(fileDst);
+					
+					byte[] buffer = new byte[1024];
+					Integer length;
+					
+					while ((length = input.read(buffer)) > 0) {
+						output.write(buffer, 0, length);
+					}
+					
+					input.close();
+					output.close();
+					
+				} catch(Throwable e) { status = false; }
+			}
 			
-			if (lResult == null || lResult.code() != 0) {
-				FileStat stat = stat(aSrcFile);
+			if (!status) {
+				ShellResult lResult = null;
 				
-				lResult = mParent.shell.execute( ShellProcess.generate("%binary cat '" + aSrcFile + "' > '" + aDstFile + "'") );
+				if (fileSrc.isDirectory()) {
+					lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary cp -a '" + aSrcFile + "' '" + aDstFile + "'", "%binary cp -fa '" + aSrcFile + "' '" + aDstFile + "'"} ) );
+					
+				} else {
+					lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary cp '" + aSrcFile + "' '" + aDstFile + "'", "%binary cp -f '" + aSrcFile + "' '" + aDstFile + "'"} ) );
+					
+					if (lResult == null || lResult.code() != 0) {
+						FileStat stat = stat(aSrcFile);
+						
+						lResult = mParent.shell.execute( ShellProcess.generate("%binary cat '" + aSrcFile + "' > '" + aDstFile + "'") );
+						
+						if (lResult == null || lResult.code() != 0 || stat == null || !setOwner(aDstFile, ""+stat.user(), ""+stat.group()) || !setPermission(aDstFile, stat.permission())) {
+							return false;
+						}
+					}
+				}
 				
-				if (lResult == null || lResult.code() != 0 || stat == null || !setOwner(aDstFile, ""+stat.user(), ""+stat.group()) || !setPermission(aDstFile, stat.permission())) {
-					return false;
+				return lResult != null && lResult.code() == 0;
+			}
+			
+			if (fileSrc.isDirectory()) {
+				String[] fileList = fileSrc.list();
+				
+				if (fileList != null && fileList.length > 0) {
+					String lSrcName = aSrcFile.endsWith("/") ? aSrcFile.substring(0, aSrcFile.length()-1) : aSrcFile;
+					String lDstName = aDstFile.endsWith("/") ? aDstFile.substring(0, aDstFile.length()-1) : aDstFile;
+					
+					for (int i=0; i < fileList.length; i++) {
+						status = copy(lSrcName + "/" + fileList[i], lDstName + "/" + fileList[i]);
+					}
 				}
 			}
+			
+			return status;
 		}
 		
-		return lResult != null && lResult.code() == 0;
+		return false;
 	}
 	
 	/**
@@ -397,7 +464,7 @@ public final class File implements Extender {
 	 *     <code>True</code> if it copied successfully 
 	 */
 	public Boolean copyResource(Context aContext, InputStream aResource, String aDestination, String aPermission, String aUser, String aGroup) {
-		if (!check(aDestination, "d")) {
+		if (!new java.io.File(aDestination).isDirectory()) {
 			try {
 				FileOutputStream lOutputStream = aContext.openFileOutput("rootfw.tmp.raw", 0);
 				
@@ -435,19 +502,30 @@ public final class File implements Extender {
 	 *     <code>True</code> if it copied successfully 
 	 */
 	public Boolean move(String aSrcFile, String aDstFile) {
-		ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary mv '" + aSrcFile + "' '" + aDstFile + "'", "%binary mv -f '" + aSrcFile + "' '" + aDstFile + "'"} ) );
+		java.io.File fileSrc = new java.io.File(aSrcFile);
+		java.io.File fileDst = new java.io.File(aDstFile);
 		
-		if ((lResult == null || lResult.code() != 0) && !check(aDstFile, "d") && check(aSrcFile, "d")) {
-			FileStat stat = stat(aSrcFile);
-			
-			lResult = mParent.shell.execute( ShellProcess.generate("%binary cat '" + aSrcFile + "' > '" + aDstFile + "' && %binary unlink '" + aSrcFile + "'") );
-			
-			if (lResult == null || lResult.code() != 0 || stat == null || !setOwner(aDstFile, ""+stat.user(), ""+stat.group()) || !setPermission(aDstFile, stat.permission())) {
-				return false;
+		if (fileSrc.exists()) {
+			if (!fileSrc.renameTo(fileDst)) {
+				ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary mv '" + aSrcFile + "' '" + aDstFile + "'", "%binary mv -f '" + aSrcFile + "' '" + aDstFile + "'"} ) );
+				
+				if ((lResult == null || lResult.code() != 0) && !fileSrc.isDirectory()) {
+					FileStat stat = stat(aSrcFile);
+					
+					lResult = mParent.shell.execute( ShellProcess.generate("%binary cat '" + aSrcFile + "' > '" + aDstFile + "' && %binary unlink '" + aSrcFile + "'") );
+					
+					if (lResult == null || lResult.code() != 0 || stat == null || !setOwner(aDstFile, ""+stat.user(), ""+stat.group()) || !setPermission(aDstFile, stat.permission())) {
+						return false;
+					}
+				}
+				
+				return lResult != null && lResult.code() == 0;
 			}
+			
+			return true;
 		}
 		
-		return lResult != null && lResult.code() == 0;
+		return false;
 	}
 	
 	/**
@@ -463,30 +541,40 @@ public final class File implements Extender {
 	 *     <code>True</code> if it cleared successfully 
 	 */
 	public Boolean clear(String aFile) {
-		ShellResult lResult = null;
+		java.io.File file = new java.io.File(aFile);
 		
-		if (check(aFile, "d")) {
+		if (file.isDirectory()) {
 			String[] lFiles = list(aFile);
-			String lCommand = "%binary rm -rf";
-			String lPath = aFile.endsWith("/") ? aFile.substring(0, aFile.length() - 1) : aFile;
-			
-			/* Doing a simple "rm -rf path/*" will not be enough,
-			 * as it will not delete any hidden files and folders
-			 */
+			Boolean status = true;
 			
 			for (int i=0; i < lFiles.length; i++) {
 				if (!".".equals(lFiles[i]) && !"..".equals(lFiles[i])) {
-					lCommand += " '" + lPath + "/" + lFiles[i] + "'";
+					if (!delete(lFiles[i])) {
+						status = false;
+					}
 				}
 			}
 			
-			lResult = mParent.shell.execute( ShellProcess.generate(lCommand) );
+			return status;
 			
-		} else {
-			lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary echo -n '' > '" + aFile + "'", "%binary echo '' > '" + aFile + "'"} ) );
+		} else if (file.exists()) {
+			Boolean status = true;
+			
+			try {
+				OutputStream output = new FileOutputStream(aFile);
+				output.write(new byte[1]);
+				output.close();
+				
+			} catch(Throwable e) { status = false; }
+			
+			if (!status) {
+				ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary echo -n '' > '" + aFile + "'", "%binary echo '' > '" + aFile + "'"} ) );
+				
+				return lResult != null && lResult.code() == 0;
+			}
 		}
 		
-		return lResult != null && lResult.code() == 0;
+		return false;
 	}
 	
 	/**
@@ -499,13 +587,33 @@ public final class File implements Extender {
 	 *     <code>True</code> if it deleted successfully 
 	 */
 	public Boolean delete(String aFile) {
-		ShellResult lResult = mParent.shell.execute( ShellProcess.generate("%binary rm -rf '" + aFile + "'") );
+		java.io.File file = new java.io.File(aFile);
+		
+		if (file.exists()) {
+			if (file.isDirectory()) {
+				String[] fileList = file.list();
 				
-		if ((lResult == null || lResult.code() != 0) && !check(aFile, "d")) {
-			lResult = mParent.shell.execute( ShellProcess.generate("%binary unlink '" + aFile + "'") );
+				if (fileList != null && fileList.length > 0) {
+					String lName = aFile.endsWith("/") ? aFile.substring(0, aFile.length()-1) : aFile;
+					
+					for (int i=0; i < fileList.length; i++) {
+						delete(lName + "/" + fileList[i]);
+					}
+				}
+			}
+			
+			if (!file.delete()) {
+				ShellResult lResult = mParent.shell.execute( ShellProcess.generate("%binary rm -rf '" + aFile + "'") );
+						
+				if ((lResult == null || lResult.code() != 0) && !check(aFile, "d")) {
+					lResult = mParent.shell.execute( ShellProcess.generate("%binary unlink '" + aFile + "'") );
+				}
+				
+				return lResult != null && lResult.code() == 0;
+			}
 		}
 		
-		return lResult != null && lResult.code() == 0;
+		return true;
 	}
 	
 	/**
@@ -518,10 +626,10 @@ public final class File implements Extender {
 	 *     <code>True</code> if it was created successfully 
 	 */
 	public Boolean create(String aFile) {
-		ShellResult lResult = null;
+		java.io.File file = new java.io.File(aFile);
 		
-		if (!check(aFile, "e")) {
-			lResult = mParent.shell.execute( ShellProcess.generate("%binary mkdir -p '" + aFile + "'") );
+		if (!file.exists() && !file.mkdirs()) {
+			ShellResult lResult = mParent.shell.execute( ShellProcess.generate("%binary mkdir -p '" + aFile + "'") );
 			
 			if (lResult == null || lResult.code() != 0) {
 				String[] lFolders = ("/".equals(aFile) ? aFile : aFile.endsWith("/") ? aFile.substring(1, aFile.length() - 1) : aFile.substring(1)).split("/");
@@ -543,9 +651,11 @@ public final class File implements Extender {
 					}
 				}
 			}
+			
+			return lResult != null && lResult.code() == 0;
 		}
 		
-		return lResult != null && lResult.code() == 0;
+		return file.isDirectory();
 	}
 	
 	/**
@@ -570,6 +680,20 @@ public final class File implements Extender {
 	}
 	
 	/**
+	 * See <code>write(String aFile, String[] aData, Boolean aAppend)</code>
+	 */
+	public Boolean write(String aFile, Data aData) {
+		return write(aFile, aData.raw(), false);
+	}
+	
+	/**
+	 * See <code>write(String aFile, String[] aData, Boolean aAppend)</code>
+	 */
+	public Boolean write(String aFile, Data aData, Boolean aAppend) {
+		return write(aFile, aData.raw(), aAppend);
+	}
+	
+	/**
 	 * Write data to a file
 	 * 
 	 * @param aFile
@@ -585,19 +709,42 @@ public final class File implements Extender {
 	 *     <code>True</code> if it was written successfully 
 	 */
 	public Boolean write(String aFile, String[] aData, Boolean aAppend) {
-		ShellResult lResult = null;
+		java.io.File file = new java.io.File(aFile);
 		
-		if (!check(aFile, "d")) {
-			for (int i=0; i < aData.length; i++) {
-				lResult = mParent.shell.execute( ShellProcess.generate("%binary echo '" + aData[i] + "' " + (aAppend || i > 0 ? ">>" : ">") + " '" + aFile + "'") );
+		if (!file.isDirectory()) {
+			Boolean status = true;
+			
+			try {
+				BufferedWriter output = new BufferedWriter(new FileWriter(file, aAppend));
 				
-				if (lResult == null || lResult.code() != 0) {
-					break;
+				for (int i=0; i < aData.length; i++) {
+					output.write(aData[i]);
+					output.newLine();
 				}
+				
+				output.close();
+				
+			} catch(Throwable e) { status = false; }
+			
+			if (!status) {
+				ShellResult lResult = null;
+				
+				for (int i=0; i < aData.length; i++) {
+					lResult = mParent.shell.execute( ShellProcess.generate("%binary echo '" + aData[i] + "' " + (aAppend || i > 0 ? ">>" : ">") + " '" + aFile + "'") );
+					
+					if (lResult == null || lResult.code() != 0) {
+						break;
+					}
+				}
+				
+				return lResult != null && lResult.code() == 0;
+			
+			} else {
+				return true;
 			}
 		}
 		
-		return lResult != null && lResult.code() == 0;
+		return false;
 	}
 	
 	/**
@@ -610,9 +757,33 @@ public final class File implements Extender {
 	 *     A Data container with all of the file content or NULL on failure
 	 */
 	public Data read(String aFile) {
-		ShellResult lResult = mParent.shell.execute( ShellProcess.generate("%binary cat '" + aFile + "'") );
+		java.io.File file = new java.io.File(aFile);
 		
-		return lResult != null && lResult.code() == 0 ? lResult.output() : null;
+		if (file.isFile()) {
+			Boolean status = true;
+			
+			try {
+				BufferedReader reader = new BufferedReader(new FileReader(file));
+				String line, content="";
+				
+				while ((line = reader.readLine()) != null) {
+					content += (content.length() > 0 ? "\n" : "") + line;
+				}
+				
+				reader.close();
+				
+				return content.length() > 0 ? new Data(content) : null;
+				
+			} catch (Throwable e) { status = false; }
+			
+			if (!status) {
+				ShellResult lResult = mParent.shell.execute( ShellProcess.generate("%binary cat '" + aFile + "'") );
+				
+				return lResult != null && lResult.code() == 0 ? lResult.output() : null;
+			}
+		}
+		
+		return null;
 	}
 	
 	/**
@@ -625,9 +796,28 @@ public final class File implements Extender {
 	 *     The first line from the file or NULL on failure
 	 */
 	public String readLine(String aFile) {
-		ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary sed -n '1p' '" + aFile + "'", "%binary cat '" + aFile + "'"} ) );
+		java.io.File file = new java.io.File(aFile);
 		
-		return lResult != null && lResult.code() == 0 ? lResult.output().line(0) : null;
+		if (file.isFile()) {
+			Boolean status = true;
+			
+			try {
+				BufferedReader reader = new BufferedReader(new FileReader(file));
+				String line = reader.readLine();
+				reader.close();
+				
+				return line.length() > 0 ? line : null;
+				
+			} catch (Throwable e) { status = false; }
+			
+			if (!status) {
+				ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary sed -n '1p' '" + aFile + "'", "%binary cat '" + aFile + "'"} ) );
+				
+				return lResult != null && lResult.code() == 0 ? lResult.output().line(0) : null;
+			}
+		}
+		
+		return null;
 	}
 	
 	/**
@@ -643,35 +833,42 @@ public final class File implements Extender {
 	 *     The complete path to the real item or NULL on failure
 	 */
 	public String realPath(String aFile) {
-		ShellResult lResult = mParent.shell.execute( ShellProcess.generate("%binary readlink -f '" + aFile + "'") );
-		String lPath = null;
+		java.io.File file = new java.io.File(aFile);
 		
-		if (lResult != null && lResult.code() == 0) {
-			lPath = lResult.output().line();
+		try {
+			return file.getCanonicalPath();
 			
-		} else {
-			FileStat lStat = stat(aFile);
+		} catch(Throwable e) {
+			ShellResult lResult = mParent.shell.execute( ShellProcess.generate("%binary readlink -f '" + aFile + "'") );
+			String lPath = null;
 			
-			if (lStat != null) {
-				if (lStat.link() != null) {
-					lPath = lStat.link();
-					
-				} else {
-					if (!"d".equals(lStat.type())) {
-						lResult = mParent.shell.execute( ShellProcess.generate("REALPATH=$(cd '" + aFile + "' && %binary pwd) && %binary echo $REALPATH") );
+			if (lResult != null && lResult.code() == 0) {
+				lPath = lResult.output().line();
+				
+			} else {
+				FileStat lStat = stat(aFile);
+				
+				if (lStat != null) {
+					if (lStat.link() != null) {
+						lPath = lStat.link();
 						
 					} else {
-						lResult = mParent.shell.execute( ShellProcess.generate("REALPATH=$(cd '" + aFile.substring(0, aFile.lastIndexOf("/")) + "' && %binary pwd) && %binary echo $REALPATH") );
-					}
-					
-					if (lResult != null && lResult.code() == 0) {
-						lPath = lResult.output().line() + (!"d".equals(lStat.type()) ? "" : "/" + lStat.name());
+						if ("d".equals(lStat.type())) {
+							lResult = mParent.shell.execute( ShellProcess.generate("REALPATH=$(cd '" + aFile + "' && %binary pwd) && %binary echo $REALPATH") );
+							
+						} else {
+							lResult = mParent.shell.execute( ShellProcess.generate("REALPATH=$(cd '" + aFile.substring(0, aFile.lastIndexOf("/")) + "' && %binary pwd) && %binary echo $REALPATH") );
+						}
+						
+						if (lResult != null && lResult.code() == 0) {
+							lPath = lResult.output().line() + (!"d".equals(lStat.type()) ? "" : "/" + lStat.name());
+						}
 					}
 				}
 			}
+			
+			return lPath;
 		}
-		
-		return lPath;
 	}
 	
 	/**
@@ -765,31 +962,53 @@ public final class File implements Extender {
 	 *     The disk usage in bytes or NULL on failure
 	 */
 	public Long diskUsage(String aFile) {
-		if (check(aFile, "d")) {
-			ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary du -sbx '" + aFile + "'", "%binary du -skx '" + aFile + "'"} ) );
-			
-			if (lResult != null && lResult.code() == 0) {
-				String lOutout = lResult.output().line();
-				Long lUsage = Long.parseLong( oPatternSpaceSearch.split(lOutout.trim())[0] );
+		java.io.File file = new java.io.File(aFile);
+		
+		if (file.exists()) {
+			if (file.isDirectory()) {
+				String[] fileList = file.list();
 				
-				if (lResult.command() > (ShellProcess.BINARIES.length + 1)) {
-					lUsage = lUsage * 1024L;
+				if (fileList != null) {
+					String lName = aFile.endsWith("/") ? aFile.substring(0, aFile.length()-1) : aFile;
+					Long size = 0L;
+					
+					for (int i=0; i < fileList.length; i++) {
+						size += diskUsage(lName + "/" + fileList[i]);
+					}
+					
+					return size;
 				}
 				
-				return lUsage;
+			} else if (file.canRead()) {
+				return file.length();
 			}
-			
-		} else {
-			ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary wc -c < '" + aFile + "'", "%binary wc < '" + aFile + "'"} ) );
-			
-			if (lResult != null && lResult.code() == 0) {
-				String lOutout = lResult.output().line();
+		
+			if (check(aFile, "d")) {
+				ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary du -sbx '" + aFile + "'", "%binary du -skx '" + aFile + "'"} ) );
 				
-				if (lResult.command() > (ShellProcess.BINARIES.length + 1)) {
-					return Long.parseLong( oPatternSpaceSearch.split(lOutout.trim())[2] );
+				if (lResult != null && lResult.code() == 0) {
+					String lOutout = lResult.output().line();
+					Long lUsage = Long.parseLong( oPatternSpaceSearch.split(lOutout.trim())[0] );
 					
-				} else {
-					return Long.parseLong(lOutout);
+					if (lResult.command() > (ShellProcess.BINARIES.length + 1)) {
+						lUsage = lUsage * 1024L;
+					}
+					
+					return lUsage;
+				}
+				
+			} else {
+				ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary wc -c < '" + aFile + "'", "%binary wc < '" + aFile + "'"} ) );
+				
+				if (lResult != null && lResult.code() == 0) {
+					String lOutout = lResult.output().line();
+					
+					if (lResult.command() > (ShellProcess.BINARIES.length + 1)) {
+						return Long.parseLong( oPatternSpaceSearch.split(lOutout.trim())[2] );
+						
+					} else {
+						return Long.parseLong(lOutout);
+					}
 				}
 			}
 		}
