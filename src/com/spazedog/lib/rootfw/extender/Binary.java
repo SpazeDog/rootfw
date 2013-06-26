@@ -17,12 +17,12 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw.extender;
+package com.spazedog.lib.rootfw.extender;
 
-import com.spazedog.rootfw.RootFW;
-import com.spazedog.rootfw.container.ShellProcess;
-import com.spazedog.rootfw.container.ShellResult;
-import com.spazedog.rootfw.iface.Extender;
+import com.spazedog.lib.rootfw.RootFW;
+import com.spazedog.lib.rootfw.container.ShellProcess;
+import com.spazedog.lib.rootfw.container.ShellResult;
+import com.spazedog.lib.rootfw.iface.Extender;
 
 public final class Binary implements Extender {
 	public final static String TAG = RootFW.TAG + "::Binary";

@@ -1,10 +1,10 @@
-package com.spazedog.rootfw.extender;
+package com.spazedog.lib.rootfw.extender;
 
 import java.util.regex.Pattern;
 
-import com.spazedog.rootfw.RootFW;
-import com.spazedog.rootfw.container.ShellResult;
-import com.spazedog.rootfw.iface.Extender;
+import com.spazedog.lib.rootfw.RootFW;
+import com.spazedog.lib.rootfw.container.ShellResult;
+import com.spazedog.lib.rootfw.iface.Extender;
 
 public final class Busybox implements Extender {
 	public final static String TAG = RootFW.TAG + "::Busybox";

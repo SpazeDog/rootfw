@@ -17,12 +17,12 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw.container;
+package com.spazedog.lib.rootfw.container;
 
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
-import com.spazedog.rootfw.iface.Container;
+import com.spazedog.lib.rootfw.iface.Container;
 
 public class ShellProcess implements Container {
 	private ArrayList<String[]> mCommands = new ArrayList<String[]>();

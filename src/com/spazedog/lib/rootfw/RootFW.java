@@ -17,22 +17,22 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw;
+package com.spazedog.lib.rootfw;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import android.util.Log;
 
-import com.spazedog.rootfw.container.ShellResult;
-import com.spazedog.rootfw.extender.Binary;
-import com.spazedog.rootfw.extender.Busybox;
-import com.spazedog.rootfw.extender.File;
-import com.spazedog.rootfw.extender.Filesystem;
-import com.spazedog.rootfw.extender.Memory;
-import com.spazedog.rootfw.extender.Processes;
-import com.spazedog.rootfw.extender.Shell;
-import com.spazedog.rootfw.extender.Utils;
+import com.spazedog.lib.rootfw.container.ShellResult;
+import com.spazedog.lib.rootfw.extender.Binary;
+import com.spazedog.lib.rootfw.extender.Busybox;
+import com.spazedog.lib.rootfw.extender.File;
+import com.spazedog.lib.rootfw.extender.Filesystem;
+import com.spazedog.lib.rootfw.extender.Memory;
+import com.spazedog.lib.rootfw.extender.Processes;
+import com.spazedog.lib.rootfw.extender.Shell;
+import com.spazedog.lib.rootfw.extender.Utils;
 
 public final class RootFW {
 	public final static String TAG = "RootFW";

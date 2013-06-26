@@ -17,42 +17,52 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw.container;
+package com.spazedog.lib.rootfw.container;
 
-import com.spazedog.rootfw.iface.Container;
+import com.spazedog.lib.rootfw.iface.Container;
 
-public class FstabEntry implements Container {
+public class DiskStat implements Container {
 	
 	private String mDevice;
 	private String mLocation;
-	private String mFstype;
-	private String[] mOptions;
-
+	private Long mSize;
+	private Long mUsage;
+	private Long mAvailable;
+	private Integer mPercentage;
+	
 	/**
-	 * Create a new FstabEntry instance
+	 * Create a new DiskStat instance
 	 * 
 	 * @param aDevice
-	 *     Mounted device
+	 *     Device path
 	 *    
 	 * @param aLocation
 	 *     Mount location
 	 *    
-	 * @param aFsType
-	 *     The device file system type
+	 * @param aSize
+	 *     Disk size in bytes
+	 *    
+	 * @param aUsage
+	 *     Disk usage size in bytes
 	 *     
-	 * @param aOptions
-	 *     Options used at mount time
+	 * @param aAvailable
+	 *     Disk available size in bytes
+	 *    
+	 * @param aPercentage
+	 *     Disk usage percentage
 	 */
-	public FstabEntry(String aDevice, String aLocation, String aFsType, String[] aOptions) {
+	public DiskStat(String aDevice, String aLocation, Long aSize, Long aUsage, Long aAvailable, Integer aPercentage) {
 		mDevice = aDevice;
 		mLocation = aLocation;
-		mFstype = aFsType;
-		mOptions = aOptions;
+		mSize = aSize;
+		mUsage = aUsage;
+		mAvailable = aAvailable;
+		mPercentage = aPercentage;
 	}
 	
 	/** 
 	 * @return
-	 *     The device path
+	 *     Device path
 	 */
 	public String device() {
 		return mDevice;
@@ -60,7 +70,7 @@ public class FstabEntry implements Container {
 	
 	/** 
 	 * @return
-	 *     The mount location
+	 *     Mount location
 	 */
 	public String location() {
 		return mLocation;
@@ -68,17 +78,33 @@ public class FstabEntry implements Container {
 	
 	/** 
 	 * @return
-	 *     The device file system type
+	 *     Disk size in bytes
 	 */
-	public String fstype() {
-		return mFstype;
+	public Long size() {
+		return mSize;
 	}
 	
 	/** 
 	 * @return
-	 *     The options used at mount time
+	 *     Disk usage size in bytes
 	 */
-	public String[] options() {
-		return mOptions;
+	public Long usage() {
+		return mUsage;
+	}
+	
+	/** 
+	 * @return
+	 *     Disk available size in bytes
+	 */
+	public Long available() {
+		return mAvailable;
+	}
+	
+	/** 
+	 * @return
+	 *     Disk usage percentage
+	 */
+	public Integer percentage() {
+		return mPercentage;
 	}
 }

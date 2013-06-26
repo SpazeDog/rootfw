@@ -17,9 +17,9 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw.container;
+package com.spazedog.lib.rootfw.container;
 
-import com.spazedog.rootfw.iface.Container;
+import com.spazedog.lib.rootfw.iface.Container;
 
 public class MemStat implements Container {
 	

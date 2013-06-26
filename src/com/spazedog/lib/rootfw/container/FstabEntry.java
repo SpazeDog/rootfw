@@ -17,37 +17,42 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw.container;
+package com.spazedog.lib.rootfw.container;
 
-import com.spazedog.rootfw.iface.Container;
+import com.spazedog.lib.rootfw.iface.Container;
 
-public class SwapStat implements Container {
-
-	private String mDevice;
-	private Long mSize;
-	private Long mUsage;
+public class FstabEntry implements Container {
 	
+	private String mDevice;
+	private String mLocation;
+	private String mFstype;
+	private String[] mOptions;
+
 	/**
-	 * Create a new SwapStat instance
+	 * Create a new FstabEntry instance
 	 * 
 	 * @param aDevice
-	 *     Swap device
+	 *     Mounted device
 	 *    
-	 * @param aSize
-	 *     Swap size in bytes
+	 * @param aLocation
+	 *     Mount location
 	 *    
-	 * @param aUsage
-	 *     Swap usage in bytes
+	 * @param aFsType
+	 *     The device file system type
+	 *     
+	 * @param aOptions
+	 *     Options used at mount time
 	 */
-	public SwapStat(String aDevice, Long aSize, Long aUsage) {
+	public FstabEntry(String aDevice, String aLocation, String aFsType, String[] aOptions) {
 		mDevice = aDevice;
-		mSize = aSize;
-		mUsage = aUsage;
+		mLocation = aLocation;
+		mFstype = aFsType;
+		mOptions = aOptions;
 	}
 	
 	/** 
 	 * @return
-	 *     Path to the SWAP device
+	 *     The device path
 	 */
 	public String device() {
 		return mDevice;
@@ -55,17 +60,25 @@ public class SwapStat implements Container {
 	
 	/** 
 	 * @return
-	 *     SWAP size in bytes
+	 *     The mount location
 	 */
-	public Long size() {
-		return mSize;
+	public String location() {
+		return mLocation;
 	}
 	
 	/** 
 	 * @return
-	 *     SWAP usage in bytes
+	 *     The device file system type
 	 */
-	public Long usage() {
-		return mUsage;
+	public String fstype() {
+		return mFstype;
+	}
+	
+	/** 
+	 * @return
+	 *     The options used at mount time
+	 */
+	public String[] options() {
+		return mOptions;
 	}
 }

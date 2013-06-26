@@ -17,6 +17,6 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw.iface;
+package com.spazedog.lib.rootfw.iface;
 
 public interface Extender {}

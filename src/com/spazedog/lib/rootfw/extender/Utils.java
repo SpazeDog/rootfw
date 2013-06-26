@@ -1,4 +1,4 @@
-package com.spazedog.rootfw.extender;
+package com.spazedog.lib.rootfw.extender;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -6,11 +6,11 @@ import java.util.regex.Pattern;
 
 import android.content.Context;
 
-import com.spazedog.rootfw.RootFW;
-import com.spazedog.rootfw.container.Data;
-import com.spazedog.rootfw.container.DiskStat;
-import com.spazedog.rootfw.container.ShellResult;
-import com.spazedog.rootfw.iface.Extender;
+import com.spazedog.lib.rootfw.RootFW;
+import com.spazedog.lib.rootfw.container.Data;
+import com.spazedog.lib.rootfw.container.DiskStat;
+import com.spazedog.lib.rootfw.container.ShellResult;
+import com.spazedog.lib.rootfw.iface.Extender;
 
 public final class Utils implements Extender {
 	public final static String TAG = RootFW.TAG + "::Utils";

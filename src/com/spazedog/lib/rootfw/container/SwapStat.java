@@ -17,52 +17,37 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw.container;
+package com.spazedog.lib.rootfw.container;
 
-import com.spazedog.rootfw.iface.Container;
+import com.spazedog.lib.rootfw.iface.Container;
 
-public class DiskStat implements Container {
-	
+public class SwapStat implements Container {
+
 	private String mDevice;
-	private String mLocation;
 	private Long mSize;
 	private Long mUsage;
-	private Long mAvailable;
-	private Integer mPercentage;
 	
 	/**
-	 * Create a new DiskStat instance
+	 * Create a new SwapStat instance
 	 * 
 	 * @param aDevice
-	 *     Device path
-	 *    
-	 * @param aLocation
-	 *     Mount location
+	 *     Swap device
 	 *    
 	 * @param aSize
-	 *     Disk size in bytes
+	 *     Swap size in bytes
 	 *    
 	 * @param aUsage
-	 *     Disk usage size in bytes
-	 *     
-	 * @param aAvailable
-	 *     Disk available size in bytes
-	 *    
-	 * @param aPercentage
-	 *     Disk usage percentage
+	 *     Swap usage in bytes
 	 */
-	public DiskStat(String aDevice, String aLocation, Long aSize, Long aUsage, Long aAvailable, Integer aPercentage) {
+	public SwapStat(String aDevice, Long aSize, Long aUsage) {
 		mDevice = aDevice;
-		mLocation = aLocation;
 		mSize = aSize;
 		mUsage = aUsage;
-		mAvailable = aAvailable;
-		mPercentage = aPercentage;
 	}
 	
 	/** 
 	 * @return
-	 *     Device path
+	 *     Path to the SWAP device
 	 */
 	public String device() {
 		return mDevice;
@@ -70,15 +55,7 @@ public class DiskStat implements Container {
 	
 	/** 
 	 * @return
-	 *     Mount location
-	 */
-	public String location() {
-		return mLocation;
-	}
-	
-	/** 
-	 * @return
-	 *     Disk size in bytes
+	 *     SWAP size in bytes
 	 */
 	public Long size() {
 		return mSize;
@@ -86,25 +63,9 @@ public class DiskStat implements Container {
 	
 	/** 
 	 * @return
-	 *     Disk usage size in bytes
+	 *     SWAP usage in bytes
 	 */
 	public Long usage() {
 		return mUsage;
-	}
-	
-	/** 
-	 * @return
-	 *     Disk available size in bytes
-	 */
-	public Long available() {
-		return mAvailable;
-	}
-	
-	/** 
-	 * @return
-	 *     Disk usage percentage
-	 */
-	public Integer percentage() {
-		return mPercentage;
 	}
 }

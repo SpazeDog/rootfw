@@ -17,7 +17,7 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw.extender;
+package com.spazedog.lib.rootfw.extender;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -25,15 +25,15 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import com.spazedog.rootfw.RootFW;
-import com.spazedog.rootfw.container.Data;
-import com.spazedog.rootfw.container.DeviceList;
-import com.spazedog.rootfw.container.DiskStat;
-import com.spazedog.rootfw.container.FstabEntry;
-import com.spazedog.rootfw.container.MountStat;
-import com.spazedog.rootfw.container.ShellProcess;
-import com.spazedog.rootfw.container.ShellResult;
-import com.spazedog.rootfw.iface.Extender;
+import com.spazedog.lib.rootfw.RootFW;
+import com.spazedog.lib.rootfw.container.Data;
+import com.spazedog.lib.rootfw.container.DeviceList;
+import com.spazedog.lib.rootfw.container.DiskStat;
+import com.spazedog.lib.rootfw.container.FstabEntry;
+import com.spazedog.lib.rootfw.container.MountStat;
+import com.spazedog.lib.rootfw.container.ShellProcess;
+import com.spazedog.lib.rootfw.container.ShellResult;
+import com.spazedog.lib.rootfw.iface.Extender;
 
 public final class Filesystem implements Extender {
 	public final static String TAG = RootFW.TAG + "::Filesystem";

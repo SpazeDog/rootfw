@@ -17,18 +17,18 @@
  * along with RootFW. If not, see <http://www.gnu.org/licenses/>
  */
 
-package com.spazedog.rootfw.extender;
+package com.spazedog.lib.rootfw.extender;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import com.spazedog.rootfw.RootFW;
-import com.spazedog.rootfw.container.Data;
-import com.spazedog.rootfw.container.MemStat;
-import com.spazedog.rootfw.container.SwapStat;
-import com.spazedog.rootfw.iface.Extender;
+import com.spazedog.lib.rootfw.RootFW;
+import com.spazedog.lib.rootfw.container.Data;
+import com.spazedog.lib.rootfw.container.MemStat;
+import com.spazedog.lib.rootfw.container.SwapStat;
+import com.spazedog.lib.rootfw.iface.Extender;
 
 public final class Memory implements Extender {
 	public final static String TAG = RootFW.TAG + "::Memory";
