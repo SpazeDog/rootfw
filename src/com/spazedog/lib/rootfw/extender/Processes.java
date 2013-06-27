@@ -22,6 +22,8 @@ package com.spazedog.lib.rootfw.extender;
 import java.util.ArrayList;
 import java.util.regex.Pattern;
 
+import android.os.SystemClock;
+
 import com.spazedog.lib.rootfw.RootFW;
 import com.spazedog.lib.rootfw.container.ProcessList;
 import com.spazedog.lib.rootfw.container.ShellProcess;
@@ -33,6 +35,8 @@ public final class Processes implements Extender {
 	
 	private final static Pattern oPatternPidMatch = Pattern.compile("^[0-9]+$");
 	private final static Pattern oPatternSpaceSearch = Pattern.compile("[ \t]+");
+	
+	private static Long oZygoteId;
 	
 	private RootFW mParent;
 	
@@ -46,6 +50,21 @@ public final class Processes implements Extender {
 	 */
 	public Processes(RootFW aInstance) {
 		mParent = aInstance;
+	}
+	
+	/**
+	 * Returns an unique id of the current zygote process.
+	 * This will allow you to determine if the device has been rebooted, by comparing it to a stored value.
+	 *    
+	 * @return
+	 *     A long value representing the unique ID
+	 */
+	public Long zygoteId() {
+		if (oZygoteId == null) {
+			oZygoteId = pidof("zygote").longValue() + (System.currentTimeMillis() - SystemClock.elapsedRealtime());
+		}
+		
+		return oZygoteId;
 	}
 
 	/**
