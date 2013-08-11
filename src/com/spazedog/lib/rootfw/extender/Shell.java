@@ -24,6 +24,8 @@ import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 import java.util.regex.Pattern;
 
+import android.util.Log;
+
 import com.spazedog.lib.rootfw.RootFW;
 import com.spazedog.lib.rootfw.container.ShellProcess;
 import com.spazedog.lib.rootfw.container.ShellResult;
@@ -32,7 +34,6 @@ import com.spazedog.lib.rootfw.iface.Extender;
 public final class Shell implements Extender {
 	public final static String TAG = RootFW.TAG + "::Shell";
 	
-	private final static Pattern oPatternResultSearch = Pattern.compile("^.*\\|([0-9]+)\\|.*$");
 	private final static Pattern oPatternLTrim = Pattern.compile("^[\n]+");
 	private final static Pattern oPatternRTrim = Pattern.compile("[\n]+$");
 	
@@ -129,9 +130,8 @@ public final class Shell implements Extender {
 					}
 					
 					lCommandString += "\n";
-					lCommandString += "status=$? && EOL:a00c38d8:EOL\n";
-					lCommandString += "\\|$status\\|\n";
-					lCommandString += "EOL:a00c38d8:EOL\n";
+					lCommandString += "status=$? && echo EOL:a00c38d8:EOL\n";
+					lCommandString += "echo $status\n";
 					
 					lOutputStream.write(lCommandString.getBytes());
 					lOutputStream.flush();
@@ -142,13 +142,7 @@ public final class Shell implements Extender {
 								lInputData += lInputLine + "\n";
 								
 							} else {
-								while ((lInputLine = lInputStream.readLine()) != null && !lInputLine.contains("EOL:a00c38d8:EOL")) {
-									if (lInputLine.length() > 0 && oPatternResultSearch.matcher(lInputLine).matches()) {
-										lInputResult = oPatternResultSearch.matcher(lInputLine).replaceAll("$1");
-									}
-								}
-								
-								break;
+								lInputResult = lInputStream.readLine(); break;
 							}
 						}
 						
