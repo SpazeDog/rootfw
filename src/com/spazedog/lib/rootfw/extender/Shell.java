@@ -24,8 +24,6 @@ import java.io.DataOutputStream;
 import java.io.InputStreamReader;
 import java.util.regex.Pattern;
 
-import android.util.Log;
-
 import com.spazedog.lib.rootfw.RootFW;
 import com.spazedog.lib.rootfw.container.ShellProcess;
 import com.spazedog.lib.rootfw.container.ShellResult;
