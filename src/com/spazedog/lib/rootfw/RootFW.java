@@ -292,14 +292,14 @@ public final class RootFW {
 						// Return true even though the 'id' command is missing as we are still connected using 'su'
 						lResult = shell.execute("id", "echo 'uid=0'");
 						
-						if (lResult != null && lResult.output().line().contains("uid=0")) {
+						if (lResult != null && lResult.output().line() != null && lResult.output().line().contains("uid=0")) {
 							return true;
 						}
 						
 					} else { 
 						lResult = shell.execute("echo 'uid=unknown'");
 						
-						if (lResult != null && lResult.output().line().contains("uid=unknown")) {
+						if (lResult != null && lResult.output().line() != null && lResult.output().line().contains("uid=unknown")) {
 							return true;
 						}
 					}

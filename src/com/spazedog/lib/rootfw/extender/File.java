@@ -239,7 +239,7 @@ public final class File implements Extender {
 	public String[] list(String aFile) {
 		java.io.File file = new java.io.File(aFile);
 		
-		if (file.isDirectory()) {
+		if (file.isDirectory() || check(aFile, "d")) {
 			String[] lLines = file.list();
 			
 			if (lLines == null) {
@@ -271,7 +271,7 @@ public final class File implements Extender {
 				return lLines.length > 0 ? lLines : null;
 			}
 			
-		} else if (file.exists()) {
+		} else if (file.exists() || check(aFile, "e")) {
 			return new String[] { aFile.substring(aFile.lastIndexOf("/")+1) };
 		}
 		
@@ -324,7 +324,7 @@ public final class File implements Extender {
 		java.io.File fileSrc = new java.io.File(aSrcFile);
 		java.io.File fileDst = new java.io.File(aDstFile);
 		
-		if (fileSrc.exists()) {
+		if (fileSrc.exists() || check(aSrcFile, "d")) {
 			Boolean status = true;
 			
 			if (fileSrc.isDirectory() && !fileDst.isDirectory()) {
@@ -351,7 +351,7 @@ public final class File implements Extender {
 			if (!status) {
 				ShellResult lResult = null;
 				
-				if (fileSrc.isDirectory()) {
+				if (check(aSrcFile, "d")) {
 					lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary cp -a '" + aSrcFile + "' '" + aDstFile + "'", "%binary cp -fa '" + aSrcFile + "' '" + aDstFile + "'"} ) );
 					
 				} else {
@@ -371,7 +371,7 @@ public final class File implements Extender {
 				return lResult != null && lResult.code() == 0;
 			}
 			
-			if (fileSrc.isDirectory()) {
+			if (fileSrc.isDirectory() || check(aSrcFile, "d")) {
 				String[] fileList = fileSrc.list();
 				
 				if (fileList != null && fileList.length > 0) {
@@ -464,7 +464,7 @@ public final class File implements Extender {
 	 *     <code>True</code> if it copied successfully 
 	 */
 	public Boolean copyResource(Context aContext, InputStream aResource, String aDestination, String aPermission, String aUser, String aGroup) {
-		if (!new java.io.File(aDestination).isDirectory()) {
+		if (!check(aDestination, "d")) {
 			try {
 				FileOutputStream lOutputStream = aContext.openFileOutput("rootfw.tmp.raw", 0);
 				
@@ -505,11 +505,11 @@ public final class File implements Extender {
 		java.io.File fileSrc = new java.io.File(aSrcFile);
 		java.io.File fileDst = new java.io.File(aDstFile);
 		
-		if (fileSrc.exists()) {
+		if (fileSrc.exists() || check(aSrcFile, "d")) {
 			if (!fileSrc.renameTo(fileDst)) {
 				ShellResult lResult = mParent.shell.execute( ShellProcess.generate( new String[] {"%binary mv '" + aSrcFile + "' '" + aDstFile + "'", "%binary mv -f '" + aSrcFile + "' '" + aDstFile + "'"} ) );
 				
-				if ((lResult == null || lResult.code() != 0) && !fileSrc.isDirectory()) {
+				if ((lResult == null || lResult.code() != 0) && !check(aSrcFile, "d")) {
 					FileStat stat = stat(aSrcFile);
 					
 					lResult = mParent.shell.execute( ShellProcess.generate("%binary cat '" + aSrcFile + "' > '" + aDstFile + "' && %binary unlink '" + aSrcFile + "'") );
@@ -543,7 +543,7 @@ public final class File implements Extender {
 	public Boolean clear(String aFile) {
 		java.io.File file = new java.io.File(aFile);
 		
-		if (file.isDirectory()) {
+		if (file.isDirectory() || check(aFile, "d")) {
 			String[] lFiles = list(aFile);
 			Boolean status = true;
 			
@@ -557,7 +557,7 @@ public final class File implements Extender {
 			
 			return status;
 			
-		} else if (file.exists()) {
+		} else if (file.exists() || check(aFile, "e")) {
 			Boolean status = true;
 			
 			try {
@@ -589,8 +589,8 @@ public final class File implements Extender {
 	public Boolean delete(String aFile) {
 		java.io.File file = new java.io.File(aFile);
 		
-		if (file.exists()) {
-			if (file.isDirectory()) {
+		if (file.exists() || check(aFile, "e")) {
+			if (file.isDirectory() || check(aFile, "d")) {
 				String[] fileList = file.list();
 				
 				if (fileList != null && fileList.length > 0) {
@@ -628,7 +628,7 @@ public final class File implements Extender {
 	public Boolean create(String aFile) {
 		java.io.File file = new java.io.File(aFile);
 		
-		if (!file.exists() && !file.mkdirs()) {
+		if (!file.exists() && !file.mkdirs() && !check(aFile, "e")) {
 			ShellResult lResult = mParent.shell.execute( ShellProcess.generate("%binary mkdir -p '" + aFile + "'") );
 			
 			if (lResult == null || lResult.code() != 0) {
@@ -655,7 +655,7 @@ public final class File implements Extender {
 			return lResult != null && lResult.code() == 0;
 		}
 		
-		return file.isDirectory();
+		return file.isDirectory() || check(aFile, "d");
 	}
 	
 	/**
@@ -711,7 +711,7 @@ public final class File implements Extender {
 	public Boolean write(String aFile, String[] aData, Boolean aAppend) {
 		java.io.File file = new java.io.File(aFile);
 		
-		if (!file.isDirectory()) {
+		if (file.isFile() || !check(aFile, "d")) {
 			Boolean status = true;
 			
 			try {
@@ -759,7 +759,7 @@ public final class File implements Extender {
 	public Data read(String aFile) {
 		java.io.File file = new java.io.File(aFile);
 		
-		if (file.isFile()) {
+		if (file.isFile() || check(aFile, "f")) {
 			Boolean status = true;
 			
 			try {
@@ -798,7 +798,7 @@ public final class File implements Extender {
 	public String readLine(String aFile) {
 		java.io.File file = new java.io.File(aFile);
 		
-		if (file.isFile()) {
+		if (file.isFile() || check(aFile, "f")) {
 			Boolean status = true;
 			
 			try {
@@ -964,8 +964,8 @@ public final class File implements Extender {
 	public Long diskUsage(String aFile) {
 		java.io.File file = new java.io.File(aFile);
 		
-		if (file.exists()) {
-			if (file.isDirectory()) {
+		if ((file.canRead() && file.exists()) || check(aFile, "e")) {
+			if (file.canRead() && file.isDirectory()) {
 				String[] fileList = file.list();
 				
 				if (fileList != null) {
@@ -1010,6 +1010,64 @@ public final class File implements Extender {
 						return Long.parseLong(lOutout);
 					}
 				}
+			}
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * See <code>grep(String aFile, String aSearch, Boolean aFirstMatch)</code>
+	 */
+	public Data grep(String aFile, String aSearch) {
+		return grep(aFile, aSearch, false);
+	}
+	
+	/**
+	 * Search a file for some specific content and return any matched lines
+	 * 
+	 * @param aFile
+	 *     Full path to the file
+	 *     
+	 * @param aSearch
+	 *     The string to search for
+	 *     
+	 * @param aFirstMatch
+	 *     If true, it will skip searching after first match and return the first matched line
+	 *    
+	 * @return
+	 *     A Data container with the matching lines
+	 */
+	public Data grep(String aFile, String aSearch, Boolean aFirstMatch) {
+		java.io.File file = new java.io.File(aFile);
+		
+		if (file.isFile() || check(aFile, "f")) {
+			Boolean status = true;
+			
+			try {
+				BufferedReader reader = new BufferedReader(new FileReader(file));
+				String line, content="";
+				
+				while ((line = reader.readLine()) != null) {
+					if (line.contains(aSearch)) {
+						content += (content.length() > 0 ? "\n" : "") + line;
+						
+						if (aFirstMatch) {
+							break;
+						}
+					}
+				}
+				
+				reader.close();
+				
+				return content.length() > 0 ? new Data(content) : null;
+				
+			} catch (Throwable e) { status = false; }
+			
+			if (!status) {
+				ShellResult lResult = mParent.shell.execute( ShellProcess.generate("%binary grep '" + aSearch + "' '" + aFile + "'") );
+				
+				return lResult != null && lResult.code() == 0 ? (aFirstMatch ? new Data(lResult.output().line(0, true)) : lResult.output()) : null;
 			}
 		}
 		
