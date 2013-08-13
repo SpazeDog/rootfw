@@ -61,14 +61,17 @@ public final class Processes implements Extender {
 	 */
 	public Long zygoteId() {
 		if (oZygoteId == null) {
-			String cachedTime = mParent.file.readLine("/cache/timestamp.tmp");
-			Long freshTime = System.currentTimeMillis() - SystemClock.elapsedRealtime();
+			String id = mParent.file.readLine("/zygote.id");
 			
-			if (cachedTime == null || (freshTime - Long.valueOf(cachedTime)) > 3000) {
-				mParent.file.write("/cache/timestamp.tmp", "" + (oZygoteId = freshTime));
+			if (id == null) {
+				oZygoteId = System.currentTimeMillis() - SystemClock.elapsedRealtime();
+				
+				mParent.filesystem.mount("/", new String[]{"remount", "rw"});
+				mParent.file.write("/zygote.id", "" + oZygoteId);
+				mParent.filesystem.mount("/", new String[]{"remount", "ro"});
 				
 			} else {
-				oZygoteId = Long.valueOf(cachedTime);
+				oZygoteId = Long.valueOf(id);
 			}
 		}
 		
