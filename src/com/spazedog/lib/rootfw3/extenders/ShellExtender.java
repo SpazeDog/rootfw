@@ -339,7 +339,7 @@ public class ShellExtender implements ExtenderGroup {
 	 * <br />
 	 * Note that this class is extended from the Data class, so it will contain all of the data tools available in that class as well.
 	 */
-	public static class ShellResult extends Data {
+	public static class ShellResult extends Data<ShellResult> {
 		private Integer mResultCode;
 		private Integer[] mValidResults;
 		private Integer[] mCommandNumber;

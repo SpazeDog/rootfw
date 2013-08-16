@@ -29,7 +29,8 @@ import android.text.TextUtils;
 /**
  * This container is used to store any kind of data. All of the data is located within a String Array, where each index is considered a line. 
  */
-public class Data {
+@SuppressWarnings("unchecked")
+public class Data<DATATYPE extends Data<DATATYPE>> {
 	protected String[] mLines;
 	
 	/**
@@ -62,11 +63,12 @@ public class Data {
 	 * 
 	 * @param DataSorting
 	 *     An instance of the <code>DataSorting</code> interface which should determine whether or not to remove the line
+	 * @return 
 	 *     
 	 * @return
 	 *     This instance
 	 */
-	public Data assort(DataSorting test) {
+	public DATATYPE assort(DataSorting test) {
 		if (size() > 0) {
 			List<String> list = new ArrayList<String>();
 			
@@ -79,7 +81,7 @@ public class Data {
 			mLines = list.toArray( new String[list.size()] );
 		}
 		
-		return this;
+		return (DATATYPE) this;
 	}
 	
 	/**
@@ -91,8 +93,8 @@ public class Data {
 	 * @return
 	 *     This instance
 	 */
-	public Data assort(final String contains) {
-		return assort(new DataSorting() {
+	public DATATYPE assort(final String contains) {
+		return (DATATYPE) assort(new DataSorting() {
 			public Boolean test(String input) {
 				return input.contains( contains );
 			}
@@ -108,7 +110,7 @@ public class Data {
 	 * @return
 	 *     This instance
 	 */
-	public Data sort(DataSorting test) {
+	public DATATYPE sort(DataSorting test) {
 		if (size() > 0) {
 			List<String> list = new ArrayList<String>();
 			
@@ -121,7 +123,7 @@ public class Data {
 			mLines = list.toArray( new String[list.size()] );
 		}
 		
-		return this;
+		return (DATATYPE) this;
 	}
 	
 	/**
@@ -133,8 +135,8 @@ public class Data {
 	 * @return
 	 *     This instance
 	 */
-	public Data sort(final String contains) {
-		return sort(new DataSorting() {
+	public DATATYPE sort(final String contains) {
+		return (DATATYPE) sort(new DataSorting() {
 			public Boolean test(String input) {
 				return input.contains( contains );
 			}
@@ -144,8 +146,8 @@ public class Data {
 	/**
 	 * @see Data#sort(Integer, Integer)
 	 */
-	public Data sort(Integer start) {
-		return sort(start, mLines.length);
+	public DATATYPE sort(Integer start) {
+		return (DATATYPE) sort(start, mLines.length);
 	}
 	
 	/**
@@ -174,7 +176,7 @@ public class Data {
 	 * @return
 	 *     This instance
 	 */
-	public Data sort(Integer start, Integer stop) {
+	public DATATYPE sort(Integer start, Integer stop) {
 		if (size() > 0) {
 			List<String> list = new ArrayList<String>();
 			Integer begin = start < 0 ? (mLines.length + start) : start;
@@ -206,7 +208,7 @@ public class Data {
 			mLines = list.toArray( new String[list.size()] );
 		}
 		
-		return this;
+		return (DATATYPE) this;
 	}
 	
 	/**
@@ -235,15 +237,15 @@ public class Data {
 	 * @return
 	 *     This instance
 	 */
-	public Data assort(Integer start, Integer stop) {
-		return sort(stop, start);
+	public DATATYPE assort(Integer start, Integer stop) {
+		return (DATATYPE) sort(stop, start);
 	}
 	
 	/**
 	 * @see Data#assort(Integer, Integer)
 	 */
-	public Data assort(Integer start) {
-		return assort(mLines.length, start);
+	public DATATYPE assort(Integer start) {
+		return (DATATYPE) assort(mLines.length, start);
 	}
 	
 	/**
@@ -252,7 +254,7 @@ public class Data {
 	 * @return
 	 *     This instance
 	 */
-	public Data trim() {
+	public DATATYPE trim() {
 		if (size() > 0) {
 			List<String> list = new ArrayList<String>();
 			
@@ -265,7 +267,7 @@ public class Data {
 			mLines = list.toArray( new String[list.size()] );
 		}
 		
-		return this;
+		return (DATATYPE) this;
 	}
 	
 	/**

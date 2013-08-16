@@ -416,7 +416,7 @@ public class FileExtender implements ExtenderGroup {
 	/**
 	 * This class is extended from the Data class. As for now, there is nothing custom added to this class. But it might differ from the Data class at some point.
 	 */
-	public static class FileData extends Data {
+	public static class FileData extends Data<FileData> {
 		public FileData(String[] lines) {
 			super(lines);
 		}
