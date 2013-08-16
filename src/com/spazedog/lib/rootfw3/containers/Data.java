@@ -49,6 +49,19 @@ public class Data<DATATYPE extends Data<DATATYPE>> {
 	}
 	
 	/**
+	 * This interface is used as the argument for the <code>replace()</code> method. It can be used to replace or alter lines in the output.
+	 */
+	public static interface DataReplace {
+		/**
+		 * This method is used to alter the lines in the data array. Each line is parsed to this method, and whatever is returned will replace the current line.
+		 * 
+		 * @param input
+		 *     One line of the data array
+		 */
+		public String replace(String input);
+	}
+	
+	/**
 	 * Create a new Data instance.
 	 * 
 	 * @param lines
@@ -59,11 +72,52 @@ public class Data<DATATYPE extends Data<DATATYPE>> {
 	}
 	
 	/**
+	 * This can be used to replace part of a line, or the whole line. It uses the replace() method in the DataSorting interface where custom replacement of a line can be done. It parses the original line as an argument, and requires the new line to be returned. 
+	 * 
+	 * @param DataSorting
+	 *     An instance of the <code>DataSorting</code> class which should handle the line replacement
+	 *     
+	 * @return
+	 *     This instance
+	 */
+	public DATATYPE replace(DataReplace dataReplace) {
+		if (size() > 0) {
+			List<String> list = new ArrayList<String>();
+			
+			for (int i=0; i < mLines.length; i++) {
+				list.add( dataReplace.replace(mLines[i]) );
+			}
+		}
+		
+		return (DATATYPE) this;
+	}
+	
+	/**
+	 * This can be used to replace whole lines based on a contained pattern. 
+	 * 
+	 * @param contains
+	 *     The pattern which the line should contain
+	 *     
+	 * @param newLine
+	 *     The new line that should be used as a replacement
+	 *     
+	 * @return
+	 *     This instance
+	 */
+	public DATATYPE replace(final String contains, final String newLine) {
+		return (DATATYPE) replace(new DataReplace() {
+			@Override
+			public String replace(String input) {
+				return input != null && input.contains(contains) ? newLine : input;
+			}
+		});
+	}
+	
+	/**
 	 * This is used to determine whether or not to remove lines from the data array. Each line will be parsed to the custom <code>DataSorting</code> instance and then removed upon a true return.
 	 * 
 	 * @param DataSorting
-	 *     An instance of the <code>DataSorting</code> interface which should determine whether or not to remove the line
-	 * @return 
+	 *     An instance of the <code>DataSorting</code> class which should determine whether or not to remove the line
 	 *     
 	 * @return
 	 *     This instance
@@ -95,6 +149,7 @@ public class Data<DATATYPE extends Data<DATATYPE>> {
 	 */
 	public DATATYPE assort(final String contains) {
 		return (DATATYPE) assort(new DataSorting() {
+			@Override
 			public Boolean test(String input) {
 				return input.contains( contains );
 			}
