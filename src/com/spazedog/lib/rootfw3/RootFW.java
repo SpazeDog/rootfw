@@ -33,6 +33,7 @@ import android.util.Log;
 
 import com.spazedog.lib.rootfw3.extenders.FileExtender;
 import com.spazedog.lib.rootfw3.extenders.InstanceExtender;
+import com.spazedog.lib.rootfw3.extenders.MemoryExtender;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender;
 
 /**
@@ -257,6 +258,10 @@ public class RootFW {
 	 */
 	public FileExtender file(File file) {
 		return new FileExtender(shell(), file);
+	}
+	
+	public MemoryExtender memory() {
+		return new MemoryExtender( file("/proc") );
 	}
 	
 	/**
