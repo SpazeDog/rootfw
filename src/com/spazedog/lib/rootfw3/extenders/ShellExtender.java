@@ -79,9 +79,9 @@ public class ShellExtender implements ExtenderGroup {
 	}
 	
 	/**
-	 * This is the same as addCommands(), only this one will auto create multiple attempts using each defined binary in RootFW.Config.BINARY. You can use the prefix %binary to represent where the binary should be injected. 
+	 * This is the same as addCommands(), only this one will auto create multiple attempts for each command using each defined binary in RootFW.Config.BINARY. You can use the prefix %binary to represent where the binary should be injected. 
 	 * <br />
-	 * For an example, if you add the command <code>buildCommands('%binary df -h')</code>, this method will create <code>new String[]{'busybox df -h', 'toolbox df -h', 'df -h'}</code>. This makes it easier to add multiple attempts without having to type in each attempt via <code>addCommands()</code>.
+	 * For an example, if you add the command <code>buildCommands('%binary df -h')</code>, this method will create <code>new String[]{'busybox df -h', 'toolbox df -h', 'df -h'}</code>. This makes it easier to add multiple attempts without having to type in each attempt via addAttempts().
 	 * 
 	 * @param commands
 	 *     A string containing a command with %binary prefix
@@ -90,38 +90,44 @@ public class ShellExtender implements ExtenderGroup {
 	 *     This instance
 	 */
 	public ShellExtender buildCommands(String... commands) {
-		for (int y=0; y < commands.length; y++) {
-			buildCommands( new String[]{ commands[y] } );
+		for (int i=0; i < commands.length; i++) {
+			String[] cmd = new String[ RootFW.Config.BINARIES.size() + 1 ];
+			
+			for (int x=0; x < RootFW.Config.BINARIES.size(); x++) {
+				cmd[x] = mPatternBinarySearch.matcher(commands[i]).replaceAll( RootFW.Config.BINARIES.get(x) + " " ) + " 2>/dev/null";
+			}
+			
+			cmd[ RootFW.Config.BINARIES.size() ] = mPatternBinarySearch.matcher(commands[i]).replaceAll("") + " 2>/dev/null";
+			
+			mCommands.add(cmd);
 		}
 		
 		return this;
 	}
 	
 	/**
-	 * This is the same as buildCommands().
+	 * This is the same as buildCommands(), only this one just produces one command with generated attempts per argument.
 	 * <br />
-	 * If you add the command <code>buildCommands(new String[]{'%binary df -h', '%binary df'})</code>, this method will create <code>new String[]{'busybox df -h', 'toolbox df -h', 'df -h', 'busybox df', 'toolbox df', 'df'}</code>.
+	 * If you add the command <code>buildAttempts('%binary df -h', '%binary df')</code>, this method will create one command with the attempts <code>new String[]{'busybox df -h', 'toolbox df -h', 'df -h', 'busybox df', 'toolbox df', 'df'}</code>.
 	 * 
 	 * @param commands
-	 *     An array containing multiple attempts with %binary prefix
+	 *     A string containing a command with %binary prefix
 	 *     
 	 * @return
 	 *     This instance
 	 */
-	public ShellExtender buildCommands(String[]... commands) {
-		for (int y=0; y < commands.length; y++) {
-			List<String> cmd = new ArrayList<String>();
-			
-			for (int i=0; i < commands[y].length; i++) {
-				for (int x=0; x < RootFW.Config.BINARIES.size(); x++) {
-					cmd.add( mPatternBinarySearch.matcher(commands[y][i]).replaceAll( RootFW.Config.BINARIES.get(x) + " " ) + " 2>/dev/null" );
-				}
-				
-				cmd.add( mPatternBinarySearch.matcher(commands[y][i]).replaceAll("") + " 2>/dev/null" );
+	public ShellExtender buildAttempts(String... commands) {
+		List<String> cmd = new ArrayList<String>();
+		
+		for (int i=0; i < commands.length; i++) {
+			for (int x=0; x < RootFW.Config.BINARIES.size(); x++) {
+				cmd.add( mPatternBinarySearch.matcher(commands[i]).replaceAll( RootFW.Config.BINARIES.get(x) + " " ) + " 2>/dev/null" );
 			}
 			
-			mCommands.add( cmd.toArray( new String[ cmd.size() ] ) );
+			cmd.add( mPatternBinarySearch.matcher(commands[i]).replaceAll("") + " 2>/dev/null" );
 		}
+		
+		mCommands.add( cmd.toArray( new String[ cmd.size() ] ) );
 		
 		return this;
 	}
@@ -146,18 +152,16 @@ public class ShellExtender implements ExtenderGroup {
 	}
 	
 	/**
-	 * This is used to add multiple commands with multiple attempt in each. Each array is treated as one command, the class will execute each item in the array until one is successful, after which it will continue to the next argument. Only the output from each successful array item is returned in the ShellResult.
+	 * This is used to add multiple attempt for one command. The different between this and buildAttempts(), is that this one does not auto generate more attempts based on defined binaries.
 	 * 
 	 * @param commands
-	 *     An array with multiple attempts of the same command
+	 *     A string containing an attempts
 	 *     
 	 * @return
 	 *     This instance
 	 */
-	public ShellExtender addCommands(String[]... commands) {
-		for (int i=0; i < commands.length; i++) {
-			mCommands.add( commands[i] );
-		}
+	public ShellExtender addAttempts(String... commands) {
+		mCommands.add( commands );
 		
 		return this;
 	}
@@ -314,7 +318,7 @@ public class ShellExtender implements ExtenderGroup {
 		 * @return
 		 *     <code>True</code> if the result code was found in the stack
 		 */
-		public Boolean wasSuccessfull() {
+		public Boolean wasSuccessful() {
 			for (int i=0; i < mValidResults.length; i++) {
 				if ((int) mValidResults[i] == (int) mResultCode) {
 					return true;
