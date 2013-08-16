@@ -18,7 +18,7 @@ RootFW root = new RootFW();
 if ( root.connect() ) {
     ShellResult result = root.shell().run("df /dev/block/mmcblk0p1");
 
-    if ( result.wasSuccessfull() ) {
+    if ( result.wasSuccessful() ) {
         String line = result.getLine();
     }
 
@@ -34,7 +34,7 @@ RootFW root = new RootFW();
 if ( root.connect() ) {
     ShellResult result = root.shell().addCommands("command1", "command2").run();
 
-    if ( result.wasSuccessfull() ) {
+    if ( result.wasSuccessful() ) {
         ...
     }
 
@@ -50,7 +50,7 @@ RootFW root = new RootFW();
 if ( root.connect() ) {
     ShellResult result = root.shell().buildCommands("%binary df -h /dev/block/mmcblk0p1").run();
 
-    if ( result.wasSuccessfull() ) {
+    if ( result.wasSuccessful() ) {
         ...
     }
 
@@ -58,25 +58,26 @@ if ( root.connect() ) {
 }
 ```
 
-By using `buildCommands()` instead of `addCommands()`, you will automatically add support for more enviroments. In this case the `buildCommands()` will create 3 command attempts, `busybox df -h /dev/block/mmcblk0p1`, `toolbox df -h /dev/block/mmcblk0p1` and plain `df -h /dev/block/mmcblk0p1`. Each attempt is executed until one is successfull. Also, by parsing an array instead of a string, you can add even more attempts.
+By using `buildCommands()` instead of `addCommands()`, you will automatically add support for more enviroments. In this case the `buildCommands()` will create 3 command attempts, `busybox df -h /dev/block/mmcblk0p1`, `toolbox df -h /dev/block/mmcblk0p1` and plain `df -h /dev/block/mmcblk0p1`. Each attempt is executed until one is successful.
 
+You can also build more than one stack of attempts per command by using `buildAttempts()`.
 ```java
-ShellResult result = root.shell().buildCommands( new String[]{"%binary df -h /dev/block/mmcblk0p1", "%binary df /dev/block/mmcblk0p1"} );
+ShellResult result = root.shell().buildAttempts("%binary df -h /dev/block/mmcblk0p1", "%binary df /dev/block/mmcblk0p1");
 ```
 
-This will produce the fallowing attempts, `busybox df -h /dev/block/mmcblk0p1`, `toolbox df -h /dev/block/mmcblk0p1`, `df -h /dev/block/mmcblk0p1`, `busybox df /dev/block/mmcblk0p1`, `toolbox df /dev/block/mmcblk0p1` and `df /dev/block/mmcblk0p1`. So if the device does not have any support for the `-h` argument, it will try without. Again, all 6 attempts are executed until one is successfull. 
+This will produce the fallowing attempts, `busybox df -h /dev/block/mmcblk0p1`, `toolbox df -h /dev/block/mmcblk0p1`, `df -h /dev/block/mmcblk0p1`, `busybox df /dev/block/mmcblk0p1`, `toolbox df /dev/block/mmcblk0p1` and `df /dev/block/mmcblk0p1`. So if the device does not have any support for the `-h` argument, it will try without. Again, all 6 attempts are executed until one is successful. 
 
-The `buildCommands()` uses the available binaries in RootFW.Config.BINARIES to create the attempts. You can add other binaries, like a full path to a custom busybox version.
+The `buildCommands()` and `buildAttempts()` uses the available binaries in RootFW.Config.BINARIES to create the attempts. You can add other binaries, like a full path to a custom busybox version.
 
-You can also create your own attempts using `addCommands()`. This is also done by parsing an array. 
+You can also create your own attempts using `addAttempts()`.
 
 ```java
 RootFW root = new RootFW();
 
 if ( root.connect() ) {
-    ShellResult result = root.shell().addCommands( new String[]{"cp /path/to/file /path/to/destination", "cat /path/to/file > /path/to/destination/file"} ).run();
+    ShellResult result = root.shell().addAttempts("cp /path/to/file /path/to/destination", "cat /path/to/file > /path/to/destination/file").run();
 
-    if ( result.wasSuccessfull() ) {
+    if ( result.wasSuccessful() ) {
         ...
     }
 
