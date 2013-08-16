@@ -19,11 +19,16 @@
 
 package com.spazedog.lib.rootfw3;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.spazedog.lib.rootfw3.extenders.InstanceExtender;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender;
@@ -43,6 +48,12 @@ import com.spazedog.lib.rootfw3.extenders.ShellExtender;
  * </dl>
  */
 public class RootFW {
+	public final static String TAG = "RootFW";
+	
+	public final static Integer E_DEBUG = 2;
+	public final static Integer E_INFO = 4;
+	public final static Integer E_WARNING = 8;
+	public final static Integer E_ERROR = 16;
 	
 	/**
 	 * A static configuration class where some configs can be changed for the framework.
@@ -62,6 +73,11 @@ public class RootFW {
 		 * This property contains all of the all-in-one binaries that an be used on a device. By default, it contains busybox and toolbox if available in the PATH variable paths
 		 */
 		public static final List<String> BINARIES = new ArrayList<String>();
+		
+		/**
+		 * This property decides what should be logged. You can add one or more of the RootFW.E properties to this one to enable logging.
+		 */
+		public static Integer LOG = RootFW.E_ERROR|RootFW.E_WARNING;
 	}
 	
 	static {
@@ -72,6 +88,9 @@ public class RootFW {
 	protected Boolean mRootUser = false;
 	
 	protected Process mShell = null;
+	
+	protected BufferedReader mInputStream;
+	protected DataOutputStream mOutputStream;
 	
 	/**
 	 * Get an root instance of RootFW.
@@ -132,6 +151,9 @@ public class RootFW {
 			try {
 				mShell = builder.start();
 				
+				mInputStream = new BufferedReader( new InputStreamReader(mShell.getInputStream()) );
+				mOutputStream = new DataOutputStream(mShell.getOutputStream());
+				
 				if(isConnected()) {
 					if (Config.PATH.size() > 0) {
 						shell("PATH=\"" + TextUtils.join(":", Arrays.asList(Config.PATH)) + ":$PATH\"");
@@ -158,6 +180,12 @@ public class RootFW {
 	public void disconnect() {
 		if (isConnected()) {
 			shell("exit");
+			
+			try {
+				mInputStream.close();
+				mOutputStream.close();
+				
+			} catch (IOException e) {}
 			
 			mShell.destroy();
 			mShell = null;
@@ -191,7 +219,7 @@ public class RootFW {
 	 *     A new ShellExtender instance
 	 */
 	public ShellExtender shell() {
-		return new ShellExtender(mShell.getInputStream(), mShell.getOutputStream());
+		return new ShellExtender(mInputStream, mOutputStream);
 	}
 	
 	/**
@@ -207,5 +235,46 @@ public class RootFW {
 	 */
 	public String shell(String command) {
 		return shell().run(command).getLine();
+	}
+	
+	/**
+	 * @see RootFW#log(String, String, Integer, Throwable)
+	 */
+	public static void log(String aTag, String aMsg) {
+		log(aTag, aMsg, E_INFO, null);
+	}
+	
+	/**
+	 * @see RootFW#log(String, String, Integer, Throwable)
+	 */
+	public static void log(String aTag, String aMsg, Integer aLevel) {
+		log(aTag, aMsg, aLevel, null);
+	}
+	
+	/**
+	 * This method is used to add logs to the logcat. Unlike using logcat directly, this method is controlled using RootFW.Config.LOG, which determines 
+	 * whether or not to display a log, and which types to display.
+	 * 
+	 * @param tag
+	 *     The tag to use in logcat
+	 *     
+	 * @param msg
+	 *     The message to send to logcat
+	 *     
+	 * @param level
+	 *     The log level defined by RootFW.E_*
+	 *     
+	 * @param e
+	 *     A Throwable instance
+	 */
+	public static void log(String tag, String msg, Integer level, Throwable e) {
+		if ((Config.LOG & level) != 0) {
+			switch (level) {
+				case 2: Log.d(tag, msg, e); break;
+				case 4: Log.i(tag, msg, e); break;
+				case 8: Log.w(tag, msg, e); break;
+				case 16: Log.e(tag, msg, e);
+			}
+		}
 	}
 }

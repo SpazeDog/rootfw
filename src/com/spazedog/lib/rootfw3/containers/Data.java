@@ -353,6 +353,6 @@ public class Data {
 	 *     The number of lines
 	 */
 	public Integer size() {
-		return mLines.length == 1 && mLines[0].trim().length() == 0 ? 0 : mLines.length;
+		return mLines == null ? 0 : mLines.length;
 	}
 }
