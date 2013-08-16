@@ -34,6 +34,7 @@ import android.util.Log;
 import com.spazedog.lib.rootfw3.extenders.FileExtender;
 import com.spazedog.lib.rootfw3.extenders.InstanceExtender;
 import com.spazedog.lib.rootfw3.extenders.MemoryExtender;
+import com.spazedog.lib.rootfw3.extenders.PropertyExtender;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender;
 
 /**
@@ -260,8 +261,37 @@ public class RootFW {
 		return new FileExtender(shell(), file);
 	}
 	
+	/**
+	 * Return a new MemoryExtender instance which can be used to get different memory information.
+	 *    
+	 * @return
+	 *     A new MemoryExtender instance
+	 */
 	public MemoryExtender memory() {
 		return new MemoryExtender( file("/proc") );
+	}
+	
+	/**
+	 * Return a new PropertyExtender instance which can be used to handle global properties.
+	 *    
+	 * @return
+	 *     A new PropertyExtender instance
+	 */
+	public PropertyExtender property() {
+		return new PropertyExtender(shell());
+	}
+	
+	/**
+	 * Return a new PropertyExtender.File instance which can be used to handle property files.
+	 * 
+	 * @param file
+	 *     The property file to work with
+	 *    
+	 * @return
+	 *     A new PropertyExtender.File instance
+	 */
+	public PropertyExtender.File property(String file) {
+		return new PropertyExtender.File( file( file ) );
 	}
 	
 	/**
