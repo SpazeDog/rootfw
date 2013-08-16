@@ -21,6 +21,7 @@ package com.spazedog.lib.rootfw3;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ import java.util.List;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.spazedog.lib.rootfw3.extenders.FileExtender;
 import com.spazedog.lib.rootfw3.extenders.InstanceExtender;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender;
 
@@ -235,6 +237,26 @@ public class RootFW {
 	 */
 	public String shell(String command) {
 		return shell().run(command).getLine();
+	}
+	
+	/**
+	 * @see RootFW#file(File)
+	 */
+	public FileExtender file(String file) {
+		return file( new File(file) );
+	}
+	
+	/**
+	 * Return a new FileExtender instance which can be used to work with files and folders
+	 * 
+	 * @param file
+	 *     The file or folder to work with
+	 *    
+	 * @return
+	 *     A new FileExtender instance
+	 */
+	public FileExtender file(File file) {
+		return new FileExtender(shell(), file);
 	}
 	
 	/**
