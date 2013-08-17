@@ -31,6 +31,7 @@ import com.spazedog.lib.rootfw.extender.File;
 import com.spazedog.lib.rootfw.extender.Filesystem;
 import com.spazedog.lib.rootfw.extender.Memory;
 import com.spazedog.lib.rootfw.extender.Processes;
+import com.spazedog.lib.rootfw.extender.Property;
 import com.spazedog.lib.rootfw.extender.Shell;
 import com.spazedog.lib.rootfw.extender.Utils;
 
@@ -103,6 +104,11 @@ public final class RootFW {
 	 * An instance of the Utils extender class
 	 */
 	public final Utils utils = new Utils(this);
+	
+	/**
+	 * An instance of the Property extender class
+	 */
+	public final Property property = new Property(this);
 	
 	/**
 	 * This is a hack which allows the class it self to create an 

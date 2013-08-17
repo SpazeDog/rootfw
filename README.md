@@ -229,6 +229,43 @@ Like mentioned before, RootFW has a lot of pre-built tools called `extenders` to
     ```
     ------
 
+* **Get registered property**
+    ```java
+    RootFW root = new RootFW();
+
+    System.out.print( root.property.get("persist.sys.language") );
+    ```
+    ------
+
+* **Change registered property globally**
+    ```java
+    RootFW root = new RootFW();
+    root.property.set("persist.sys.language", "en");
+    ```
+    ------
+
+* **Change property in prop files**
+    ```java
+    RootFW root = new RootFW();
+
+    root.filesystem.mount("/system", new String[]{"remount", "rw"});
+    root.property.setInFile("/system/build.prop", "keyguard.no_require_sim", "true");
+    root.filesystem.mount("/system", new String[]{"remount", "ro"});
+    ```
+    ------
+
+* **Remove property in prop files**
+    ```java
+    RootFW root = new RootFW();
+
+    if (root.property.existInFile("/system/build.prop", "keyguard.no_require_sim")) {
+        root.filesystem.mount("/system", new String[]{"remount", "rw"});
+        root.property.removeFromFile("/system/build.prop", "keyguard.no_require_sim");
+        root.filesystem.mount("/system", new String[]{"remount", "ro"});
+    }
+    ```
+    ------
+
 **Check the Documentation for further information about all of the available tools**
 
 License
