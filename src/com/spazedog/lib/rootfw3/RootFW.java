@@ -31,6 +31,7 @@ import java.util.List;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.spazedog.lib.rootfw3.extenders.BusyboxExtender;
 import com.spazedog.lib.rootfw3.extenders.FileExtender;
 import com.spazedog.lib.rootfw3.extenders.FilesystemExtender;
 import com.spazedog.lib.rootfw3.extenders.InstanceExtender;
@@ -316,6 +317,23 @@ public class RootFW {
 	 */
 	public FilesystemExtender.Device filesystem(String device) {
 		return new FilesystemExtender.Device(shell(), device);
+	}
+	
+	/**
+	 * Returns a new {@link BusyboxExtender} instance using the {@link BusyboxExtender#BusyboxExtender(ShellExtender)} constructor.
+	 */
+	public BusyboxExtender busybox() {
+		return new BusyboxExtender(shell());
+	}
+	
+	/**
+	 * Returns a new {@link BusyboxExtender} instance using the {@link BusyboxExtender#BusyboxExtender(ShellExtender, String)} constructor.
+	 * 
+	 * @param binary
+	 *     Path to the busybox binary
+	 */
+	public BusyboxExtender busybox(String binary) {
+		return new BusyboxExtender(shell(), binary);
 	}
 	
 	/**
