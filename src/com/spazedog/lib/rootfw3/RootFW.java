@@ -32,6 +32,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.spazedog.lib.rootfw3.extenders.FileExtender;
+import com.spazedog.lib.rootfw3.extenders.FilesystemExtender;
 import com.spazedog.lib.rootfw3.extenders.InstanceExtender;
 import com.spazedog.lib.rootfw3.extenders.MemoryExtender;
 import com.spazedog.lib.rootfw3.extenders.PropertyExtender;
@@ -292,6 +293,29 @@ public class RootFW {
 	 */
 	public PropertyExtender.File property(String file) {
 		return new PropertyExtender.File( file( file ) );
+	}
+	
+	/**
+	 * Return a new FilesystemExtender instance which can be used to get basic information regarding mounts, file system type support etc.
+	 *    
+	 * @return
+	 *     A new FilesystemExtender instance
+	 */
+	public FilesystemExtender filesystem() {
+		return new FilesystemExtender(shell());
+	}
+	
+	/**
+	 * Return a new FilesystemExtender.Device instance which can be used to alter a device mount state, get mount information etc.
+	 * 
+	 * @param device
+	 *     The device or mount location to work with
+	 *    
+	 * @return
+	 *     A new FilesystemExtender.Device instance
+	 */
+	public FilesystemExtender.Device filesystem(String device) {
+		return new FilesystemExtender.Device(shell(), device);
 	}
 	
 	/**
