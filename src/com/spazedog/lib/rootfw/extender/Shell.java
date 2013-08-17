@@ -127,9 +127,17 @@ public final class Shell implements Extender {
 						RootFW.log(TAG + ".execute", "Executing commands {" + lCommandString.substring(0, lCommandString.length()-1).replaceAll("\n", "}, {") + "}", RootFW.E_DEBUG);
 					}
 					
-					lCommandString += "\n";
+					/*
+					 * If we try to execute a command like 'cat file', and this file does not contain any line breaks, 
+					 * then the file output and our token 'EOL:a00c38d8:EOL' will be merged in the same line. 
+					 * On some shells we can handle this by adding a double line break after our command, but other shells seams to trim this away. 
+					 * So in order to make support for various shells and output, to make sure that the output is not merged with our token, we add 
+					 * an additional empty echo after the command. This will force an empty line between the two.
+					 */
+					lCommandString += "echo ''\n";
 					lCommandString += "status=$? && echo EOL:a00c38d8:EOL\n";
 					lCommandString += "echo $status\n";
+					lCommandString += "echo EOL:a00c38d8:EOL\n";
 					
 					lOutputStream.write(lCommandString.getBytes());
 					lOutputStream.flush();
@@ -140,7 +148,14 @@ public final class Shell implements Extender {
 								lInputData += lInputLine + "\n";
 								
 							} else {
-								lInputResult = lInputStream.readLine(); break;
+								/* It is important that readLine() get's to be executed until it reaches 'EOL:a00c38d8:EOL'. 
+								 * Otherwise, the output will not be cleaned out, and will be added to the next command executed. 
+								 */
+								while ((lInputLine = lInputStream.readLine()) != null && !lInputLine.contains("EOL:a00c38d8:EOL")) {
+									if (lInputLine.length() > 0) {
+										lInputResult = lInputLine;
+									}
+								}
 							}
 						}
 						
