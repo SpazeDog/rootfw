@@ -64,6 +64,7 @@ public class FileExtender implements ExtenderGroup {
 	protected Boolean iExists = false;
 	protected Boolean iIsFolder = false;
 	protected Boolean iRestricted = false;
+	protected Boolean iIsLink;
 
 	/**
 	 * Create a new FileExtender instance.
@@ -111,6 +112,30 @@ public class FileExtender implements ExtenderGroup {
 	 */
 	public Boolean exists() {
 		return iExists;
+	}
+	
+	/**
+	 * @return
+	 *     <code>True</code> if the item is a link
+	 */
+	public Boolean isLink() {
+		/* Checking whether or not a file is a link, uses more resources than just checking if it exists, 
+		 * and also this information is not all that much used. So we wait to check it until it is needed. 
+		 * Then we can cache the information. 
+		 */
+		if (iExists) {
+			if (iIsLink == null) {
+				FileStat stat = getDetails();
+				
+				if (stat != null) {
+					iIsLink = "l".equals(stat.type());
+				}
+			}
+			
+			return iIsLink;
+		}
+		
+		return false;
 	}
 	
 	/**
@@ -350,6 +375,7 @@ public class FileExtender implements ExtenderGroup {
 				if (result.wasSuccessful()) {
 					iIsFolder = false;
 					iExists = false;
+					iIsLink = null;
 					
 					return true;
 				}
@@ -357,6 +383,7 @@ public class FileExtender implements ExtenderGroup {
 			} else {
 				iIsFolder = false;
 				iExists = false;
+				iIsLink = null;
 				
 				return true;
 			}
@@ -391,6 +418,23 @@ public class FileExtender implements ExtenderGroup {
 	}
 	
 	/**
+	 * Create a link to this file or folder.
+	 * 
+	 * @param linkPath
+	 *     Path to the link which should be created
+	 * 
+	 * @return
+	 *     <code>True</code> on success, <code>False</code> otherwise
+	 */
+	public Boolean createLink(String linkPath) {
+		if (exists()) {
+			return mShell.buildAttempts("%binary ln -s '" + mFile.getAbsolutePath() + "' '" + linkPath + "' 2> /dev/null").run().wasSuccessful();
+		}
+		
+		return false;
+	}
+	
+	/**
 	 * Open a new FileExtender object with another file or folder relative to the current directory
 	 * 
 	 * @return
@@ -415,6 +459,18 @@ public class FileExtender implements ExtenderGroup {
 	 */
 	public FileExtender openParent() {
 		return mFile.getParent() != null ? new FileExtender(mShell, new File(mFile.getParent())) : null;
+	}
+	
+	/**
+	 * If this is a link, this method will return a new object with the real path attached. 
+	 * 
+	 * @return
+	 *     A new instance of this class representing the parent directory
+	 */
+	public FileExtender openCanonical() {
+		String canonicalPath = getCanonicalPath();
+
+		return canonicalPath != null ? new FileExtender(mShell, new File(canonicalPath)) : null;
 	}
 	
 	/**
@@ -604,6 +660,79 @@ public class FileExtender implements ExtenderGroup {
 		}
 		
 		return null;
+	}
+	
+	/**
+	 * Get the canonical path of this file or folder. 
+	 * This means that if this is a link, you will get the path to the target, no matter how many links are in between.
+	 * It also means that things like <code>/folder1/../folder2</code> will be resolved to <code>/folder2</code>.
+	 * 
+	 * @return
+	 *     The canonical path
+	 */
+	public String getCanonicalPath() {
+		if (exists()) {
+			try {
+				if (!iRestricted && mFile.canRead() && mFile.getCanonicalPath() != null) {
+					return mFile.getCanonicalPath();
+				}
+				
+			} catch(Throwable e) {}
+			
+			ShellResult result = mShell.buildAttempts("%binary readlink -f '" + mFile.getAbsolutePath() + "' 2> /dev/null").run();
+			
+			if (result.wasSuccessful()) {
+				return result.getLine();
+				
+			} else {
+				FileStat stat = getDetails();
+				
+				if (stat != null && stat.link() != null) {
+					String realPath = stat.link();
+					
+					while ((stat = new FileExtender(mShell, new File(realPath)).getDetails()) != null && stat.link() != null) {
+						realPath = stat.link();
+					}
+					
+					return realPath;
+				}
+				
+				return mFile.getAbsolutePath();
+			}
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Returns the absolute path. An absolute path is a path that starts at a root of the file system.
+	 * 
+	 * @return
+	 *     The absolute path
+	 */
+	public String getAbsolutePath() {
+		return mFile.getAbsolutePath();
+	}
+	
+	/**
+	 * Returns the path used to create this object.
+	 * 
+	 * @return
+	 *     The parsed path
+	 */
+	public String getPath() {
+		return mFile.getPath();
+	}
+	
+	/**
+	 * Returns the parent path. Note that on folders, this means the parent folder. 
+	 * However, on files, it will return the folder path that the file resides in.
+	 * 
+	 * @return
+	 *     The parent path
+	 */
+	public String getParentPath() {
+		return mFile.getParent();
 	}
 	
 	/**
