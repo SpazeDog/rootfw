@@ -246,8 +246,6 @@ public class ShellExtender implements ExtenderGroup {
 						
 						try {
 							while ((input = mInputStream.readLine()) != null) {
-								RootFW.log(TAG + "::run()", "Line: " + input);
-								
 								if (!input.contains("EOL:a00c38d8:EOL")) {
 									lines.add(input);
 									
