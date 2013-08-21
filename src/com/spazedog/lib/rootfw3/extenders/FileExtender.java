@@ -22,11 +22,19 @@ package com.spazedog.lib.rootfw3.extenders;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
+
+import android.content.Context;
+import android.text.TextUtils;
 
 import com.spazedog.lib.rootfw3.containers.Data;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender.ShellResult;
@@ -389,7 +397,7 @@ public class FileExtender implements ExtenderGroup {
 			}
 		}
 		
-		return false;
+		return true;
 	}
 	
 	/**
@@ -414,7 +422,48 @@ public class FileExtender implements ExtenderGroup {
 			return true;
 		}
 		
-		return false;
+		return true;
+	}
+	
+	/**
+	 * This is the same as {@link #createDirectory()}, only this will also
+	 * make sure to create any missing parent directories. 
+	 * 
+	 * @return
+	 *     <code>True</code> if the directory was created successfully
+	 */
+	public Boolean createDirectories() {
+		if (!exists()) {
+			if (!mFile.mkdirs()) {
+				if (!mShell.buildAttempts("%binary mkdir -p '" + mFile.getAbsolutePath() + "'").run().wasSuccessful()) {
+					/* Not all busybox and toolbox versions support the "-p" argument in their "mkdir" command.
+					 * In these cases, we will iterate through the tree manually
+					 */
+					String resolvedPath = getResolvedPath();
+					String[] directories = ("/".equals(resolvedPath) ? resolvedPath : resolvedPath.endsWith("/") ? resolvedPath.substring(1, resolvedPath.length() - 1) : resolvedPath.substring(1)).split("/");
+					FileExtender root = new FileExtender(mShell, new File("/"));
+					
+					for (int i=0; i < directories.length-1; i++) {
+						root = root.open(directories[i]);
+						
+						if (root == null || !root.createDirectory()) {
+							return false;
+						}
+					}
+					
+					if (createDirectory()) {
+						return false;
+					}
+				}
+			}
+			
+			iIsFolder = true;
+			iExists = true;
+			
+			return true;
+		}
+		
+		return true;
 	}
 	
 	/**
@@ -432,6 +481,340 @@ public class FileExtender implements ExtenderGroup {
 		}
 		
 		return false;
+	}
+	
+	/**
+	 * Move a file or folder to another location. 
+	 * If the move was successful, the object will change it pointer to the new location. 
+	 * 
+	 * @param dstPath
+	 *     The destination path
+	 * 
+	 * @return
+	 *     <code>True</code> on success, <code>False</code> otherwise
+	 */
+	public Boolean move(String dstPath) {
+		File file = new File(dstPath);
+		
+		if (exists()) {
+			if (!mFile.renameTo(file)) {
+				if (!mShell.buildAttempts("%binary mv -f '" + mFile.getAbsolutePath() + "' '" + file.getAbsolutePath() + "'").run().wasSuccessful()) {
+					return false;
+				}
+			}
+			
+			mFile = file;
+			
+			return true;
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * Rename a file or folder.
+	 * 
+	 * @param name
+	 *     The new name to use
+	 * 
+	 * @return
+	 *     <code>True</code> on success, <code>False</code> otherwise
+	 */
+	public Boolean rename(String name) {
+		if (exists() && mFile.getParent() != null) {
+			String newPath = mFile.getParent() + "/" + name;
+			
+			if (!new FileExtender(mShell, new File(newPath)).exists()) {
+				return move( mFile.getParent() + "/" + name );
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * Make a copy of a file or folder. 
+	 * 
+	 * @param dstPath
+	 *     The destination path
+	 * 
+	 * @return
+	 *     <code>True</code> on success, <code>False</code> otherwise
+	 */
+	public Boolean copy(String dstPath) {
+		if (exists()) {
+			FileExtender file = new FileExtender(mShell, new File(dstPath));
+			Boolean status = true;
+			
+			if (!iRestricted && mFile.canRead() && !file.iRestricted && file.mFile.canWrite()) {
+				if (isDirectory()) {
+					if (!file.isDirectory()) {
+						status = file.createDirectories();
+					}
+					
+					String[] list = getList();
+					
+					if (list != null) {
+						for (int i=0; i < list.length; i++) {
+							if (!(status = open(list[i]).copy( file.getAbsolutePath() + "/" + list[i] ))) {
+								break;
+							}
+						}
+					}
+					
+				} else {
+					try {
+						InputStream input = new FileInputStream(mFile);
+						OutputStream output = new FileOutputStream(file.mFile);
+						
+						byte[] buffer = new byte[1024];
+						Integer length;
+						
+						while ((length = input.read(buffer)) > 0) {
+							output.write(buffer, 0, length);
+						}
+						
+						input.close();
+						output.close();
+						
+					} catch(Throwable e) { status = false; }
+				}
+				 
+			} else {
+				status = false;
+			}
+			
+			if (!status) {
+				status = mShell.buildAttempts("%binary cp -fa '" + getAbsolutePath() + "' '" + file.getAbsolutePath() + "'").run().wasSuccessful();
+			}
+			
+			return status;
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * @see #extractFromResource(Context, String, String, String, String)
+	 */
+	public Boolean extractFromResource(Context context, String asset) {
+		return extractFromResource(context, asset, null, null, null);
+	}
+	
+	/**
+	 * Extract data from an Android Assets Path (files located in /assets/) and add it to the current file location.
+	 * If the file already exist, it will be overwritten. Otherwise the file will be created. 
+	 * 
+	 * @param context
+	 *     An android Context object
+	 *     
+	 * @param asset
+	 *     The assets path
+	 *     
+	 * @param permissions
+	 *     Permissions to add to the file
+	 *     
+	 * @param user
+	 *     The owner to add to the file
+	 *     
+	 * @param group
+	 *     The group to add to the file
+	 * 
+	 * @return
+	 *     <code>True</code> on success, <code>False</code> otherwise
+	 */
+	public Boolean extractFromResource(Context context, String asset, String permissions, String user, String group) {
+		try {
+			InputStream input = context.getAssets().open(asset);
+			Boolean status = extractFromResource(context, input, permissions, user, group);
+			input.close();
+			
+			return status;
+			
+		} catch(Throwable e) { return false; }
+	}
+	
+	/**
+	 * @see #extractFromResource(Context, Integer, String, String, String)
+	 */
+	public Boolean extractFromResource(Context context, Integer resourceid) {
+		return extractFromResource(context, resourceid, null, null, null);
+	}
+	
+	/**
+	 * Extract data from an Android resource id (files located in /res/) and add it to the current file location.
+	 * If the file already exist, it will be overwritten. Otherwise the file will be created. 
+	 * 
+	 * @param context
+	 *     An android Context object
+	 *     
+	 * @param resourceid
+	 *     The InputStream to read from
+	 *     
+	 * @param permissions
+	 *     Permissions to add to the file
+	 *     
+	 * @param user
+	 *     The owner to add to the file
+	 *     
+	 * @param group
+	 *     The group to add to the file
+	 * 
+	 * @return
+	 *     <code>True</code> on success, <code>False</code> otherwise
+	 */
+	public Boolean extractFromResource(Context context, Integer resourceid, String permissions, String user, String group) {
+		try {
+			InputStream input = context.getResources().openRawResource(resourceid);
+			Boolean status = extractFromResource(context, input, permissions, user, group);
+			input.close();
+			
+			return status;
+			
+		} catch(Throwable e) { return false; }
+	}
+	
+	/**
+	 * @see #extractFromResource(Context, InputStream, String, String, String)
+	 */
+	public Boolean extractFromResource(Context context, InputStream resource) {
+		return extractFromResource(context, resource, null, null, null);
+	}
+	
+	/**
+	 * Extract data from an InputStream and add it to the current file location.
+	 * If the file already exist, it will be overwritten. Otherwise the file will be created. 
+	 * 
+	 * @param context
+	 *     An android Context object
+	 *     
+	 * @param resource
+	 *     The InputStream to read from
+	 *     
+	 * @param permissions
+	 *     Permissions to add to the file
+	 *     
+	 * @param user
+	 *     The owner to add to the file
+	 *     
+	 * @param group
+	 *     The group to add to the file
+	 * 
+	 * @return
+	 *     <code>True</code> on success, <code>False</code> otherwise
+	 */
+	public Boolean extractFromResource(Context context, InputStream resource, String permissions, String user, String group) {
+		try {
+			FileOutputStream output = context.openFileOutput("rootfw.tmp.raw", 0);
+			
+			byte[] buffer = new byte[1024];
+			Integer loc = 0;
+			
+			while ((loc = resource.read(buffer)) > 0) {
+				output.write(buffer, 0, loc);
+			}
+			
+			output.close();
+			
+		} catch(Throwable e) { return false; }
+		
+		FileExtender file = new FileExtender(mShell, new File(context.getFilesDir().getAbsolutePath() + "/rootfw.tmp.raw"));
+		
+		if (file.move( getAbsolutePath() )) {
+			iExists = true;
+			
+			if ((permissions == null || setPermissions(permissions)) && (user == null || setOwner(user)) && (group == null || setGroup(group))) {
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
+	 * @see #setPermissions(String, Boolean)
+	 */
+	public Boolean setPermissions(String mod) {
+		return setPermissions(mod, false);
+	}
+	
+	/**
+	 * Set the permissions on a file or folder. 
+	 * 
+	 * @param mod
+	 *     The permission string, like <code>0755</code>
+	 *     
+	 * @param recursive
+	 *     Whether or not to change all the content of a folder
+	 * 
+	 * @return
+	 *     <code>True</code> on success, <code>False</code> otherwise
+	 */
+	public Boolean setPermissions(String mod, Boolean recursive) {
+		return mShell.buildAttempts("%binary chmod" + (recursive ? " -R" : "") + " '" + mod + "' '" + mFile.getAbsolutePath() + "'").run().wasSuccessful();
+	}
+	
+	/**
+	 * @see #setOwner(String, String, Boolean)
+	 */
+	public Boolean setOwner(String owner) {
+		return setOwner(owner, null, false);
+	}
+	
+	/**
+	 * @see #setOwner(String, String, Boolean)
+	 */
+	public Boolean setOwner(String owner, Boolean recursive) {
+		return setOwner(owner, null, recursive);
+	}
+	
+	/**
+	 * @see #setOwner(String, String, Boolean)
+	 */
+	public Boolean setOwner(String owner, String group) {
+		return setOwner(owner, group, false);
+	}
+	
+	/**
+	 * Set the ownership of a file or folder. 
+	 * 
+	 * @param owner
+	 *     The owner, either id or name
+	 *     
+	 * @param group
+	 *     The group, either id or name
+	 *     
+	 * @param recursive
+	 *     Whether or not to change all the content of a folder
+	 * 
+	 * @return
+	 *     <code>True</code> on success, <code>False</code> otherwise
+	 */
+	public Boolean setOwner(String owner, String group, Boolean recursive) {
+		return mShell.buildAttempts("%binary chown" + (recursive ? " -R" : "") + " '" + owner + (group != null ? "." + group : "") + "' '" + mFile.getAbsolutePath() + "'").run().wasSuccessful();
+	}
+	
+	/**
+	 * @see #setGroup(String, Boolean)
+	 */
+	public Boolean setGroup(String group) {
+		return setGroup(group, false);
+	}
+	
+	/**
+	 * Set the group of a file or folder. 
+	 * 
+	 * @param group
+	 *     The group, either id or name
+	 *     
+	 * @param recursive
+	 *     Whether or not to change all the content of a folder
+	 * 
+	 * @return
+	 *     <code>True</code> on success, <code>False</code> otherwise
+	 */
+	public Boolean setGroup(String group, Boolean recursive) {
+		return mShell.buildAttempts("%binary chgrp" + (recursive ? " -R" : "") + " '" + group + "' '" + mFile.getAbsolutePath() + "'").run().wasSuccessful();
 	}
 	
 	/**
@@ -712,6 +1095,31 @@ public class FileExtender implements ExtenderGroup {
 	 */
 	public String getAbsolutePath() {
 		return mFile.getAbsolutePath();
+	}
+	
+	/**
+	 * Like {@link #getCanonicalPath()}, this will resolve any <code>/folder1/../folder2</code> and rewrite it as <code>/folder2</code>. 
+	 * Unlike {@link #getCanonicalPath()}, this will not resolve any links. It will only rewrite and return a more clean version of the current path.
+	 * 
+	 * @return
+	 *     The absolute path
+	 */
+	public String getResolvedPath() {
+		String[] directories = ("/".equals(mFile.getAbsolutePath()) ? mFile.getAbsolutePath() : mFile.getAbsolutePath().endsWith("/") ? mFile.getAbsolutePath().substring(1, mFile.getAbsolutePath().length() - 1) : mFile.getAbsolutePath().substring(1)).split("/");
+		List<String> resolved = new ArrayList<String>();
+		
+		for (int i=0; i < directories.length; i++) {
+			if (directories[i].equals("..")) {
+				if (resolved.size() > 0) {
+					resolved.remove( resolved.size()-1 );
+				}
+				
+			} else if (!directories[i].equals(".")) {
+				resolved.add(directories[i]);
+			}
+		}
+		
+		return resolved.size() > 0 ? "/" + TextUtils.join("/", resolved) : "/";
 	}
 	
 	/**
