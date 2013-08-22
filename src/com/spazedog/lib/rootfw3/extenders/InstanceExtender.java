@@ -19,6 +19,9 @@
 
 package com.spazedog.lib.rootfw3.extenders;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
@@ -56,6 +59,19 @@ public class InstanceExtender implements ExtenderGroup {
 			super(useRoot);
 		}
 		
+		@Override
+		public Boolean connect() {
+			if (super.connect()) {
+				InstanceExtender.onConnect(isRoot());
+				
+				return true;
+			}
+			
+			InstanceExtender.onFailed(isRoot());
+			
+			return false;
+		}
+		
 		/**
 		 * This will overwrite the disconnect() method in the main RootFW and implement feature of locking a connection.
 		 */
@@ -63,25 +79,75 @@ public class InstanceExtender implements ExtenderGroup {
 		public void disconnect() {
 			if (mLocks == 0) {
 				super.disconnect();
-				InstanceExtender.onDisconnect();
+				InstanceExtender.onDisconnect(isRoot());
 			}
 		}
+	}
+	
+	/**
+	 * This interface is used when adding connection callbacks via {@link #addCallback}
+	 */
+	public static abstract class InstanceCallback {
+		/**
+		 * Called when the shared connection was connected
+		 */
+		public void onConnect(RootFW instance) {}
+		
+		/**
+		 * Called when the shared connection was disconnected
+		 */
+		public void onDisconnect(RootFW instance) {}
+		
+		/**
+		 * Called when the shared connection failed to connect
+		 */
+		public void onFailed(RootFW instance) {}
 	}
 	
 	/**
 	 * Stores the user and root instances when created
 	 */
 	protected static InstanceRootFW[] oInstances = new InstanceRootFW[2];
+	protected static List<InstanceCallback>[] oCallbacks = new ArrayList[]{new ArrayList<InstanceCallback>(), new ArrayList<InstanceCallback>()};
 	
 	protected Integer mInstance;
 	
 	/**
-	 * This is an internal callback method which get's called whenever an instance get's disconnected from the shell. This is used to remove the instance from the static container in order to avoid storing unused instances
+	 * Used to execute callbacks on connection established
 	 */
-	protected static void onDisconnect() {
-		for (int i=0; i < oInstances.length; i++) {
-			if (oInstances[i] != null && !oInstances[i].isConnected()) {
-				oInstances[i] = null;
+	protected static void onConnect(Boolean root) {
+		Integer x = root ? 1 : 0;
+		
+		if (oCallbacks[x].size() > 0) {
+			for (int i=0; i < oCallbacks[x].size(); i++) {
+				oCallbacks[x].get(i).onConnect(oInstances[x]);
+			}
+		}
+	}
+	
+	/**
+	 * Used to execute callbacks after disconnecting
+	 */
+	protected static void onDisconnect(Boolean root) {
+		Integer x = root ? 1 : 0;
+		oInstances[x] = null;
+		
+		if (oCallbacks[x].size() > 0) {
+			for (int i=0; i < oCallbacks[x].size(); i++) {
+				oCallbacks[x].get(i).onDisconnect(oInstances[x]);
+			}
+		}
+	}
+	
+	/**
+	 * Used to execute callbacks on connection failed
+	 */
+	protected static void onFailed(Boolean root) {
+		Integer x = root ? 1 : 0;
+		
+		if (oCallbacks[x].size() > 0) {
+			for (int i=0; i < oCallbacks[x].size(); i++) {
+				oCallbacks[x].get(i).onFailed(oInstances[x]);
 			}
 		}
 	}
@@ -99,6 +165,16 @@ public class InstanceExtender implements ExtenderGroup {
 			oInstances[mInstance] = new InstanceRootFW( mInstance == 1 );
 			oInstances[mInstance].connect();
 		}
+	}
+	
+	/**
+	 * Add a {@link InstanceCallback} object to this shared instance.
+	 * 
+	 * @param callback
+	 *     A {@link InstanceCallback} object
+	 */
+	public void addCallback(InstanceCallback callback) {
+		oCallbacks[mInstance].add(callback);
 	}
 	
 	/**
