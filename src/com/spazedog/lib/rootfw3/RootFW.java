@@ -21,23 +21,25 @@ package com.spazedog.lib.rootfw3;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.spazedog.lib.rootfw3.extenders.BusyboxExtender;
+import com.spazedog.lib.rootfw3.extenders.BinaryExtender;
 import com.spazedog.lib.rootfw3.extenders.FileExtender;
 import com.spazedog.lib.rootfw3.extenders.FilesystemExtender;
 import com.spazedog.lib.rootfw3.extenders.InstanceExtender;
 import com.spazedog.lib.rootfw3.extenders.MemoryExtender;
 import com.spazedog.lib.rootfw3.extenders.PropertyExtender;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender;
+import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
 /**
  * <dl>
@@ -60,6 +62,13 @@ public class RootFW {
 	public final static Integer E_INFO = 4;
 	public final static Integer E_WARNING = 8;
 	public final static Integer E_ERROR = 16;
+	
+	private static Map<String, FileExtender.File> mExtenderFileCollection = new WeakHashMap<String, FileExtender.File>();
+	private static Map<String, PropertyExtender.File> mExtenderPropertyCollection = new WeakHashMap<String, PropertyExtender.File>();
+	private static Map<String, BinaryExtender.Busybox> mExtenderBusyboxCollection = new WeakHashMap<String, BinaryExtender.Busybox>();
+	private static Map<String, FilesystemExtender.Device> mExtenderDeviceCollection = new WeakHashMap<String, FilesystemExtender.Device>();
+	
+	private static Map<String, ExtenderGroup> mExtenderSingles = new WeakHashMap<String, ExtenderGroup>();
 	
 	/**
 	 * A static configuration class where some configs can be changed for the framework.
@@ -106,10 +115,18 @@ public class RootFW {
 	 * This makes it possible for multiple classes and methods to share the same shell connection.
 	 * 
 	 * @return
-	 *     A new InstanceExtender instance containing the shared shell connection
+	 *     A new {@link InstanceExtender.Instance} containing the shared shell connection
 	 */
-	public static InstanceExtender rootInstance() {
-		return new InstanceExtender(true);
+	public static InstanceExtender.Instance rootInstance() {
+		if (!mExtenderSingles.containsKey("rootInstance")) {
+			InstanceExtender.Instance extender = (InstanceExtender.Instance) InstanceExtender.Instance.getInstance(null, new ExtenderGroupTransfer((Object) true)).instance;
+			
+			mExtenderSingles.put("rootInstance", (ExtenderGroup) extender);
+			
+			return extender;
+		}
+		
+		return (InstanceExtender.Instance) mExtenderSingles.get("rootInstance");
 	}
 	
 	/**
@@ -120,10 +137,18 @@ public class RootFW {
 	 * This makes it possible for multiple classes and methods to share the same shell connection.
 	 * 
 	 * @return
-	 *     A new InstanceExtender instance containing the shared shell connection
+	 *     A new {@link InstanceExtender.Instance} instance containing the shared shell connection
 	 */
-	public static InstanceExtender userInstance() {
-		return new InstanceExtender(false);
+	public static InstanceExtender.Instance userInstance() {
+		if (!mExtenderSingles.containsKey("userInstance")) {
+			InstanceExtender.Instance extender = (InstanceExtender.Instance) InstanceExtender.Instance.getInstance(null, new ExtenderGroupTransfer((Object) false)).instance;
+			
+			mExtenderSingles.put("userInstance", (ExtenderGroup) extender);
+			
+			return extender;
+		}
+		
+		return (InstanceExtender.Instance) mExtenderSingles.get("userInstance");
 	}
 	
 	/**
@@ -219,13 +244,12 @@ public class RootFW {
 	}
 	
 	/**
-	 * Return a new ShellExtender instance which can be used to communicate with the shell
-	 *    
-	 * @return
-	 *     A new ShellExtender instance
+	 * Return a new {@link ShellExtender.Shell} instance which can be used to communicate with the shell.
+	 * 
+	 * @see ShellExtender.Shell
 	 */
-	public ShellExtender shell() {
-		return new ShellExtender(mInputStream, mOutputStream);
+	public ShellExtender.Shell shell() {
+		return (ShellExtender.Shell) ShellExtender.Shell.getInstance(this, new ExtenderGroupTransfer( (BufferedReader) mInputStream, (DataOutputStream) mOutputStream )).instance;
 	}
 	
 	/**
@@ -244,66 +268,100 @@ public class RootFW {
 	}
 	
 	/**
-	 * @see RootFW#file(File)
-	 */
-	public FileExtender file(String file) {
-		return file( new File(file) );
-	}
-	
-	/**
-	 * Return a new FileExtender instance which can be used to work with files and folders
+	 * Return a new instance of the {@link FileExtender.File} class for the file defined in the argument. 
+	 * <br />
+	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
+	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
 	 * 
-	 * @param file
-	 *     The file or folder to work with
-	 *    
-	 * @return
-	 *     A new FileExtender instance
+	 * @see FileExtender.File
 	 */
-	public FileExtender file(File file) {
-		return new FileExtender(shell(), file);
+	public FileExtender.File file(String file) {
+		java.io.File fileObject = new java.io.File(file);
+		String filePath = FileExtender.resolvePath( fileObject.getAbsolutePath() );
+		
+		if (!mExtenderFileCollection.containsKey(filePath)) {
+			FileExtender.File extender = (FileExtender.File) FileExtender.File.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
+			
+			mExtenderFileCollection.put(filePath, extender);
+			
+			return extender;
+		}
+		
+		return mExtenderFileCollection.get(filePath);
 	}
 	
 	/**
-	 * Return a new MemoryExtender instance which can be used to get different memory information.
+	 * Return a new instance of the {@link MemoryExtender.Memory} class.
 	 *    
-	 * @return
-	 *     A new MemoryExtender instance
+	 * @see MemoryExtender.Memory
 	 */
-	public MemoryExtender memory() {
-		return new MemoryExtender( file("/proc") );
+	public MemoryExtender.Memory memory() {
+		if (!mExtenderSingles.containsKey("memory")) {
+			MemoryExtender.Memory extender = (MemoryExtender.Memory) MemoryExtender.Memory.getInstance(this, new ExtenderGroupTransfer()).instance;
+			
+			mExtenderSingles.put("memory", (ExtenderGroup) extender);
+			
+			return extender;
+		}
+		
+		return (MemoryExtender.Memory) mExtenderSingles.get("memory");
 	}
 	
 	/**
-	 * Return a new PropertyExtender instance which can be used to handle global properties.
+	 * Return a new instance of the {@link PropertyExtender.Properties} class.
 	 *    
-	 * @return
-	 *     A new PropertyExtender instance
+	 * @see PropertyExtender.Properties
 	 */
-	public PropertyExtender property() {
-		return new PropertyExtender(shell());
+	public PropertyExtender.Properties property() {
+		if (!mExtenderSingles.containsKey("properties")) {
+			PropertyExtender.Properties extender = (PropertyExtender.Properties) PropertyExtender.Properties.getInstance(this, new ExtenderGroupTransfer()).instance;
+			
+			mExtenderSingles.put("properties", (ExtenderGroup) extender);
+			
+			return extender;
+		}
+		
+		return (PropertyExtender.Properties) mExtenderSingles.get("properties");
 	}
 	
 	/**
-	 * Return a new PropertyExtender.File instance which can be used to handle property files.
+	 * Return a new instance of the {@link PropertyExtender.File} class for the file defined in the argument. 
+	 * <br />
+	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
+	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
 	 * 
-	 * @param file
-	 *     The property file to work with
-	 *    
-	 * @return
-	 *     A new PropertyExtender.File instance
+	 * @see PropertyExtender.File
 	 */
 	public PropertyExtender.File property(String file) {
-		return new PropertyExtender.File( file( file ) );
+		java.io.File fileObject = new java.io.File(file);
+		String filePath = FileExtender.resolvePath( fileObject.getAbsolutePath() );
+		
+		if (!mExtenderPropertyCollection.containsKey(filePath)) {
+			PropertyExtender.File extender = (PropertyExtender.File) PropertyExtender.File.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
+			
+			mExtenderPropertyCollection.put(filePath, extender);
+			
+			return extender;
+		}
+		
+		return mExtenderPropertyCollection.get(filePath);
 	}
 	
 	/**
-	 * Return a new FilesystemExtender instance which can be used to get basic information regarding mounts, file system type support etc.
+	 * Return a new instance of the {@link FilesystemExtender.Filesystem} class.
 	 *    
-	 * @return
-	 *     A new FilesystemExtender instance
+	 * @see FilesystemExtender.Filesystem
 	 */
-	public FilesystemExtender filesystem() {
-		return new FilesystemExtender(shell());
+	public FilesystemExtender.Filesystem filesystem() {
+		if (!mExtenderSingles.containsKey("filesystem")) {
+			FilesystemExtender.Filesystem extender = (FilesystemExtender.Filesystem) FilesystemExtender.Filesystem.getInstance(this, new ExtenderGroupTransfer()).instance;
+			
+			mExtenderSingles.put("filesystem", (ExtenderGroup) extender);
+			
+			return extender;
+		}
+		
+		return (FilesystemExtender.Filesystem) mExtenderSingles.get("filesystem");
 	}
 	
 	/**
@@ -316,24 +374,54 @@ public class RootFW {
 	 *     A new FilesystemExtender.Device instance
 	 */
 	public FilesystemExtender.Device filesystem(String device) {
-		return new FilesystemExtender.Device(shell(), device);
+		java.io.File fileObject = new java.io.File(device);
+		String filePath = FileExtender.resolvePath( fileObject.getAbsolutePath() );
+		
+		if (!mExtenderDeviceCollection.containsKey(filePath)) {
+			FilesystemExtender.Device extender = (FilesystemExtender.Device) FilesystemExtender.Device.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
+			
+			mExtenderDeviceCollection.put(filePath, extender);
+			
+			return extender;
+		}
+		
+		return mExtenderDeviceCollection.get(filePath);
 	}
 	
 	/**
-	 * Returns a new {@link BusyboxExtender} instance using the {@link BusyboxExtender#BusyboxExtender(ShellExtender)} constructor.
-	 */
-	public BusyboxExtender busybox() {
-		return new BusyboxExtender(shell());
-	}
-	
-	/**
-	 * Returns a new {@link BusyboxExtender} instance using the {@link BusyboxExtender#BusyboxExtender(ShellExtender, String)} constructor.
+	 * Return a new instance of the {@link BinaryExtender.Busybox} class set for the first busybox binary in the PATH environment variable. 
+	 * <br />
+	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
+	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
 	 * 
-	 * @param binary
-	 *     Path to the busybox binary
+	 * @see BinaryExtender.Busybox
+	 * @see #busybox(String)
 	 */
-	public BusyboxExtender busybox(String binary) {
-		return new BusyboxExtender(shell(), binary);
+	public BinaryExtender.Busybox busybox() {
+		return busybox("busybox");
+	}
+	
+	/**
+	 * Return a new instance of the {@link BinaryExtender.Busybox} class set for the defined busybox binary.
+	 * <br />
+	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
+	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
+	 * 
+	 * @see BinaryExtender.Busybox
+	 * @see #busybox()
+	 */
+	public BinaryExtender.Busybox busybox(String binary) {
+		String path = binary.contains("/") ? FileExtender.resolvePath( new java.io.File(binary).getAbsolutePath() ) : binary;
+		
+		if (!mExtenderBusyboxCollection.containsKey(path)) {
+			BinaryExtender.Busybox extender = (BinaryExtender.Busybox) BinaryExtender.Busybox.getInstance(this, new ExtenderGroupTransfer( (Object) path )).instance;
+			
+			mExtenderBusyboxCollection.put(path, extender);
+			
+			return extender;
+		}
+		
+		return mExtenderBusyboxCollection.get(path);
 	}
 	
 	/**
@@ -374,6 +462,27 @@ public class RootFW {
 				case 8: Log.w(tag, msg, e); break;
 				case 16: Log.e(tag, msg, e);
 			}
+		}
+	}
+	
+	/**
+	 * This class is used by RootFW when getting new instances of {@link ExtenderGroup} classes.
+	 * The constructor of this class is private as this is not meant to be used outside of the RootFW internal environment.
+	 */
+	public static class ExtenderGroupTransfer {
+		public ExtenderGroup instance;
+		public Object[] arguments;
+		
+		private ExtenderGroupTransfer() {}
+		
+		private ExtenderGroupTransfer(Object... objects) {
+			arguments = objects;
+		}
+		
+		public ExtenderGroupTransfer setInstance(ExtenderGroup extender) {
+			instance = extender;
+			
+			return this;
 		}
 	}
 }

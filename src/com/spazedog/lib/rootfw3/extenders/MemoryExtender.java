@@ -21,99 +21,111 @@ package com.spazedog.lib.rootfw3.extenders;
 
 import java.util.regex.Pattern;
 
+import com.spazedog.lib.rootfw3.RootFW;
+import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
+import com.spazedog.lib.rootfw3.extenders.BinaryExtender.Busybox;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
-/**
- * This class is used to get information about memory and SWAP devices
- * <br />
- * As this class is an extender, is should not be called directly. Instead use RootFW.memory()
- */
-public class MemoryExtender implements ExtenderGroup {
+public class MemoryExtender {
 	
 	private final static Pattern oPatternSpaceSearch = Pattern.compile("[ \t]+");
-
-	FileExtender mProc;
 	
 	/**
-	 * Create a new MemoryExtender instance.
-	 * 
-	 * @param file
-	 *     A FileExtender instance pointed at /proc
+	 * This class is used to get information about memory and SWAP devices
+	 * <br />
+	 * Note that this implements the {@link ExtenderGroup} interface, which means that it does not allow anything outside {@link RootFW} to create an instance of it. Use {@link RootFW#memory()} to retrieve an instance.
 	 */
-	public MemoryExtender(FileExtender file) {
-		mProc = file;
-	}
-	
-	/**
-	 * Get information like size and usage of a specific SWAP device. This method will return null if the device does not exist, or if it has not been activated.
-	 * 
-	 * @param device
-	 *     The specific SWAP device path to get infomation about
-	 *     
-	 * @return
-	 *     An SwapStat object containing information about the requested SWAP device
-	 */
-	public SwapStat statSwap(String device) {
-		FileExtender file = mProc.open("swaps");
+	public static class Memory implements ExtenderGroup {
+		private RootFW mParent;
 		
-		if (file.exists()) {
-			String data = file.readMatches(device).getLine();
-			
-			if (data != null && data.length() > 0) {
-				try {
-					String[] sections = oPatternSpaceSearch.split(data);
-					
-					SwapStat stat = new SwapStat();
-					stat.mDevice = sections[0];
-					stat.mSize = Long.parseLong(sections[2]) * 1024L;
-					stat.mUsage = Long.parseLong(sections[3]) * 1024L;
-					
-					return stat;
-					
-				} catch(Throwable e) {}
-			}
+		/**
+		 * This is used internally by {@link RootFW} to get a new instance of this class. 
+		 */
+		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+			return transfer.setInstance((ExtenderGroup) new Memory(parent));
 		}
 		
-		return null;
-	}
-	
-	/**
-	 * Get a list of all active SWAP devices.
-	 *     
-	 * @return
-	 *     An SwapStat array of all active SWAP devices
-	 */
-	public SwapStat[] listSwaps() {
-		FileExtender file = mProc.open("swaps");
+		/**
+		 * Create a new instance of this class.
+		 * 
+		 * @param parent
+		 *     A reference to the {@link RootFW} instance
+		 */
+		private Memory(RootFW parent) {
+			mParent = parent;
+		}
 		
-		if (file.exists()) {
-			String[] data = file.readMatches("/dev/").trim().getArray();
-			SwapStat[] stat = new SwapStat[ data.length ];
+		/**
+		 * Get information like size and usage of a specific SWAP device. This method will return null if the device does not exist, or if it has not been activated.
+		 * 
+		 * @param device
+		 *     The specific SWAP device path to get infomation about
+		 *     
+		 * @return
+		 *     An SwapStat object containing information about the requested SWAP device
+		 */
+		public SwapStat statSwap(String device) {
+			FileExtender.File file = mParent.file("/proc/swaps");
 			
-			if (data.length > 0) {
-				for (int i=1; i < data.length; i++) {
+			if (file.exists()) {
+				String data = file.readMatches(device).getLine();
+				
+				if (data != null && data.length() > 0) {
 					try {
-						String[] sections = oPatternSpaceSearch.split(data[i].trim());
+						String[] sections = oPatternSpaceSearch.split(data);
 						
-						stat[i] = new SwapStat();
-						stat[i].mDevice = sections[0];
-						stat[i].mSize = Long.parseLong(sections[2]) * 1024L;
-						stat[i].mUsage = Long.parseLong(sections[3]) * 1024L;
+						SwapStat stat = new SwapStat();
+						stat.mDevice = sections[0];
+						stat.mSize = Long.parseLong(sections[2]) * 1024L;
+						stat.mUsage = Long.parseLong(sections[3]) * 1024L;
+						
+						return stat;
 						
 					} catch(Throwable e) {}
 				}
-				
-				return stat;
 			}
+			
+			return null;
 		}
 		
-		return null;
+		/**
+		 * Get a list of all active SWAP devices.
+		 *     
+		 * @return
+		 *     An SwapStat array of all active SWAP devices
+		 */
+		public SwapStat[] listSwaps() {
+			FileExtender.File file = mParent.file("/proc/swaps");
+			
+			if (file.exists()) {
+				String[] data = file.readMatches("/dev/").trim().getArray();
+				SwapStat[] stat = new SwapStat[ data.length ];
+				
+				if (data.length > 0) {
+					for (int i=1; i < data.length; i++) {
+						try {
+							String[] sections = oPatternSpaceSearch.split(data[i].trim());
+							
+							stat[i] = new SwapStat();
+							stat[i].mDevice = sections[0];
+							stat[i].mSize = Long.parseLong(sections[2]) * 1024L;
+							stat[i].mUsage = Long.parseLong(sections[3]) * 1024L;
+							
+						} catch(Throwable e) {}
+					}
+					
+					return stat;
+				}
+			}
+			
+			return null;
+		}
 	}
 	
 	/**
 	 * This is a container which is used to store information about a SWAP device
 	 */
-	public class SwapStat {
+	public static class SwapStat {
 		private String mDevice;
 		private Long mSize;
 		private Long mUsage;

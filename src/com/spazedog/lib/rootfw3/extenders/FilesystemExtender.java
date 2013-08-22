@@ -19,7 +19,6 @@
 
 package com.spazedog.lib.rootfw3.extenders;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -31,307 +30,180 @@ import java.util.regex.Pattern;
 import android.text.TextUtils;
 
 import com.spazedog.lib.rootfw3.RootFW;
+import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
 import com.spazedog.lib.rootfw3.extenders.FileExtender.FileData;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender.ShellResult;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
-/**
- * This class is used to collect different file system related information. This information are things like defined file systems, 
- * currently mounted file systems etc.
- * <br />
- * <strong>As this class is an {@link ExtenderGroup}, it should not be called directly. Instead use {@link RootFW#filesystem()}</strong>
- * 
- * <dl>
- * <dt><span class="strong">Example:</span></dt>
- * <dd><code><pre>
- * RootFW root = new RootFW();
- * 
- * if (root.isConnected()) {
- *     MountStat[] mounts = root.filesystem().getMountList();
- *     
- *     root.disconnect();
- * }
- * </pre></code></dd>
- * </dl>
- */
-public class FilesystemExtender implements ExtenderGroup {
+public class FilesystemExtender {
 	
 	private final static Pattern oPatternSpaceSearch = Pattern.compile("[ \t]+");
 	private final static Pattern oPatternSeparatorSearch = Pattern.compile(",");
 	private final static Pattern oPatternPrefixSearch = Pattern.compile("^.*[A-Za-z]$");
 	
-	protected ShellExtender mShell;
-	
-	protected static MountStat[] mFstabList;
-	
 	/**
-	 * Create a new {@link FilesystemExtender} instance.
-	 * 
-	 * @see RootFW#filesystem()
-	 * 
-	 * @param shell
-	 *     A {@link ShellExtender} object
+	 * This class is used to collect different file system related information. This information are things like defined file systems, 
+	 * currently mounted file systems etc.
+	 * <br />
+	 * Note that this implements the {@link ExtenderGroup} interface, which means that it does not allow anything outside {@link RootFW} to create an instance of it. Use {@link RootFW#filesystem()} to retrieve an instance.
 	 */
-	public FilesystemExtender(ShellExtender shell) {
-		mShell = shell;
-	}
-	
-	/**
-	 * This will return a list of all currently mounted file systems, with information like 
-	 * device path, mount location, file system type and mount options.
-	 *     
-	 * @return
-	 *     An array of {@link MountStat} objects
-	 */
-	public MountStat[] getMountList() {
-		FileData data = new FileExtender(mShell, new File("/proc/mounts")).read();
+	public static class Filesystem implements ExtenderGroup {
+		protected static MountStat[] mFstabList;
 		
-		if (data != null) {
-			String[] lines = data.trim().getArray();
-			MountStat[] list = new MountStat[ lines.length ];
-			
-			for (int i=0; i < lines.length; i++) {
-				try {
-					String[] parts = oPatternSpaceSearch.split(lines[i].trim());
-					
-					list[i] = new MountStat();
-					list[i].mDevice = parts[0];
-					list[i].mFstype = parts[2];
-					list[i].mLocation = parts[1];
-					list[i].mOptions = oPatternSeparatorSearch.split(parts[3]);
-					
-				} catch(Throwable e) {}
-			}
-			
-			return list;
+		protected ShellExtender.Shell mShell;
+		protected RootFW mParent;
+		
+		/**
+		 * This is used internally by {@link RootFW} to get a new instance of this class. 
+		 */
+		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+			return transfer.setInstance((ExtenderGroup) new Filesystem(parent));
 		}
 		
-		return null;
-	}
-	
-	/**
-	 * This will provide the same information as {@link FilesystemExtender#getMountList()}
-	 * only this will not provide information about currently mounted file systems. Instead, 
-	 * it will return a list of all the file systems defined in every fstab and init.rc file in the ramdisk.
-	 * <br />
-	 * It can be useful in situations where a file system might have been moved by a script, and you need the original defined location. 
-	 * Or perhaps you need the original device of a specific mount location.
-	 *     
-	 * @return
-	 *     An array of {@link MountStat} objects
-	 */
-	public MountStat[] getFstabList() {
-		synchronized(mFstabList) {
-			if (mFstabList == null) {
-				ShellResult result = mShell.run("for DIR in /fstab.* /fstab /init.*.rc /init.rc; do echo $DIR; done");
+		/**
+		 * Create a new instance of this class.
+		 * 
+		 * @param parent
+		 *     A reference to the {@link RootFW} instance
+		 */
+		private Filesystem(RootFW parent) {
+			mParent = parent;
+			mShell = parent.shell();
+		}
+		
+		/**
+		 * This will return a list of all currently mounted file systems, with information like 
+		 * device path, mount location, file system type and mount options.
+		 *     
+		 * @return
+		 *     An array of {@link MountStat} objects
+		 */
+		public MountStat[] getMountList() {
+			FileData data = mParent.file("/proc/mounts").read();
+			
+			if (data != null) {
+				String[] lines = data.trim().getArray();
+				MountStat[] list = new MountStat[ lines.length ];
 				
-				if (result.wasSuccessful()) {
-					Set<String> cache = new HashSet<String>();
-					List<MountStat> list = new ArrayList<MountStat>();
-					String[] dirs = result.trim().getArray();
-					
-					for (int i=0; i < dirs.length; i++) {
-						Boolean isFstab = dirs[i].contains("fstab");
-						FileData data = new FileExtender(mShell, new File(dirs[i])).readMatches( isFstab ? "/dev/" : "mount " );
+				for (int i=0; i < lines.length; i++) {
+					try {
+						String[] parts = oPatternSpaceSearch.split(lines[i].trim());
 						
-						if (data != null) {
-							String[] lines = data.assort("#").getArray();
+						list[i] = new MountStat();
+						list[i].mDevice = parts[0];
+						list[i].mFstype = parts[2];
+						list[i].mLocation = parts[1];
+						list[i].mOptions = oPatternSeparatorSearch.split(parts[3]);
+						
+					} catch(Throwable e) {}
+				}
+				
+				return list;
+			}
+			
+			return null;
+		}
+		
+		/**
+		 * This will provide the same information as {@link FilesystemExtender#getMountList()}
+		 * only this will not provide information about currently mounted file systems. Instead, 
+		 * it will return a list of all the file systems defined in every fstab and init.rc file in the ramdisk.
+		 * <br />
+		 * It can be useful in situations where a file system might have been moved by a script, and you need the original defined location. 
+		 * Or perhaps you need the original device of a specific mount location.
+		 *     
+		 * @return
+		 *     An array of {@link MountStat} objects
+		 */
+		public MountStat[] getFstabList() {
+			synchronized(mFstabList) {
+				if (mFstabList == null) {
+					ShellResult result = mShell.run("for DIR in /fstab.* /fstab /init.*.rc /init.rc; do echo $DIR; done");
+					
+					if (result.wasSuccessful()) {
+						Set<String> cache = new HashSet<String>();
+						List<MountStat> list = new ArrayList<MountStat>();
+						String[] dirs = result.trim().getArray();
+						
+						for (int i=0; i < dirs.length; i++) {
+							Boolean isFstab = dirs[i].contains("fstab");
+							FileData data = mParent.file(dirs[i]).readMatches( isFstab ? "/dev/" : "mount " );
 							
-							for (int x=0; x < lines.length; x++) {
-								try {
-									String[] parts = oPatternSpaceSearch.split(lines[x].trim(), 5);
-									String options = isFstab || parts.length > 4 ? parts[ isFstab ? 3 : 4 ].replaceAll(",", " ") : "";
-									
-									if (parts.length > 3 && !cache.contains(parts[ isFstab ? 1 : 3 ])) {
-										if (!isFstab && parts[2].contains("mtd@")) {
-											FileData mtd = new FileExtender(mShell, new File("/proc/mtd")).readMatches("\\\"" + parts[2].substring(4) + "\\\"");
-											
-											if (mtd != null && mtd.size() > 0) {
-												parts[2] = "/dev/block/mtdblock" + mtd.getLine().substring(3, mtd.getLine().indexOf(":"));
+							if (data != null) {
+								String[] lines = data.assort("#").getArray();
+								
+								for (int x=0; x < lines.length; x++) {
+									try {
+										String[] parts = oPatternSpaceSearch.split(lines[x].trim(), 5);
+										String options = isFstab || parts.length > 4 ? parts[ isFstab ? 3 : 4 ].replaceAll(",", " ") : "";
+										
+										if (parts.length > 3 && !cache.contains(parts[ isFstab ? 1 : 3 ])) {
+											if (!isFstab && parts[2].contains("mtd@")) {
+												FileData mtd = mParent.file("/proc/mtd").readMatches("\\\"" + parts[2].substring(4) + "\\\"");
+												
+												if (mtd != null && mtd.size() > 0) {
+													parts[2] = "/dev/block/mtdblock" + mtd.getLine().substring(3, mtd.getLine().indexOf(":"));
+												}
+												
+											} else if (!isFstab && parts[2].contains("loop@")) {
+												parts[2] = parts[2].substring(5);
+												options += " loop";
 											}
 											
-										} else if (!isFstab && parts[2].contains("loop@")) {
-											parts[2] = parts[2].substring(5);
-											options += " loop";
+											MountStat stat = new MountStat();
+											
+											stat.mDevice = parts[ isFstab ? 0 : 2 ];
+											stat.mFstype = parts[ isFstab ? 2 : 1 ];
+											stat.mLocation = parts[ isFstab ? 1 : 3 ];
+											stat.mOptions = oPatternSpaceSearch.split(options);
+											
+											list.add(stat);
+											cache.add(parts[ isFstab ? 1 : 3 ]);
 										}
 										
-										MountStat stat = new MountStat();
-										
-										stat.mDevice = parts[ isFstab ? 0 : 2 ];
-										stat.mFstype = parts[ isFstab ? 2 : 1 ];
-										stat.mLocation = parts[ isFstab ? 1 : 3 ];
-										stat.mOptions = oPatternSpaceSearch.split(options);
-										
-										list.add(stat);
-										cache.add(parts[ isFstab ? 1 : 3 ]);
-									}
-									
-								} catch(Throwable e) {}
+									} catch(Throwable e) {}
+								}
 							}
 						}
+						
+						mFstabList = list.toArray( new MountStat[ list.size() ] );
 					}
-					
-					mFstabList = list.toArray( new MountStat[ list.size() ] );
 				}
+				
+				return mFstabList;
 			}
-			
-			return mFstabList;
 		}
 	}
-	
-	/**
-	 * This is a container used to store disk information. 
-	 * It is used by the {@link FilesystemExtender.Device#statDisk()} method.
-	 */
-	public static class DiskStat {
-		private String mDevice;
-		private String mLocation;
-		private Long mSize;
-		private Long mUsage;
-		private Long mAvailable;
-		private Integer mPercentage;
 		
-		/** 
-		 * @return
-		 *     Device path
-		 */
-		public String device() {
-			return mDevice;
-		}
-		
-		/** 
-		 * @return
-		 *     Mount location
-		 */
-		public String location() {
-			return mLocation;
-		}
-		
-		/** 
-		 * @return
-		 *     Disk size in bytes
-		 */
-		public Long size() {
-			return mSize;
-		}
-		
-		/** 
-		 * @return
-		 *     Disk usage size in bytes
-		 */
-		public Long usage() {
-			return mUsage;
-		}
-		
-		/** 
-		 * @return
-		 *     Disk available size in bytes
-		 */
-		public Long available() {
-			return mAvailable;
-		}
-		
-		/** 
-		 * @return
-		 *     Disk usage percentage
-		 */
-		public Integer percentage() {
-			return mPercentage;
-		}
-	}
-	
-	/**
-	 * This is a container used to store mount information. 
-	 * It is used by the {@link FilesystemExtender#getFstabList()}, {@link FilesystemExtender#getMountList()}, {@link FilesystemExtender.Device#statFstab()} and {@link FilesystemExtender.Device#statMount()} methods.
-	 */
-	public static class MountStat {
-		private String mDevice;
-		private String mLocation;
-		private String mFstype;
-		private String[] mOptions;
-		
-		/** 
-		 * @return
-		 *     The device path
-		 */
-		public String device() {
-			return mDevice;
-		}
-		
-		/** 
-		 * @return
-		 *     The mount location
-		 */
-		public String location() {
-			return mLocation;
-		}
-		
-		/** 
-		 * @return
-		 *     The device file system type
-		 */
-		public String fstype() {
-			return mFstype;
-		}
-		
-		/** 
-		 * @return
-		 *     The options used at mount time
-		 */
-		public String[] options() {
-			return mOptions;
-		}
-	}
-	
 	/**
 	 * This class is used to handle devices and mount points. It can be used to get data about a device like size, mount point, file system type etc. 
 	 * It can also be used to move a device mount point, remount a device, unmount, mount etc.
 	 * <br />
-	 * <strong>As this class is an {@link ExtenderGroup}, it should not be called directly. Instead use {@link RootFW#filesystem(String)}</strong>
-	 * 
-	 * <dl>
-	 * <dt><span class="strong">Example:</span></dt>
-	 * <dd><code><pre>
-	 * RootFW root = new RootFW();
-	 * 
-	 * if (root.isConnected()) {
-	 *     if( root.filesystem("/dev/block/mmcblk0p2").addMount("/sd-ext") ) {
-	 *         root.filesystem("/sd-ext/app").addMount("/data/app");
-	 *         
-	 *         Boolean readOnly = root.filesystem("/system").hasOption("ro");
-	 *         
-	 *         if ( !readOnly || root.filesystem("/system").addMount( new String[]{"remount", "rw"} ) ) {
-	 *             ...
-	 *         }
-	 *     }
-	 *     
-	 *     root.disconnect();
-	 * }
-	 * </pre></code></dd>
-	 * </dl>
+	 * Note that this implements the {@link ExtenderGroup} interface, which means that it does not allow anything outside {@link RootFW} to create an instance of it. Use {@link RootFW#filesystem(String)} to retrieve an instance.
 	 */
 	public static class Device implements ExtenderGroup {
-		protected ShellExtender mShell;
+		protected ShellExtender.Shell mShell;
+		protected RootFW mParent;
 		
-		protected String mDevice;
-		
-		protected Boolean iIsDirectory = false;
+		protected FileExtender.File mDevice;
 		
 		/**
-		 * Create a new {@link FilesystemExtender.Device} instance.
-		 * 
-		 * @see RootFW#filesystem(String)
-		 * 
-		 * @param shell
-		 *     An {@link ShellExtender} object
-		 *     
-		 * @param device
-		 *     The path of a device or mount location
+		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public Device(ShellExtender shell, String device) {
-			mShell = shell;
-			mDevice = device;
-			iIsDirectory = new FileExtender(mShell, new File(mDevice)).isDirectory();
+		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+			return transfer.setInstance((ExtenderGroup) new Device(parent, (java.io.File) transfer.arguments[0]));
+		}
+		
+		/**
+		 * Create a new instance of this class.
+		 * 
+		 * @param parent
+		 *     A reference to the {@link RootFW} instance
+		 */
+		private Device(RootFW parent, java.io.File device) {
+			mShell = parent.shell();
+			mDevice = parent.file(device.getAbsolutePath());
+			mParent = parent;
 		}
 		
 		/**
@@ -422,9 +294,9 @@ public class FilesystemExtender implements ExtenderGroup {
 		 *     <code>True</code> on success, <code>False</code> otherwise
 		 */
 		public Boolean addMount(String location, String type, String[] options) {
-			String cmd = location != null && iIsDirectory ? 
+			String cmd = location != null && mDevice.isDirectory() ? 
 					"%binary mount --bind '" + mDevice + "' '" + location + "'" : 
-						"%binary mount" + (type != null ? " -t '" + type + "'" : "") + (options != null ? " -o '" + TextUtils.join(",", Arrays.asList(options)) + "'" : "") + " '" + mDevice + "'" + (location != null ? " '" + location + "'" : "");
+						"%binary mount" + (type != null ? " -t '" + type + "'" : "") + (options != null ? " -o '" + TextUtils.join(",", Arrays.asList(options)) + "'" : "") + " '" + mDevice.getAbsolutePath() + "'" + (location != null ? " '" + location + "'" : "");
 			
 			ShellResult result = mShell.buildAttempts(cmd).run();
 			
@@ -438,7 +310,7 @@ public class FilesystemExtender implements ExtenderGroup {
 		 *     <code>True</code> on success, <code>False</code> otherwise
 		 */
 		public Boolean removeMount() {
-			ShellResult result = mShell.buildAttempts("%binary umount '" + mDevice + "'", "%binary -f umount '" + mDevice + "'").run();
+			ShellResult result = mShell.buildAttempts("%binary umount '" + mDevice.getAbsolutePath() + "'", "%binary -f umount '" + mDevice.getAbsolutePath() + "'").run();
 			
 			return result.wasSuccessful();
 		}
@@ -450,13 +322,13 @@ public class FilesystemExtender implements ExtenderGroup {
 		 *     <code>True</code> on success, <code>False</code> otherwise
 		 */
 		public Boolean moveMount(String destination) {
-			ShellResult result = mShell.buildAttempts("%binary mount --move '" + mDevice + "' '" + destination + "'").run();
+			ShellResult result = mShell.buildAttempts("%binary mount --move '" + mDevice.getAbsolutePath() + "' '" + destination + "'").run();
 			
 			if (!result.wasSuccessful()) {
 				MountStat stat = statMount();
 				
 				if (stat != null && removeMount()) {
-					return new Device(mShell, stat.device()).addMount(stat.location(), stat.fstype(), stat.options());
+					return mParent.filesystem(stat.device()).addMount(stat.location(), stat.fstype(), stat.options());
 				}
 			}
 			
@@ -471,18 +343,18 @@ public class FilesystemExtender implements ExtenderGroup {
 		 *     A single {@link MountStat} object
 		 */
 		public MountStat statMount() {
-			MountStat[] list = new FilesystemExtender(mShell).getMountList();
+			MountStat[] list = mParent.filesystem().getMountList();
 			
 			if (list != null) {
-				if (!iIsDirectory) {
+				if (!mDevice.isDirectory()) {
 					for (int i=0; i < list.length; i++) {
-						if (list[i].device().equals(mDevice)) {
+						if (list[i].device().equals(mDevice.getAbsolutePath())) {
 							return list[i];
 						}
 					}
 					
 				} else {
-					String path = !mDevice.equals("/") && mDevice.endsWith("/") ? mDevice.substring(0, mDevice.length()-1) : mDevice;
+					String path = !mDevice.getAbsolutePath().equals("/") && mDevice.getAbsolutePath().endsWith("/") ? mDevice.getAbsolutePath().substring(0, mDevice.getAbsolutePath().length()-1) : mDevice.getAbsolutePath();
 					
 					do {
 						for (int i=0; i < list.length; i++) {
@@ -506,18 +378,18 @@ public class FilesystemExtender implements ExtenderGroup {
 		 *     A single {@link MountStat} object
 		 */
 		public MountStat statFstab() {
-			MountStat[] list = new FilesystemExtender(mShell).getFstabList();
+			MountStat[] list = mParent.filesystem().getFstabList();
 			
 			if (list != null) {
-				if (!iIsDirectory) {
+				if (!mDevice.isDirectory()) {
 					for (int i=0; i < list.length; i++) {
-						if (list[i].device().equals(mDevice)) {
+						if (list[i].device().equals(mDevice.getAbsolutePath())) {
 							return list[i];
 						}
 					}
 					
 				} else {
-					String path = !mDevice.equals("/") && mDevice.endsWith("/") ? mDevice.substring(0, mDevice.length()-1) : mDevice;
+					String path = !mDevice.getAbsolutePath().equals("/") && mDevice.getAbsolutePath().endsWith("/") ? mDevice.getAbsolutePath().substring(0, mDevice.getAbsolutePath().length()-1) : mDevice.getAbsolutePath();
 					
 					do {
 						for (int i=0; i < list.length; i++) {
@@ -542,7 +414,7 @@ public class FilesystemExtender implements ExtenderGroup {
 		 *     A single {@link DiskStat} object
 		 */
 		public DiskStat statDisk() {
-			ShellResult result = mShell.buildAttempts("%binary df -k '" + mDevice + "'", "%binary df '" + mDevice + "'").run();
+			ShellResult result = mShell.buildAttempts("%binary df -k '" + mDevice.getAbsolutePath() + "'", "%binary df '" + mDevice.getAbsolutePath() + "'").run();
 			
 			if (result.wasSuccessful() && result.size() > 1) {
 				/* Depending on how long the line is, the df command some times breaks a line into two */
@@ -704,9 +576,9 @@ public class FilesystemExtender implements ExtenderGroup {
 		 *     The device file system type
 		 */
 		public String fsType(Boolean realType) {
-			if (!iIsDirectory) {
+			if (!mDevice.isDirectory()) {
 				/* Note that some older busybox binaries does not provide accurate information. Some could report ext4 as ext3 or ext3 as ext2. Also some does not provide the type at all. */
-				ShellResult result = mShell.buildAttempts("%binary blkid '" + mDevice + "'").run();
+				ShellResult result = mShell.buildAttempts("%binary blkid '" + mDevice.getAbsolutePath() + "'").run();
 				
 				if (result.wasSuccessful()) {
 					String line = result.getLine();
@@ -731,6 +603,110 @@ public class FilesystemExtender implements ExtenderGroup {
 			}
 			
 			return null;
+		}
+	}
+	
+	/**
+	 * This is a container used to store disk information. 
+	 * It is used by the {@link FilesystemExtender.Device#statDisk()} method.
+	 */
+	public static class DiskStat {
+		private String mDevice;
+		private String mLocation;
+		private Long mSize;
+		private Long mUsage;
+		private Long mAvailable;
+		private Integer mPercentage;
+		
+		/** 
+		 * @return
+		 *     Device path
+		 */
+		public String device() {
+			return mDevice;
+		}
+		
+		/** 
+		 * @return
+		 *     Mount location
+		 */
+		public String location() {
+			return mLocation;
+		}
+		
+		/** 
+		 * @return
+		 *     Disk size in bytes
+		 */
+		public Long size() {
+			return mSize;
+		}
+		
+		/** 
+		 * @return
+		 *     Disk usage size in bytes
+		 */
+		public Long usage() {
+			return mUsage;
+		}
+		
+		/** 
+		 * @return
+		 *     Disk available size in bytes
+		 */
+		public Long available() {
+			return mAvailable;
+		}
+		
+		/** 
+		 * @return
+		 *     Disk usage percentage
+		 */
+		public Integer percentage() {
+			return mPercentage;
+		}
+	}
+	
+	/**
+	 * This is a container used to store mount information. 
+	 * It is used by the {@link FilesystemExtender#getFstabList()}, {@link FilesystemExtender#getMountList()}, {@link FilesystemExtender.Device#statFstab()} and {@link FilesystemExtender.Device#statMount()} methods.
+	 */
+	public static class MountStat {
+		private String mDevice;
+		private String mLocation;
+		private String mFstype;
+		private String[] mOptions;
+		
+		/** 
+		 * @return
+		 *     The device path
+		 */
+		public String device() {
+			return mDevice;
+		}
+		
+		/** 
+		 * @return
+		 *     The mount location
+		 */
+		public String location() {
+			return mLocation;
+		}
+		
+		/** 
+		 * @return
+		 *     The device file system type
+		 */
+		public String fstype() {
+			return mFstype;
+		}
+		
+		/** 
+		 * @return
+		 *     The options used at mount time
+		 */
+		public String[] options() {
+			return mOptions;
 		}
 	}
 }
