@@ -2,6 +2,8 @@ package com.spazedog.lib.rootfw3.extenders;
 
 import java.util.regex.Pattern;
 
+import android.text.TextUtils;
+
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender.ShellResult;
@@ -9,6 +11,61 @@ import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
 public class BinaryExtender {
 	private final static Pattern oPatternSpaceSearch = Pattern.compile("[ \t]+");
+	
+	/**
+	 * This class is used to handle binaries located in one of the <code>$PATH</code> variable directories. 
+	 * <br />
+	 * Note that this implements the {@link ExtenderGroup} interface, which means that it does not allow anything outside {@link RootFW} to create an instance of it. Use {@link RootFW#binary(String)} to retrieve an instance.
+	 */
+	public static class Binary implements ExtenderGroup {
+		private ShellExtender.Shell mShell;
+		private RootFW mParent;
+		
+		private String mBinary;
+		
+		/**
+		 * This is used internally by {@link RootFW} to get a new instance of this class. 
+		 */
+		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+			return transfer.setInstance((ExtenderGroup) new Binary(parent, (String) transfer.arguments[0]));
+		}
+		
+		/**
+		 * Create a new instance of this class.
+		 * 
+		 * @param parent
+		 *     A reference to the {@link RootFW} instance
+		 */
+		private Binary(RootFW parent, String binary) {
+			mParent = parent;
+			mShell = parent.shell();
+			mBinary = binary;
+		}
+		
+		/**
+		 * Check whether a binary exists in one of the <code>$PATH</code> variable directories.
+		 * 
+		 * @param parent
+		 *     <code>True if the binary exists</code>, <code>False</code> otherwise
+		 */
+		public Boolean exists() {
+			String[] attempts = new String[ RootFW.Config.BINARIES.size() ];
+			
+			for (int i=0; i < attempts.length; i++) {
+				/* We need to build the attempts manually because 'which' needs a binary to test for, which means that 'busybox which which' will have a negative affect' */
+				attempts[i] = "( " + RootFW.Config.BINARIES.get(i) + " which " + RootFW.Config.BINARIES.get(i) + " > /dev/null 2>&1 ) && ( " + RootFW.Config.BINARIES.get(i) + " which '" + mBinary + "' && echo true || echo false )";
+			}
+			
+			ShellResult result = mShell.addAttempts(attempts).addAttempts("( which which > /dev/null 2>&1 ) && ( which '' && echo true || echo false )").run();
+			
+			if (!result.wasSuccessful()) {
+				/* Devices without busybox (Yes they do exist), does not always have 'which' available. So here we need to manually check the $PATH variable */
+				result = mShell.buildAttempts("( %binary test true > /dev/null 2>&1 ) && ( for i in " + TextUtils.join(" ", mParent.getEnvironmentVariable()) + "; do %binary test -e \"$i/" + mBinary + "\" && echo true && break; done )").run();
+			}
+			
+			return result.wasSuccessful() && "true".equals(result.getLine());
+		}
+	}
 	
 	/**
 	 * This class is used to collect information about either a specific busybox binary, or the one found in the PATH environment variable.

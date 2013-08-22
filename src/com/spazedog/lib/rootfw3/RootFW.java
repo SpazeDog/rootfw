@@ -67,6 +67,7 @@ public class RootFW {
 	private static Map<String, PropertyExtender.File> mExtenderPropertyCollection = new WeakHashMap<String, PropertyExtender.File>();
 	private static Map<String, BinaryExtender.Busybox> mExtenderBusyboxCollection = new WeakHashMap<String, BinaryExtender.Busybox>();
 	private static Map<String, FilesystemExtender.Device> mExtenderDeviceCollection = new WeakHashMap<String, FilesystemExtender.Device>();
+	private static Map<String, BinaryExtender.Binary> mExtenderBinaryCollection = new WeakHashMap<String, BinaryExtender.Binary>();
 	
 	private static Map<String, ExtenderGroup> mExtenderSingles = new WeakHashMap<String, ExtenderGroup>();
 	
@@ -422,6 +423,41 @@ public class RootFW {
 		}
 		
 		return mExtenderBusyboxCollection.get(path);
+	}
+	
+	/**
+	 * Return a new instance of the {@link BinaryExtender.Binary} class set for the defined binary.
+	 * <br />
+	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same binary 
+	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
+	 * 
+	 * @see BinaryExtender.Binary
+	 */
+	public BinaryExtender.Binary binary(String binary) {
+		String name = binary.contains("/") ? binary.substring( binary.lastIndexOf("/")+1 ) : binary;
+		
+		if (!mExtenderBinaryCollection.containsKey(name)) {
+			BinaryExtender.Binary extender = (BinaryExtender.Binary) BinaryExtender.Binary.getInstance(this, new ExtenderGroupTransfer( (Object) name )).instance;
+			
+			mExtenderBinaryCollection.put(name, extender);
+			
+			return extender;
+		}
+		
+		return mExtenderBinaryCollection.get(name);
+	}
+	
+	/**
+	 * A small method to get the shell environment variable.
+	 */
+	public String[] getEnvironmentVariable() {
+		String variable = shell().run("echo $PATH").getLine();
+		
+		if (variable != null) {
+			return variable.split(":");
+		}
+		
+		return null;
 	}
 	
 	/**
