@@ -37,6 +37,7 @@ import com.spazedog.lib.rootfw3.extenders.FileExtender;
 import com.spazedog.lib.rootfw3.extenders.FilesystemExtender;
 import com.spazedog.lib.rootfw3.extenders.InstanceExtender;
 import com.spazedog.lib.rootfw3.extenders.MemoryExtender;
+import com.spazedog.lib.rootfw3.extenders.ProcessExtender;
 import com.spazedog.lib.rootfw3.extenders.PropertyExtender;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
@@ -68,6 +69,7 @@ public class RootFW {
 	private static Map<String, BinaryExtender.Busybox> mExtenderBusyboxCollection = new WeakHashMap<String, BinaryExtender.Busybox>();
 	private static Map<String, FilesystemExtender.Device> mExtenderDeviceCollection = new WeakHashMap<String, FilesystemExtender.Device>();
 	private static Map<String, BinaryExtender.Binary> mExtenderBinaryCollection = new WeakHashMap<String, BinaryExtender.Binary>();
+	private static Map<String, ProcessExtender.Process> mExtenderProcessCollection = new WeakHashMap<String, ProcessExtender.Process>();
 	
 	private static Map<String, ExtenderGroup> mExtenderSingles = new WeakHashMap<String, ExtenderGroup>();
 	
@@ -445,6 +447,72 @@ public class RootFW {
 		}
 		
 		return mExtenderBinaryCollection.get(name);
+	}
+	
+	/**
+	 * Return a new instance of the {@link ProcessExtender.Processes} class.
+	 *    
+	 * @see ProcessExtender.Processes
+	 */
+	public ProcessExtender.Processes processes() {
+		if (!mExtenderSingles.containsKey("processes")) {
+			ProcessExtender.Processes extender = (ProcessExtender.Processes) ProcessExtender.Processes.getInstance(this, new ExtenderGroupTransfer()).instance;
+			
+			mExtenderSingles.put("processes", (ExtenderGroup) extender);
+			
+			return extender;
+		}
+		
+		return (ProcessExtender.Processes) mExtenderSingles.get("processes");
+	}
+
+	/**
+	 * Return a new instance of the {@link ProcessExtender.Process} class set for the defined process.
+	 * <br />
+	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same process 
+	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
+	 * 
+	 * @see ProcessExtender.Process
+	 */
+	public ProcessExtender.Process process(String process) {
+		if (!mExtenderProcessCollection.containsKey(process)) {
+			ProcessExtender.Process extender = (ProcessExtender.Process) ProcessExtender.Process.getInstance(this, new ExtenderGroupTransfer( (Object) process )).instance;
+			
+			mExtenderProcessCollection.put(process, extender);
+			
+			return extender;
+		}
+		
+		return mExtenderProcessCollection.get(process);
+	}
+	
+	/**
+	 * Return a new instance of the {@link ProcessExtender.Process} class set for the defined process.
+	 * <br />
+	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same process id 
+	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
+	 * 
+	 * @see ProcessExtender.Process
+	 */
+	public ProcessExtender.Process process(Integer pid) {
+		if (!mExtenderProcessCollection.containsKey("pid:" + pid)) {
+			ProcessExtender.Process extender = (ProcessExtender.Process) ProcessExtender.Process.getInstance(this, new ExtenderGroupTransfer( (Object) pid )).instance;
+			
+			mExtenderProcessCollection.put("pid:" + pid, extender);
+			
+			return extender;
+		}
+		
+		return mExtenderProcessCollection.get("pid:" + pid);
+	}
+	
+	/**
+	 * Return a new instance of the {@link ProcessExtender.Power} class set for the defined process.
+	 * 
+	 * @see ProcessExtender.Power
+	 */
+	public ProcessExtender.Power power() {
+		return (ProcessExtender.Power) ProcessExtender.Power.getInstance(this, new ExtenderGroupTransfer()).instance;
 	}
 	
 	/**
