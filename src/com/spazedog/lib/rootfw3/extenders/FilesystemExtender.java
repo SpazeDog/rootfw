@@ -134,36 +134,38 @@ public class FilesystemExtender {
 							if (data != null) {
 								String[] lines = data.assort("#").getArray();
 								
-								for (int x=0; x < lines.length; x++) {
-									try {
-										String[] parts = oPatternSpaceSearch.split(lines[x].trim(), 5);
-										String options = isFstab || parts.length > 4 ? parts[ isFstab ? 3 : 4 ].replaceAll(",", " ") : "";
-										
-										if (parts.length > 3 && !cache.contains(parts[ isFstab ? 1 : 3 ])) {
-											if (!isFstab && parts[2].contains("mtd@")) {
-												FileData mtd = mParent.file("/proc/mtd").readMatches("\\\"" + parts[2].substring(4) + "\\\"");
-												
-												if (mtd != null && mtd.size() > 0) {
-													parts[2] = "/dev/block/mtdblock" + mtd.getLine().substring(3, mtd.getLine().indexOf(":"));
+								if (lines != null) {
+									for (int x=0; x < lines.length; x++) {
+										try {
+											String[] parts = oPatternSpaceSearch.split(lines[x].trim(), 5);
+											String options = isFstab || parts.length > 4 ? parts[ isFstab ? 3 : 4 ].replaceAll(",", " ") : "";
+											
+											if (parts.length > 3 && !cache.contains(parts[ isFstab ? 1 : 3 ])) {
+												if (!isFstab && parts[2].contains("mtd@")) {
+													FileData mtd = mParent.file("/proc/mtd").readMatches("\\\"" + parts[2].substring(4) + "\\\"");
+													
+													if (mtd != null && mtd.size() > 0) {
+														parts[2] = "/dev/block/mtdblock" + mtd.getLine().substring(3, mtd.getLine().indexOf(":"));
+													}
+													
+												} else if (!isFstab && parts[2].contains("loop@")) {
+													parts[2] = parts[2].substring(5);
+													options += " loop";
 												}
 												
-											} else if (!isFstab && parts[2].contains("loop@")) {
-												parts[2] = parts[2].substring(5);
-												options += " loop";
+												MountStat stat = new MountStat();
+												
+												stat.mDevice = parts[ isFstab ? 0 : 2 ];
+												stat.mFstype = parts[ isFstab ? 2 : 1 ];
+												stat.mLocation = parts[ isFstab ? 1 : 3 ];
+												stat.mOptions = oPatternSpaceSearch.split(options);
+												
+												list.add(stat);
+												cache.add(parts[ isFstab ? 1 : 3 ]);
 											}
 											
-											MountStat stat = new MountStat();
-											
-											stat.mDevice = parts[ isFstab ? 0 : 2 ];
-											stat.mFstype = parts[ isFstab ? 2 : 1 ];
-											stat.mLocation = parts[ isFstab ? 1 : 3 ];
-											stat.mOptions = oPatternSpaceSearch.split(options);
-											
-											list.add(stat);
-											cache.add(parts[ isFstab ? 1 : 3 ]);
-										}
-										
-									} catch(Throwable e) {}
+										} catch(Throwable e) {}
+									}
 								}
 							}
 						}
