@@ -173,6 +173,30 @@ public class FilesystemExtender {
 				return mFstabList;
 			}
 		}
+		
+		/**
+		 * Check whether a file system type is supported by the kernel.
+		 */
+		public Boolean hasTypeSupport(String fstype) {
+			FileData data = mParent.file("/proc/filesystems").readMatches(fstype);
+			
+			if (data != null && data.size() > 0) {
+				String[] lines = data.getArray();
+				
+				for (int i=0; i < lines.length; i++) {
+					try {
+						String[] parts = oPatternSpaceSearch.split(lines[i].trim());
+						
+						if (parts[ parts.length-1 ].equals(fstype)) {
+							return true;
+						}
+						
+					} catch (Throwable e) {}
+				}
+			}
+			
+			return false;
+		}
 	}
 		
 	/**
