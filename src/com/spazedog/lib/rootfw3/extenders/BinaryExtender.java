@@ -49,14 +49,15 @@ public class BinaryExtender {
 		 *     <code>True if the binary exists</code>, <code>False</code> otherwise
 		 */
 		public Boolean exists() {
-			String[] attempts = new String[ RootFW.Config.BINARIES.size() ];
+			String[] attempts = new String[ RootFW.Config.BINARIES.size()+1 ];
 			
-			for (int i=0; i < attempts.length; i++) {
+			for (int i=0; i < attempts.length-1; i++) {
 				/* We need to build the attempts manually because 'which' needs a binary to test for, which means that 'busybox which which' will have a negative affect' */
 				attempts[i] = "( " + RootFW.Config.BINARIES.get(i) + " which " + RootFW.Config.BINARIES.get(i) + " > /dev/null 2>&1 ) && ( " + RootFW.Config.BINARIES.get(i) + " which '" + mBinary + "' && echo true || echo false )";
 			}
+			attempts[attempts.length-1] = "( which which > /dev/null 2>&1 ) && ( which '' && echo true || echo false )";
 			
-			ShellResult result = mShell.addAttempts(attempts).addAttempts("( which which > /dev/null 2>&1 ) && ( which '' && echo true || echo false )").run();
+			ShellResult result = mShell.addAttempts(attempts).run();
 			
 			if (!result.wasSuccessful()) {
 				/* Devices without busybox (Yes they do exist), does not always have 'which' available. So here we need to manually check the $PATH variable */
