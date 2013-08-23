@@ -50,6 +50,8 @@ public class FilesystemExtender {
 	public static class Filesystem implements ExtenderGroup {
 		protected static MountStat[] mFstabList;
 		
+		protected static Object oLock = new Object();
+		
 		protected ShellExtender.Shell mShell;
 		protected RootFW mParent;
 		
@@ -116,7 +118,7 @@ public class FilesystemExtender {
 		 *     An array of {@link MountStat} objects
 		 */
 		public MountStat[] getFstabList() {
-			synchronized(mFstabList) {
+			synchronized(oLock) {
 				if (mFstabList == null) {
 					ShellResult result = mShell.run("for DIR in /fstab.* /fstab /init.*.rc /init.rc; do echo $DIR; done");
 					
