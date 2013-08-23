@@ -190,7 +190,7 @@ public class RootFW {
 				
 				if(isConnected()) {
 					if (Config.PATH.size() > 0) {
-						shell("PATH=\"" + TextUtils.join(":", Arrays.asList(Config.PATH)) + ":$PATH\"");
+						shell("PATH=\"" + TextUtils.join(":", Config.PATH) + ":$PATH\"");
 					}
 					
 					return true;
