@@ -611,7 +611,7 @@ public class FilesystemExtender {
 				if (result.wasSuccessful()) {
 					String line = result.getLine();
 					
-					if (line.contains("TYPE")) {
+					if (line != null && line.contains("TYPE")) {
 						String parts[] = oPatternSpaceSearch.split(line.trim());
 						Integer index = parts.length-1;
 						
