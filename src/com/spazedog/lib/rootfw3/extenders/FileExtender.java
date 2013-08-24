@@ -1234,7 +1234,7 @@ public class FileExtender {
 						return mFile.list();
 						
 					} else {
-						ShellResult result = mShell.buildAttempts("%binary ls -1a '" + mFile.getAbsolutePath() + "'", "%binary ls -1 '" + mFile.getAbsolutePath() + "'").run();
+						ShellResult result = mShell.buildAttempts("%binary ls -1 '" + mFile.getAbsolutePath() + "'").run();
 						
 						if (result.wasSuccessful()) {
 							return result.trim().getArray();
@@ -1250,7 +1250,9 @@ public class FileExtender {
 								String[] output = new String[ stat.length ];
 								
 								for (int i=0; i < output.length; i++) {
-									output[i] = stat[i].name();
+									if (!stat[i].name().equals(".") && !stat[i].name().equals("..")) {
+										output[i] = stat[i].name();
+									}
 								}
 								
 								return output;
