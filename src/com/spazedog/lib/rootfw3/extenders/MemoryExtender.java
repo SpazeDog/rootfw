@@ -103,7 +103,7 @@ public class MemoryExtender {
 				List<SwapStat> statList = new ArrayList<SwapStat>();
 				
 				if (data.length > 0) {
-					for (int i=1; i < data.length; i++) {
+					for (int i=0; i < data.length; i++) {
 						try {
 							String[] sections = oPatternSpaceSearch.split(data[i].trim());
 							

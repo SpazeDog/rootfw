@@ -323,7 +323,7 @@ public class FilesystemExtender {
 		 */
 		public Boolean addMount(String location, String type, String[] options) {
 			String cmd = location != null && mDevice.isDirectory() ? 
-					"%binary mount --bind '" + mDevice + "' '" + location + "'" : 
+					"%binary mount --bind '" + mDevice.getAbsolutePath() + "' '" + location + "'" : 
 						"%binary mount" + (type != null ? " -t '" + type + "'" : "") + (options != null ? " -o '" + TextUtils.join(",", Arrays.asList(options)) + "'" : "") + " '" + mDevice.getAbsolutePath() + "'" + (location != null ? " '" + location + "'" : "");
 			
 			ShellResult result = mShell.buildAttempts(cmd).run();
