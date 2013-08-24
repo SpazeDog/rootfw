@@ -42,6 +42,7 @@ import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
 public class FileExtender {
 	
+	private final static Pattern oPatternSpaceSearch = Pattern.compile("[ \t]+");
 	private final static Pattern oPatternStatSplitter = Pattern.compile("\\|");
 	private final static Pattern oPatternStatSearch = Pattern.compile("^([a-z-]+)(?:[ \t]+([0-9]+))?[ \t]+([0-9a-z_]+)[ \t]+([0-9a-z_]+)(?:[ \t]+(?:([0-9]+),[ \t]+)?([0-9]+))?[ \t]+([A-Za-z]+[ \t]+[0-9]+[ \t]+[0-9:]+|[0-9-/]+[ \t]+[0-9:]+)[ \t]+(?:(.*) -> )?(.*)$");
 	
@@ -1288,6 +1289,59 @@ public class FileExtender {
 			}
 			
 			return null;
+		}
+		
+		/**
+		 * Calculates the size of a file or folder. 
+		 * 
+		 * @return
+		 *     0 if the file does not exist
+		 */
+		public Long fileSize() {
+			if (exists()) {
+				if (!isRestricted() && mFile.canRead()) {
+					if (isDirectory()) {
+						String[] list = getList();
+						Long size = 0L;
+						
+						if (list != null) {
+							for (int i=0; i < list.length; i++) {
+								size += open(list[i]).fileSize();
+							}
+						}
+						
+						return size;
+						
+					} else {
+						return mFile.length();
+					}
+				}
+				
+				ShellResult result = isDirectory() ? 
+						mShell.buildAttempts("%binary du -sbx '" + getAbsolutePath() + "'", "%binary du -skx '" + getAbsolutePath() + "'").run() : 
+							mShell.buildAttempts("%binary wc -c < '" + getAbsolutePath() + "'", "%binary wc < '" + getAbsolutePath() + "'").run();
+						
+				if (result.wasSuccessful()) {
+					if (isDirectory()) {
+						try {
+							return result.getCommandNumber(0) > RootFW.Config.BINARIES.size() +1 ? 
+									Long.parseLong( oPatternSpaceSearch.split(result.getLine().trim())[0] ) * 1024L : 
+										Long.parseLong( oPatternSpaceSearch.split(result.getLine().trim())[0] );
+							
+						} catch (Throwable e) {}
+						
+					} else {
+						try {
+							return result.getCommandNumber(0) > RootFW.Config.BINARIES.size() +1 ? 
+									Long.parseLong( oPatternSpaceSearch.split(result.getLine().trim())[2] )  : 
+										Long.parseLong( result.getLine() );
+							
+						} catch (Throwable e) {}
+					}
+				}
+			}
+			
+			return 0L;
 		}
 	}
 	
