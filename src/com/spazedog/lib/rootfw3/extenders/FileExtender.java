@@ -43,6 +43,7 @@ import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
 public class FileExtender {
 	
+	private final static Pattern oPatternEscape = Pattern.compile("([\"\'`\\\\])");
 	private final static Pattern oPatternSpaceSearch = Pattern.compile("[ \t]+");
 	private final static Pattern oPatternStatSplitter = Pattern.compile("\\|");
 	private final static Pattern oPatternStatSearch = Pattern.compile("^([a-z-]+)(?:[ \t]+([0-9]+))?[ \t]+([0-9a-z_]+)[ \t]+([0-9a-z_]+)(?:[ \t]+(?:([0-9]+),[ \t]+)?([0-9]+))?[ \t]+([A-Za-z]+[ \t]+[0-9]+[ \t]+[0-9:]+|[0-9-/]+[ \t]+[0-9:]+)[ \t]+(?:(.*) -> )?(.*)$");
@@ -346,9 +347,11 @@ public class FileExtender {
 						} catch (Throwable e) {}
 						
 					} else {
+						String escapedMatch = oPatternEscape.matcher(match).replaceAll("\\\\$1");
+						
 						String[] attempts = firstMatch ? 
-								new String[]{"%binary sed -n '/" + match + "/{p;q;}' '" + mFile.getAbsolutePath() + "'", "%binary grep -m 1 '" + match + "' '" + getAbsolutePath() + "'", "%binary grep '" + match + "' '" + getAbsolutePath() + "'"} : 
-									new String[]{"%binary grep '" + match + "' '" + getAbsolutePath() + "'"};
+								new String[]{"%binary sed -n '/" + escapedMatch + "/{p;q;}' '" + mFile.getAbsolutePath() + "'", "%binary grep -m 1 '" + escapedMatch + "' '" + getAbsolutePath() + "'", "%binary grep '" + escapedMatch + "' '" + getAbsolutePath() + "'"} : 
+									new String[]{"%binary grep '" + escapedMatch + "' '" + getAbsolutePath() + "'"};
 								
 						ShellResult result = mShell.buildAttempts(attempts).run();
 						

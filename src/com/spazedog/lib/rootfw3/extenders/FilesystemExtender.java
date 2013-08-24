@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
@@ -141,10 +142,17 @@ public class FilesystemExtender {
 											String options = isFstab || parts.length > 4 ? parts[ isFstab ? 3 : 4 ].replaceAll(",", " ") : "";
 											
 											if (parts.length > 3 && !cache.contains(parts[ isFstab ? 1 : 3 ])) {
+												if (!isFstab)
+													Log.d("RootTest", dirs[i] + " line " + x + ": " + lines[x].trim());
+												
 												if (!isFstab && parts[2].contains("mtd@")) {
-													FileData mtd = mParent.file("/proc/mtd").readMatches("\\\"" + parts[2].substring(4) + "\\\"");
+													Log.d("RootTest", dirs[i] + " line " + x + ": Check for 'mtd@' in '" + parts[2] + "'");
+													
+													FileData mtd = mParent.file("/proc/mtd").readMatches("\"" + parts[2].substring(4) + "\"");
 													
 													if (mtd != null && mtd.size() > 0) {
+														Log.d("RootTest", dirs[i] + " line " + x + ": Replace '" + parts[2] + "' with '" + "/dev/block/mtdblock" + mtd.getLine().substring(3, mtd.getLine().indexOf(":")) + "'");
+														
 														parts[2] = "/dev/block/mtdblock" + mtd.getLine().substring(3, mtd.getLine().indexOf(":"));
 													}
 													
@@ -152,6 +160,9 @@ public class FilesystemExtender {
 													parts[2] = parts[2].substring(5);
 													options += " loop";
 												}
+												
+												if (!isFstab)
+													Log.d("RootTest", "------------------------------------");
 												
 												MountStat stat = new MountStat();
 												
