@@ -221,8 +221,8 @@ public class ShellExtender {
 							 * an additional empty echo after the command. This will force an empty line between the two.
 							 */
 							String command = commandTries[x] + "\n";
-							command += "echo ''\n";
-							command += "status=$? && echo EOL:a00c38d8:EOL\n";
+							command += "status=$? && echo ''\n";
+							command += "echo EOL:a00c38d8:EOL\n";
 							command += "echo $status\n";
 							command += "echo EOL:a00c38d8:EOL\n";
 							
@@ -267,7 +267,7 @@ public class ShellExtender {
 										
 										cmdNumber.add(x);
 										
-										RootFW.log(TAG + "::run()", "The attempt number " + (x+1) + " was successfully executed");
+										RootFW.log(TAG + "::run()", "The attempt number " + (x+1) + " was successfully executed and returned result code (" + resultCode + ")");
 										
 										continue commandLoop;
 										
