@@ -33,7 +33,6 @@ import java.util.regex.Pattern;
 
 import android.content.Context;
 import android.text.TextUtils;
-import android.util.Log;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
@@ -974,7 +973,7 @@ public class FileExtender {
 		 */
 		public FileExtender.File open(String fileName) {
 			if (isDirectory()) {
-				return mParent.file((getParentPath() == null ? "" : getParentPath()) + "/" + (fileName.startsWith("/") ? fileName.substring(1) : fileName));
+				return mParent.file((getParentPath() == null ? "" : getAbsolutePath()) + "/" + (fileName.startsWith("/") ? fileName.substring(1) : fileName));
 			}
 			
 			return null;
