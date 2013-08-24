@@ -134,8 +134,8 @@ public final class Shell implements Extender {
 					 * So in order to make support for various shells and output, to make sure that the output is not merged with our token, we add 
 					 * an additional empty echo after the command. This will force an empty line between the two.
 					 */
-					lCommandString += "echo ''\n";
-					lCommandString += "status=$? && echo EOL:a00c38d8:EOL\n";
+					lCommandString += "status=$? && echo ''\n";
+					lCommandString += "echo EOL:a00c38d8:EOL\n";
 					lCommandString += "echo $status\n";
 					lCommandString += "echo EOL:a00c38d8:EOL\n";
 					
