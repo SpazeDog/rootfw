@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 
 import android.content.Context;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
@@ -1324,7 +1325,7 @@ public class FileExtender {
 				if (result.wasSuccessful()) {
 					if (isDirectory()) {
 						try {
-							return result.getCommandNumber(0) > RootFW.Config.BINARIES.size() +1 ? 
+							return result.getCommandNumber(0) > RootFW.Config.BINARIES.size() ? 
 									Long.parseLong( oPatternSpaceSearch.split(result.getLine().trim())[0] ) * 1024L : 
 										Long.parseLong( oPatternSpaceSearch.split(result.getLine().trim())[0] );
 							
@@ -1332,7 +1333,7 @@ public class FileExtender {
 						
 					} else {
 						try {
-							return result.getCommandNumber(0) > RootFW.Config.BINARIES.size() +1 ? 
+							return result.getCommandNumber(0) > RootFW.Config.BINARIES.size() ? 
 									Long.parseLong( oPatternSpaceSearch.split(result.getLine().trim())[2] )  : 
 										Long.parseLong( result.getLine() );
 							
