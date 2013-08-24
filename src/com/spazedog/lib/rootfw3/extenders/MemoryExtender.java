@@ -19,11 +19,12 @@
 
 package com.spazedog.lib.rootfw3.extenders;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Pattern;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
-import com.spazedog.lib.rootfw3.extenders.BinaryExtender.Busybox;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
 public class MemoryExtender {
@@ -99,22 +100,24 @@ public class MemoryExtender {
 			
 			if (file.exists()) {
 				String[] data = file.readMatches("/dev/").trim().getArray();
-				SwapStat[] stat = new SwapStat[ data.length ];
+				List<SwapStat> statList = new ArrayList<SwapStat>();
 				
 				if (data.length > 0) {
 					for (int i=1; i < data.length; i++) {
 						try {
 							String[] sections = oPatternSpaceSearch.split(data[i].trim());
 							
-							stat[i] = new SwapStat();
-							stat[i].mDevice = sections[0];
-							stat[i].mSize = Long.parseLong(sections[2]) * 1024L;
-							stat[i].mUsage = Long.parseLong(sections[3]) * 1024L;
+							SwapStat stat = new SwapStat();
+							stat.mDevice = sections[0];
+							stat.mSize = Long.parseLong(sections[2]) * 1024L;
+							stat.mUsage = Long.parseLong(sections[3]) * 1024L;
+							
+							statList.add(stat);
 							
 						} catch(Throwable e) {}
 					}
 					
-					return stat;
+					return statList.size() > 0 ? statList.toArray( new SwapStat[ statList.size() ] ) : null;
 				}
 			}
 			
