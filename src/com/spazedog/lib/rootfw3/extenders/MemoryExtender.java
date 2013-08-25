@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
+import com.spazedog.lib.rootfw3.extenders.FileExtender.FileData;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
 public class MemoryExtender {
@@ -54,6 +55,46 @@ public class MemoryExtender {
 		 */
 		private Memory(RootFW parent) {
 			mParent = parent;
+		}
+		
+		/**
+		 * Get memory information like ram usage, ram total, cached memory, swap total etc.
+		 */
+		public MemStat getUsage() {
+			FileData data = mParent.file("/proc/meminfo").read();
+			
+			if (data != null && data.size() > 0) {
+				String[] lines = data.getArray();
+				MemStat stat = new MemStat();
+				
+				for (int i=0; i < lines.length; i++) {
+					String[] parts = oPatternSpaceSearch.split(lines[i]);
+					
+					if (parts[0].equals("MemTotal:")) {
+						stat.mMemTotal = Long.parseLong(parts[1]) * 1024L;
+						
+					} else if (parts[0].equals("MemFree:")) {
+						stat.mMemFree = Long.parseLong(parts[1]) * 1024L;
+						
+					} else if (parts[0].equals("Cached:")) {
+						stat.mMemCached = Long.parseLong(parts[1]) * 1024L;
+						
+					} else if (parts[0].equals("SwapTotal:")) {
+						stat.mSwapTotal = Long.parseLong(parts[1]) * 1024L;
+						
+					} else if (parts[0].equals("SwapFree:")) {
+						stat.mSwapFree = Long.parseLong(parts[1]) * 1024L;
+						
+					} else if (parts[0].equals("SwapCached:")) {
+						stat.mSwapCached = Long.parseLong(parts[1]) * 1024L;
+						
+					}
+				}
+				
+				return stat;
+			}
+			
+			return null;
 		}
 		
 		/**
@@ -155,6 +196,135 @@ public class MemoryExtender {
 		 */
 		public Long usage() {
 			return mUsage;
+		}
+	}
+	
+	public static class MemStat {
+		private Long mMemTotal = 0L;
+		private Long mMemFree = 0L;
+		private Long mMemCached = 0L;
+		private Long mSwapTotal = 0L;
+		private Long mSwapFree = 0L;
+		private Long mSwapCached = 0L;
+		
+		/** 
+		 * @return
+		 *     Total amount of memory in bytes, including SWAP space
+		 */
+		public Long total() {
+			return mMemTotal + mSwapTotal;
+		}
+		
+		/** 
+		 * @return
+		 *     Free amount of memory in bytes, including SWAP space and cached memory
+		 */
+		public Long free() {
+			return mMemFree + mSwapFree + (mMemCached + mSwapCached);
+		}
+		
+		/** 
+		 * @return
+		 *     Amount of cached memory including SWAP space
+		 */
+		public Long cached() {
+			return mMemCached + mSwapCached;
+		}
+		
+		/** 
+		 * @return
+		 *     Amount of used memory including SWAP (Cached memory not included)
+		 */
+		public Long usage() {
+			return total() - free();
+		}
+		
+		/** 
+		 * @return
+		 *     Memory usage in percentage, including SWAP space (Cached memory not included)
+		 */
+		public Integer percentage() {
+			return ((Long) ((usage() * 100L) / total())).intValue();
+		}
+		
+		/** 
+		 * @return
+		 *     Total amount of memory in bytes
+		 */
+		public Long memTotal() {
+			return mMemTotal;
+		}
+		
+		/** 
+		 * @return
+		 *     Free amount of memory in bytes, including cached memory
+		 */
+		public Long memFree() {
+			return mMemFree + mMemCached;
+		}
+		
+		/** 
+		 * @return
+		 *     Amount of cached memory
+		 */
+		public Long memCached() {
+			return mMemCached;
+		}
+		
+		/** 
+		 * @return
+		 *     Amount of used memory (Cached memory not included)
+		 */
+		public Long memUsage() {
+			return memTotal() - memFree();
+		}
+		
+		/** 
+		 * @return
+		 *     Memory usage in percentage (Cached memory not included)
+		 */
+		public Integer memPercentage() {
+			return ((Long) ((memUsage() * 100L) / memTotal())).intValue();
+		}
+		
+		/** 
+		 * @return
+		 *     Total amount of SWAP space in bytes
+		 */
+		public Long swapTotal() {
+			return mSwapTotal;
+		}
+		
+		/** 
+		 * @return
+		 *     Free amount of SWAP space in bytes, including cached memory
+		 */
+		public Long swapFree() {
+			return mSwapFree + mSwapCached;
+		}
+		
+		/** 
+		 * @return
+		 *     Amount of cached SWAP space
+		 */
+		public Long swapCached() {
+			return mSwapCached;
+		}
+		
+		/** 
+		 * @return
+		 *     Amount of used SWAP space (Cached memory not included)
+		 */
+		public Long swapUsage() {
+			return swapTotal() - swapFree();
+		}
+		
+		/** 
+		 * @return
+		 *     SWAP space usage in percentage (Cached memory not included)
+		 */
+		public Integer swapPercentage() {
+			return ((Long) ((swapUsage() * 100L) / swapTotal())).intValue();
 		}
 	}
 }
