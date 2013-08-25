@@ -8,14 +8,16 @@ RootFW is a tool that helps Android Applications act as root. The only way for a
 Table of content
 ----------------
 
-* [Usage](#usage)
-* Extender Information
-    * [ProcessExtender](#processextender)
-    * [MemoryExtender](#memoryextender)
-    * [PropertyExtender](#propertyextender)
-    * [FilesystemExtender](#filesystemextender)
-    * [FileExtender](#fileextender)
-    * [BinaryExtender](#binaryextender)
+* [Full Documentation](http://spazedog.github.io/rootfw/RootFW3-Docs/index.html)
+* Basic Overview
+    * [Usage](#usage)
+    * Extender Information
+        * [ProcessExtender](#processextender)
+        * [MemoryExtender](#memoryextender)
+        * [PropertyExtender](#propertyextender)
+        * [FilesystemExtender](#filesystemextender)
+        * [FileExtender](#fileextender)
+        * [BinaryExtender](#binaryextender)
 
 Usage
 -----
