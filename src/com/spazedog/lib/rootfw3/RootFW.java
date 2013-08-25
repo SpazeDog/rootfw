@@ -70,6 +70,7 @@ public class RootFW {
 	private static Map<String, FilesystemExtender.Device> mExtenderDeviceCollection = new WeakHashMap<String, FilesystemExtender.Device>();
 	private static Map<String, BinaryExtender.Binary> mExtenderBinaryCollection = new WeakHashMap<String, BinaryExtender.Binary>();
 	private static Map<String, ProcessExtender.Process> mExtenderProcessCollection = new WeakHashMap<String, ProcessExtender.Process>();
+	private static Map<String, MemoryExtender.Device> mExtenderMemDeviceCollection = new WeakHashMap<String, MemoryExtender.Device>();
 	
 	private static Map<String, ExtenderGroup> mExtenderSingles = new WeakHashMap<String, ExtenderGroup>();
 	
@@ -308,6 +309,29 @@ public class RootFW {
 		}
 		
 		return (MemoryExtender.Memory) mExtenderSingles.get("memory");
+	}
+	
+	/**
+	 * Return a new instance of the {@link MemoryExtender.Device} class for the device defined in the argument. 
+	 * <br />
+	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
+	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
+	 * 
+	 * @see MemoryExtender.Device
+	 */
+	public MemoryExtender.Device memory(String device) {
+		java.io.File fileObject = new java.io.File(device);
+		String filePath = FileExtender.resolvePath( fileObject.getAbsolutePath() );
+		
+		if (!mExtenderMemDeviceCollection.containsKey(filePath)) {
+			MemoryExtender.Device extender = (MemoryExtender.Device) MemoryExtender.Device.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
+			
+			mExtenderMemDeviceCollection.put(filePath, extender);
+			
+			return extender;
+		}
+		
+		return mExtenderMemDeviceCollection.get(filePath);
 	}
 	
 	/**

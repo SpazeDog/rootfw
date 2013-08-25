@@ -98,39 +98,6 @@ public class MemoryExtender {
 		}
 		
 		/**
-		 * Get information like size and usage of a specific SWAP device. This method will return null if the device does not exist, or if it has not been activated.
-		 * 
-		 * @param device
-		 *     The specific SWAP device path to get infomation about
-		 *     
-		 * @return
-		 *     An SwapStat object containing information about the requested SWAP device
-		 */
-		public SwapStat statSwap(String device) {
-			FileExtender.File file = mParent.file("/proc/swaps");
-			
-			if (file.exists()) {
-				String data = file.readMatches(device).getLine();
-				
-				if (data != null && data.length() > 0) {
-					try {
-						String[] sections = oPatternSpaceSearch.split(data);
-						
-						SwapStat stat = new SwapStat();
-						stat.mDevice = sections[0];
-						stat.mSize = Long.parseLong(sections[2]) * 1024L;
-						stat.mUsage = Long.parseLong(sections[3]) * 1024L;
-						
-						return stat;
-						
-					} catch(Throwable e) {}
-				}
-			}
-			
-			return null;
-		}
-		
-		/**
 		 * Get a list of all active SWAP devices.
 		 *     
 		 * @return
@@ -159,6 +126,69 @@ public class MemoryExtender {
 					}
 					
 					return statList.size() > 0 ? statList.toArray( new SwapStat[ statList.size() ] ) : null;
+				}
+			}
+			
+			return null;
+		}
+	}
+	
+	/**
+	 * This class is used to get information about memory devices like a SWAP or ZRAM device
+	 * <br />
+	 * Note that this implements the {@link ExtenderGroup} interface, which means that it does not allow anything outside {@link RootFW} to create an instance of it. Use {@link RootFW#memory(String)} to retrieve an instance.
+	 */
+	public static class Device implements ExtenderGroup {
+		private RootFW mParent;
+		private FileExtender.File mDevice;
+		
+		/**
+		 * This is used internally by {@link RootFW} to get a new instance of this class. 
+		 */
+		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+			return transfer.setInstance((ExtenderGroup) new Device(parent, (FileExtender.File) transfer.arguments[0]));
+		}
+		
+		/**
+		 * Create a new instance of this class.
+		 * 
+		 * @param parent
+		 *     A reference to the {@link RootFW} instance
+		 */
+		private Device(RootFW parent, FileExtender.File device) {
+			mParent = parent;
+			mDevice = device;
+		}
+		
+		/**
+		 * Get information like size and usage of a specific SWAP device. This method will return null if the device does not exist, or if it has not been activated.
+		 * 
+		 * @param device
+		 *     The specific SWAP device path to get infomation about
+		 *     
+		 * @return
+		 *     An SwapStat object containing information about the requested SWAP device
+		 */
+		public SwapStat statSwap() {
+			if (mDevice.exists()) {
+				FileExtender.File file = mParent.file("/proc/swaps");
+				
+				if (file.exists()) {
+					String data = file.readMatches(mDevice.getAbsolutePath()).getLine();
+					
+					if (data != null && data.length() > 0) {
+						try {
+							String[] sections = oPatternSpaceSearch.split(data);
+							
+							SwapStat stat = new SwapStat();
+							stat.mDevice = sections[0];
+							stat.mSize = Long.parseLong(sections[2]) * 1024L;
+							stat.mUsage = Long.parseLong(sections[3]) * 1024L;
+							
+							return stat;
+							
+						} catch(Throwable e) {}
+					}
 				}
 			}
 			
