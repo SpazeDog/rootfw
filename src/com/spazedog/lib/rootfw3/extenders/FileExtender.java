@@ -847,7 +847,7 @@ public class FileExtender {
 						} catch(Throwable e) { return false; }
 						
 						if (srcFile.move( getAbsolutePath() )) {
-							if ((permissions == null || setPermissions(permissions)) && (user == null || setOwner(user)) && (group == null || setGroup(group))) {
+							if ((permissions == null || (setPermissions(permissions)) && (user == null || setOwner(user)) && (group == null || setGroup(group)))) {
 								return true;
 							}
 						}
