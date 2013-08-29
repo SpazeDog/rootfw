@@ -508,7 +508,11 @@ public class FilesystemExtender {
 				pRemaining = pUsageSections[2].longValue();
 				
 				if (pPercentage == null) {
-					pPercentage = ((Long) ((pUsage * 100L) / pSize)).intValue();
+					/* Java cannot divide by zero, so in case of usage less than 1, we will catch the error and set percentage to 0 */
+					try {
+						pPercentage = ((Long) ((pUsage * 100L) / pSize)).intValue();
+						
+					} catch (Throwable e) { pPercentage = 0; }
 				}
 				
 				DiskStat info = new DiskStat();
