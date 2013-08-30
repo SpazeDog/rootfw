@@ -459,71 +459,82 @@ public class FilesystemExtender {
 				/* Depending on how long the line is, the df command some times breaks a line into two */
 				String[] parts = oPatternSpaceSearch.split(result.sort(1).trim().getString(" ").trim());
 				
-				String pDevice=null, pLocation=null, prefix, prefixList[] = {"k", "m", "g", "t"};
-				Integer pPercentage=null;
-				Long pUsage, pSize, pRemaining;
-				Double[] pUsageSections = new Double[3];
-				
-				if (parts.length > 5) {
-					/* Busybox output */
+				/*
+				 * Any 'df' output, no mater which toolbox or busybox version, should contain at least 
+				 * 'device or mount location', 'size', 'used' and 'available'
+				 */
+				if (parts.length > 3) {
+					String pDevice=null, pLocation=null, prefix, prefixList[] = {"k", "m", "g", "t"};
+					Integer pPercentage=null;
+					Long pUsage, pSize, pRemaining;
+					Double[] pUsageSections = new Double[3];
 					
-					pDevice = parts[0];
-					pLocation = parts[5];
-					pPercentage = Integer.parseInt(parts[4].substring(0, parts[4].length()-1));
-					
-				} else {
-					/* Toolbox output */
-					
-					/* Depending on Toolbox version, index 0 can be both the device or the mount location */
-					MountStat stat = statMount();
-					
-					if (stat != null) {
-						pDevice = stat.device();
-						pLocation = stat.location();
-					}
-				}
-				
-				/* Make sure that the sizes of usage, capacity etc does not have a prefix. Not all toolbox and busybox versions supports the '-k' argument, 
-				 * and some does not produce an error when parsed */
-				for (int i=1; i < 4; i++) {
-					if (oPatternPrefixSearch.matcher(parts[i]).matches()) {
-						pUsageSections[i-1] = Double.parseDouble( parts[i].substring(0, parts[i].length()-1) );
-						prefix = parts[i].substring(parts[i].length()-1).toLowerCase(Locale.US);
+					if (parts.length > 5) {
+						/* Busybox output */
 						
-						for (int x=0; x < prefixList.length; x++) {
-							pUsageSections[i-1] = pUsageSections[i-1] * 1024D;
-							
-							if (prefixList[x].equals(prefix)) {
-								break;
-							}
-						}
+						pDevice = parts[0];
+						pLocation = parts[5];
+						pPercentage = Integer.parseInt(parts[4].substring(0, parts[4].length()-1));
 						
 					} else {
-						pUsageSections[i-1] = Double.parseDouble(parts[i]) * 1024D;
-					}
-				}
-				
-				pSize = pUsageSections[0].longValue();
-				pUsage = pUsageSections[1].longValue();
-				pRemaining = pUsageSections[2].longValue();
-				
-				if (pPercentage == null) {
-					/* Java cannot divide by zero, so in case of usage less than 1, we will catch the error and set percentage to 0 */
-					try {
-						pPercentage = ((Long) ((pUsage * 100L) / pSize)).intValue();
+						/* Toolbox output */
 						
-					} catch (Throwable e) { pPercentage = 0; }
+						/* Depending on Toolbox version, index 0 can be both the device or the mount location */
+						MountStat stat = statMount();
+						
+						if (stat != null) {
+							pDevice = stat.device();
+							pLocation = stat.location();
+						}
+					}
+					
+					/* Make sure that the sizes of usage, capacity etc does not have a prefix. Not all toolbox and busybox versions supports the '-k' argument, 
+					 * and some does not produce an error when parsed */
+					for (int i=1; i < 4; i++) {
+						if (i < parts.length) {
+							if (oPatternPrefixSearch.matcher(parts[i]).matches()) {
+								pUsageSections[i-1] = Double.parseDouble( parts[i].substring(0, parts[i].length()-1) );
+								prefix = parts[i].substring(parts[i].length()-1).toLowerCase(Locale.US);
+								
+								for (int x=0; x < prefixList.length; x++) {
+									pUsageSections[i-1] = pUsageSections[i-1] * 1024D;
+									
+									if (prefixList[x].equals(prefix)) {
+										break;
+									}
+								}
+								
+							} else {
+								pUsageSections[i-1] = Double.parseDouble(parts[i]) * 1024D;
+							}
+	
+						} else {
+							pUsageSections[i-1] = 0D;
+						}
+					}
+					
+					pSize = pUsageSections[0].longValue();
+					pUsage = pUsageSections[1].longValue();
+					pRemaining = pUsageSections[2].longValue();
+					
+					if (pPercentage == null) {
+						/* Java cannot divide by zero, so in case of usage less than 1, we will catch the error and set percentage to 0 */
+						try {
+							pPercentage = ((Long) ((pUsage * 100L) / pSize)).intValue();
+							
+						} catch (Throwable e) { pPercentage = 0; }
+					}
+					
+					DiskStat info = new DiskStat();
+					info.mDevice = pDevice;
+					info.mLocation = pLocation;
+					info.mSize = pSize;
+					info.mUsage = pUsage;
+					info.mAvailable = pRemaining;
+					info.mPercentage = pPercentage;
+	
+					return info;
 				}
-				
-				DiskStat info = new DiskStat();
-				info.mDevice = pDevice;
-				info.mLocation = pLocation;
-				info.mSize = pSize;
-				info.mUsage = pUsage;
-				info.mAvailable = pRemaining;
-				info.mPercentage = pPercentage;
-
-				return info;
 			}
 			
 			return null;
