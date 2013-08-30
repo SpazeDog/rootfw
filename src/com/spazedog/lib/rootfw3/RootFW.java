@@ -214,7 +214,7 @@ public class RootFW {
 	 */
 	public void disconnect() {
 		if (isConnected()) {
-			shell("exit");
+			shell("exit 0");
 			
 			try {
 				mInputStream.close();
