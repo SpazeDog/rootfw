@@ -1346,6 +1346,24 @@ public class FileExtender {
 			
 			return 0L;
 		}
+		
+		/**
+		 * Get the md5sum of this file
+		 */
+		public String getChecksum() {
+			if (isFile()) {
+				ShellResult result = mShell.buildAttempts("%binary md5sum '" + getAbsolutePath() + "' 2> /dev/null").run();
+				
+				if (result.wasSuccessful()) {
+					try {
+						return oPatternSpaceSearch.split(result.getLine().trim())[0];
+						
+					} catch (Throwable e) {}
+				}
+			}
+			
+			return null;
+		}
 	}
 	
 	/**
