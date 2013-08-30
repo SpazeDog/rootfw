@@ -428,7 +428,9 @@ public class FileExtender {
 						String redirect = append ? ">>" : ">";
 						
 						for (int i=0; i < input.length; i++) {
-							if ( !(result = mShell.run("echo '' " + redirect + " '" + getAbsolutePath() + "' 2> /dev/null")).wasSuccessful() ) {
+							String escapedMatch = oPatternEscape.matcher(input[i]).replaceAll("\\\\$1");
+							
+							if ( !(result = mShell.run("echo '" + escapedMatch + "' " + redirect + " '" + getAbsolutePath() + "' 2> /dev/null")).wasSuccessful() ) {
 								break;
 							}
 							
