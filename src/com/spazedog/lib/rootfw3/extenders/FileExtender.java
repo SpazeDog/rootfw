@@ -37,6 +37,8 @@ import android.text.TextUtils;
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
 import com.spazedog.lib.rootfw3.containers.Data;
+import com.spazedog.lib.rootfw3.extenders.FilesystemExtender.DiskStat;
+import com.spazedog.lib.rootfw3.extenders.FilesystemExtender.MountStat;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender.ShellResult;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
@@ -1365,6 +1367,82 @@ public class FileExtender {
 			}
 			
 			return null;
+		}
+		
+		/**
+		 * Reboot into recovery and run this file/package
+		 * <br />
+		 * This method will add a command file in /cache/recovery which will tell the recovery the location of this 
+		 * package. The recovery will then run the package and then automatically reboot back into Android. 
+		 * <br />
+		 * Note that this will also work on ROM's that changes the cache location or device. The method will 
+		 * locate the real internal cache partition, and it will also mount it at a second location 
+		 * if it is not already mounted. 
+		 * 
+		 * @param args
+		 *     Arguments which will be parsed to the recovery package. 
+		 *     Each argument equels one prop line.
+		 *     <br />
+		 *     Each prop line is added to /cache/recovery/rootfw.prop and named (argument[argument number] = [value]).
+		 *     For an example, if first argument is "test", it will be written to rootfw.prop as (argument1 = test).
+		 * 
+		 * @return
+		 *     <code>False if it failed</code>
+		 */
+		public Boolean runInRecovery(String... args) {
+			if (isFile()) {
+				String cacheLocation = "/cache";
+				MountStat mountStat = mParent.filesystem(cacheLocation).statFstab();
+				
+				if (mountStat != null) {
+					DiskStat diskStat = mParent.filesystem( mountStat.device() ).statDisk();
+					
+					if (diskStat == null || !cacheLocation.equals(diskStat.location())) {
+						if (diskStat == null) {
+							mParent.filesystem("/").addMount(new String[]{"remount", "rw"});
+							cacheLocation = "/cache-int";
+							
+							if (!openNew(cacheLocation).createDirectory()) {
+								return false;
+								
+							} else if (!mParent.filesystem(mountStat.device()).addMount(cacheLocation)) {
+								return false;
+							}
+							
+							mParent.filesystem("/").addMount(new String[]{"remount", "ro"});
+							
+						} else {
+							cacheLocation = diskStat.location();
+						}
+					}
+				}
+				
+				if (openNew(cacheLocation + "/recovery").createDirectory()) {
+					if (openNew(cacheLocation + "/recovery/command").write("--update_package=" + getResolvedPath())) {
+						if (args != null && args.length > 0) {
+							String[] lines = new String[ args.length ];
+							
+							for (int i=0; i < args.length; i++) {
+								lines[i] = "argument" + (i+1) + "=" + args[i];
+							}
+							
+							if (!openNew(cacheLocation + "/recovery/rootfw.prop").write(lines)) {
+								openNew(cacheLocation + "/recovery/command").remove(); 
+								
+								return false;
+							}
+						}
+						
+						if (mParent.power().recoveryReboot()) {
+							return true;
+						}
+						
+						openNew(cacheLocation + "/recovery/command").remove();
+					}
+				}
+			}
+			
+			return false;
 		}
 	}
 	
