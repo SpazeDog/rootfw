@@ -41,8 +41,10 @@ public class ShellExtender {
 	 * Note that this implements the {@link ExtenderGroup} interface, which means that it does not allow anything outside {@link RootFW} to create an instance of it. Use {@link RootFW#shell()} to retrieve an instance. 
 	 */
 	public static class Shell implements ExtenderGroup {
-		protected BufferedReader mInputStream;
-		protected DataOutputStream mOutputStream;
+
+		protected Object mConnectionLock;
+		
+		protected RootFW mParent;
 		
 		protected Integer[] mResultCodes = new Integer[]{0};
 		protected List<String[]> mCommands = new ArrayList<String[]>();
@@ -51,7 +53,7 @@ public class ShellExtender {
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
 		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
-			return transfer.setInstance((ExtenderGroup) new Shell((BufferedReader) transfer.arguments[0], (DataOutputStream) transfer.arguments[1]));
+			return transfer.setInstance((ExtenderGroup) new Shell(parent, (Object) transfer.arguments[0]));
 		}
 		
 		/**
@@ -63,9 +65,9 @@ public class ShellExtender {
 		 * @param output
 		 *     The OutputStream from the RootFW connection
 		 */
-		private Shell(BufferedReader inputstream, DataOutputStream outputStream) {
-			mInputStream = inputstream;
-			mOutputStream = outputStream;
+		private Shell(RootFW parent, Object lock) {
+			mParent = parent;
+			mConnectionLock = lock;
 		}
 		
 		/**
@@ -195,113 +197,144 @@ public class ShellExtender {
 		 *     a new instance of ShellResult with all of the shell output and information like the result code. 
 		 */
 		public ShellResult run() {
-			synchronized(mOutputStream) {
-				List<String> output = new ArrayList<String>();
-				List<Integer> cmdNumber = new ArrayList<Integer>();
-				Integer resultCode = -1;
-				Integer[] codes = mResultCodes;
+			synchronized(mConnectionLock) {
+				final Integer[] result = new Integer[]{-1};
+				final List<String> output = new ArrayList<String>();
+				final List<Integer> commandNumber = new ArrayList<Integer>();
+				final Integer[] resultCodes = mResultCodes;
 				
-				RootFW.log(TAG + "::run()", "Preparing to execute " + mCommands.size() + " command(s)");
+				Integer connectionTimeout = RootFW.Config.Connection.TIMEOUT;
+				Integer connectionTries = RootFW.Config.Connection.TRIES > 0 ? 
+						RootFW.Config.Connection.TRIES : 1;
 				
-				try {			
-					commandLoop:
-					for (int i=0; i < mCommands.size(); i++) {
-						String[] commandTries = mCommands.get(i);
-						
-						RootFW.log(TAG + "::run()", "Executing command number " + (i+1) + " containing " + commandTries.length + " attempt(s)");
-						
-						for (int x=0; x < commandTries.length; x++) {
-							RootFW.log(TAG + "::run()", "Running attempt number " + (x+1) + " [" + commandTries[x] + "]");
-							
-							/*
-							 * If we try to execute a command like 'cat file', and this file does not contain any line breaks, 
-							 * then the file output and our token 'EOL:a00c38d8:EOL' will be merged in the same line. 
-							 * On some shells we can handle this by adding a double line break after our command, but other shells seams to trim this away. 
-							 * So in order to make support for various shells and output, to make sure that the output is not merged with our token, we add 
-							 * an additional empty echo after the command. This will force an empty line between the two.
-							 */
-							String command = commandTries[x] + "\n";
-							command += "status=$? && echo ''\n";
-							command += "echo EOL:a00c38d8:EOL\n";
-							command += "echo $status\n";
-							command += "echo EOL:a00c38d8:EOL\n";
-							
-							mOutputStream.write( command.getBytes() );
-							mOutputStream.flush();
-							
-							String input;
-							List<String> lines = new ArrayList<String>();
-							
+				for (int p=0; p < connectionTries; p++) {
+					Thread shellHandler = new Thread(new Runnable(){
+						@Override
+						public void run() {
 							try {
-								while ((input = mInputStream.readLine()) != null) {
-									if (!input.contains("EOL:a00c38d8:EOL")) {
-										lines.add(input);
+								BufferedReader inputStream = mParent.getInputStream(mConnectionLock);
+								DataOutputStream outputStream = mParent.getOutputStream(mConnectionLock);
+								
+								commandLoop:
+								for (int i=0; i < mCommands.size(); i++) {
+									String[] commandTries = mCommands.get(i);
+									
+									RootFW.log(TAG + "::run()", "Executing command number " + (i+1) + " containing " + commandTries.length + " attempt(s)");
+									
+									for (int x=0; x < commandTries.length; x++) {
+										RootFW.log(TAG + "::run()", "Running attempt number " + (x+1) + " [" + commandTries[x] + "]");
 										
-									} else {
-										resultCode = -1;
-												
-										/* It is important that readLine() get's to be executed until it reaches 'EOL:a00c38d8:EOL'. 
-										 * Otherwise, the output will not be cleaned out, and will be added to the next command executed. 
+										/*
+										 * If we try to execute a command like 'cat file', and this file does not contain any line breaks, 
+										 * then the file output and our token 'EOL:a00c38d8:EOL' will be merged in the same line. 
+										 * On some shells we can handle this by adding a double line break after our command, but other shells seams to trim this away. 
+										 * So in order to make support for various shells and output, to make sure that the output is not merged with our token, we add 
+										 * an additional empty echo after the command. This will force an empty line between the two.
 										 */
-										while ((input = mInputStream.readLine()) != null && !input.contains("EOL:a00c38d8:EOL")) {
-											if (input.length() > 0) {
-												try { 
-													resultCode = Integer.parseInt( input );
-													
-												} catch(Throwable e) { continue; }
+										String command = commandTries[x] + "\n";
+										command += "status=$? && echo ''\n";
+										command += "echo EOL:a00c38d8:EOL\n";
+										command += "echo $status\n";
+										command += "echo EOL:a00c38d8:EOL\n";
+										
+										outputStream.write( command.getBytes() );
+										outputStream.flush();
+										
+										result[0] = -1;
+										String inputLine;
+										List<String> input = new ArrayList<String>();
+										while ((inputLine = inputStream.readLine()) != null) {
+											if (!inputLine.contains("EOL:a00c38d8:EOL")) {
+												input.add(inputLine);
+												
+											} else {	
+												/* It is important that readLine() get's to be executed until it reaches 'EOL:a00c38d8:EOL'. 
+												 * Otherwise, the output will not be cleaned out, and will be added to the next command executed. 
+												 */
+												while ((inputLine = inputStream.readLine()) != null && !inputLine.contains("EOL:a00c38d8:EOL")) {
+													if (inputLine.length() > 0) {
+														try { 
+															result[0] = Integer.parseInt( inputLine );
+															
+														} catch(Throwable e) { continue; }
+													}
+												}
+												
+												break;
 											}
 										}
 										
-										break;
-									}
-								}
-								
-								for (int y=0; y < mResultCodes.length; y++) {
-									if ((int) resultCode == (int) mResultCodes[y]) {
-										if (mCommands.size() == 1) {
-											output = lines;
-											
-										} else {
-											output.addAll(lines);
+										for (int y=0; y < resultCodes.length; y++) {
+											if ((int) result[0] == (int) resultCodes[y]) {
+												output.addAll(input);
+												commandNumber.add(x);
+												
+												RootFW.log(TAG + "::run()", "The attempt number " + (x+1) + " was successfully executed and returned result code (" + result[0] + ")");
+												
+												continue commandLoop;
+												
+											} else if (y == resultCodes.length-1 && x == commandTries.length-1) {
+												RootFW.log(TAG + "::run()", "The command number " + (i+1) + " failed with result code (" + result[0] + "). Ending shell execution", RootFW.E_ERROR); break commandLoop;
+											}
 										}
 										
-										cmdNumber.add(x);
-										
-										RootFW.log(TAG + "::run()", "The attempt number " + (x+1) + " was successfully executed and returned result code (" + resultCode + ")");
-										
-										continue commandLoop;
-										
-									} else if (y == mResultCodes.length-1 && x == commandTries.length-1) {
-										RootFW.log(TAG + "::run()", "The command number " + (i+1) + " failed. Ending shell execution"); break commandLoop;
+										RootFW.log(TAG + "::run()", "The attempt number " + (x+1) + " failed with result code (" + result[0] + "). Continuing to the next attempt", RootFW.E_WARNING);
 									}
 								}
-								
-								RootFW.log(TAG + "::run()", "The attempt number " + (x+1) + " failed. Continuing to the next attempt");
-								
-							} catch (Throwable e) {}
+							
+							} catch (Throwable e) {
+								result[0] = -1;
+								output.clear();
+							}
 						}
-					}
-				
-				} catch (Throwable e) {}
-				
-				reset();
-				
-				// Remove leading line breaks
-				while (output.size() > 0) {
-					Integer last = output.size()-1;
+					});
 					
-					if (output.get(0).length() == 0 || output.get(last).length() == 0) {
-						if (output.get(last).length() == 0)
-							output.remove(last);
+					shellHandler.start();
+					
+					try {
+						if (connectionTimeout > 0) {
+							shellHandler.join(connectionTimeout);
+							
+							if (shellHandler.isAlive()) {
+								RootFW.log(TAG + "::run()", "The shell is stuck. Destroying the current execution and quitting!", RootFW.E_ERROR);
+								
+								shellHandler.interrupt();
+								mParent.destroy();
+								mParent.connect();
+								
+								result[0] = -1;
+								output.clear();
+								
+								continue;
+							}
+							
+						} else {
+							shellHandler.join();
+						}
 						
-						if (output.size() > 0 && output.get(0).length() == 0) 
-							output.remove(0);
+					} catch (InterruptedException e) {}
+					
+					// Remove leading line breaks
+					while (output.size() > 0) {
+						Integer last = output.size()-1;
+						
+						if (output.get(0).length() == 0 || output.get(last).length() == 0) {
+							if (output.get(last).length() == 0)
+								output.remove(last);
+							
+							if (output.size() > 0 && output.get(0).length() == 0) 
+								output.remove(0);
+						}
+						
+						break;
 					}
 					
 					break;
 				}
 				
-				return new ShellResult(output.toArray(new String[output.size()]), resultCode, codes, cmdNumber.toArray(new Integer[cmdNumber.size()]));
+				reset();
+				
+				return new ShellResult(output.toArray(new String[output.size()]), result[0], resultCodes, commandNumber.toArray(new Integer[commandNumber.size()]));
 			}
 		}
 		

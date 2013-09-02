@@ -82,7 +82,7 @@ public class RootFW {
 	 * <dd><code><pre>RootFW.Config.PATH.add("/data/local/bin");</pre></code></dd>
 	 * </dl>
 	 */
-	public static class Config {
+	public final static class Config {
 		/**
 		 * Used to extend the shell PATH variable. Each index in the ArrayList should contain a path to one or more binaries. Each index will be added in front of the standard variables.
 		 */
@@ -97,6 +97,22 @@ public class RootFW {
 		 * This property decides what should be logged. You can add one or more of the RootFW.E properties to this one to enable logging.
 		 */
 		public static Integer LOG = RootFW.E_ERROR|RootFW.E_WARNING;
+		
+		/**
+		 * This class defines connection configs.
+		 */
+		public final static class Connection {
+			/**
+			 * Amount of milliseconds the shell can take before it is killed.
+			 */
+			public static Integer TIMEOUT = 15000;
+			
+			/**
+			 * Amount attempts to retry after a connection is killed.
+			 * 2 attempts is at least recommended to fix issues with Kutch superuser daemon mode.
+			 */
+			public static Integer TRIES = 2;
+		}
 	}
 	
 	static {
@@ -110,6 +126,9 @@ public class RootFW {
 	
 	protected BufferedReader mInputStream;
 	protected DataOutputStream mOutputStream;
+	
+	protected final Object mInstanceLock = new Object();
+	protected final Object mConnectionLock = new Object();
 	
 	/**
 	 * Get an root instance of RootFW.
@@ -179,52 +198,95 @@ public class RootFW {
 	 *     <code>True</code> on successful connection
 	 */
 	public Boolean connect() {
-		if (!isConnected()) {
-			ProcessBuilder builder = new ProcessBuilder( mRootUser ? "su" : "sh" );
-			builder.redirectErrorStream(true);
-			
-			try {
-				mShell = builder.start();
-				
-				mInputStream = new BufferedReader( new InputStreamReader(mShell.getInputStream()) );
-				mOutputStream = new DataOutputStream(mShell.getOutputStream());
-				
-				if(isConnected()) {
-					if (Config.PATH.size() > 0) {
-						shell("PATH=\"" + TextUtils.join(":", Config.PATH) + ":$PATH\"");
+		synchronized (mInstanceLock) {
+			if (!isConnected()) {
+				ProcessBuilder builder;
+				builder = new ProcessBuilder(mRootUser ? "su" : "sh");
+				builder.redirectErrorStream(true);
+	
+				try {
+					mShell = builder.start();
+					
+					mInputStream = new BufferedReader( new InputStreamReader(mShell.getInputStream()) );
+					mOutputStream = new DataOutputStream(mShell.getOutputStream());
+					
+					if(isConnected()) {
+						if (Config.PATH.size() > 0) {
+							shell("PATH=\"" + TextUtils.join(":", Config.PATH) + ":$PATH\"");
+						}
+						
+						return true;
+						
+					} else if (mShell != null) {
+						mShell.destroy();
+						mShell = null;
 					}
 					
-					return true;
-					
-				} else if (mShell != null) {
-					mShell.destroy();
-					mShell = null;
-				}
+				} catch (Throwable e) {}
 				
-			} catch (Throwable e) {}
+				return false;
+			}
 			
-			return false;
+			return true;
 		}
-		
-		return true;
 	}
 	
 	/**
 	 * Close the connection to the shell
 	 */
 	public void disconnect() {
-		if (isConnected()) {
-			shell("exit 0");
-			
-			try {
-				mInputStream.close();
-				mOutputStream.close();
-				
-			} catch (IOException e) {}
-			
-			mShell.destroy();
-			mShell = null;
+		synchronized (mInstanceLock) {
+			if (mShell != null) {
+				/* If mShell is not null, then the connection should be active. 
+				 * If not, then something is wrong and we will destroy it instead.
+				 */
+				if(isConnected() && shell().run("exit 0").wasSuccessful()) {
+					try {
+						mInputStream.close();
+						mOutputStream.close();
+						
+					} catch (IOException e) {}
+					
+					mShell.destroy();
+					mShell = null;
+					
+				} else {
+					destroy();
+				}
+			}
 		}
+	}
+	
+	/**
+	 * Destroys a shell connection. 
+	 * It's better to use {{@link #disconnect()} to close the connection in a more clean manner. 
+	 */
+	public void destroy() {
+		synchronized (mInstanceLock) {
+			if (mShell != null) {
+				mInputStream = null;
+				mOutputStream = null;
+				
+				mShell.destroy();
+				mShell = null;
+			}
+		}
+	}
+	
+	/**
+	 * This is used internally by extenders to get the connection input stream.
+	 */
+	public BufferedReader getInputStream(Object lock) {
+		return lock == mConnectionLock ? 
+				mInputStream : null;
+	}
+	
+	/**
+	 * This is used internally by extenders to get the connection output stream.
+	 */
+	public DataOutputStream getOutputStream(Object lock) {
+		return lock == mConnectionLock ? 
+				mOutputStream : null;
 	}
 	
 	/**
@@ -234,7 +296,9 @@ public class RootFW {
 	 *     <code>True</code> if the connection is open
 	 */
 	public Boolean isConnected() {
-		return mShell != null && "connected".equals( shell("echo 'connected'") );
+		synchronized (mInstanceLock) {
+			return mShell != null && "connected".equals( shell("echo 'connected'") );
+		}
 	}
 	
 	/**
@@ -253,7 +317,7 @@ public class RootFW {
 	 * @see ShellExtender.Shell
 	 */
 	public ShellExtender.Shell shell() {
-		return (ShellExtender.Shell) ShellExtender.Shell.getInstance(this, new ExtenderGroupTransfer( (BufferedReader) mInputStream, (DataOutputStream) mOutputStream )).instance;
+		return (ShellExtender.Shell) ShellExtender.Shell.getInstance(this, new ExtenderGroupTransfer( mConnectionLock )).instance;
 	}
 	
 	/**
