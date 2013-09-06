@@ -143,11 +143,7 @@ public class FilesystemExtender {
 											String options = isFstab || parts.length > 4 ? parts[ isFstab ? 3 : 4 ].replaceAll(",", " ") : "";
 											
 											if (parts.length > 3 && !cache.contains(parts[ isFstab ? 1 : 3 ])) {
-												if (!isFstab)
-													Log.d("RootTest", dirs[i] + " line " + x + ": " + lines[x].trim());
-												
 												if (!isFstab && parts[2].contains("mtd@")) {
-													Log.d("RootTest", dirs[i] + " line " + x + ": Check for 'mtd@' in '" + parts[2] + "'");
 													
 													FileData mtd = mParent.file("/proc/mtd").readMatches("\"" + parts[2].substring(4) + "\"");
 													
@@ -161,9 +157,6 @@ public class FilesystemExtender {
 													parts[2] = parts[2].substring(5);
 													options += " loop";
 												}
-												
-												if (!isFstab)
-													Log.d("RootTest", "------------------------------------");
 												
 												MountStat stat = new MountStat();
 												
