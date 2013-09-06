@@ -30,6 +30,7 @@ import java.util.regex.Pattern;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.spazedog.lib.rootfw3.Common;
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
 import com.spazedog.lib.rootfw3.containers.BasicContainer;
@@ -130,6 +131,10 @@ public class FilesystemExtender {
 						String[] dirs = result.trim().getArray();
 						
 						for (int i=0; i < dirs.length; i++) {
+							if (!Common.isEmulator() && dirs[i].contains("goldfish")) {
+								continue;
+							}
+							
 							Boolean isFstab = dirs[i].contains("fstab");
 							FileData data = mParent.file(dirs[i]).readMatches( isFstab ? "/dev/" : "mount " );
 							
