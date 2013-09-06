@@ -32,6 +32,7 @@ import android.util.Log;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
+import com.spazedog.lib.rootfw3.containers.BasicContainer;
 import com.spazedog.lib.rootfw3.extenders.FileExtender.FileData;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender.ShellResult;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
@@ -664,7 +665,7 @@ public class FilesystemExtender {
 	 * This is a container used to store disk information. 
 	 * It is used by the {@link FilesystemExtender.Device#statDisk()} method.
 	 */
-	public static class DiskStat {
+	public static class DiskStat extends BasicContainer {
 		private String mDevice;
 		private String mLocation;
 		private Long mSize;
@@ -725,7 +726,7 @@ public class FilesystemExtender {
 	 * This is a container used to store mount information. 
 	 * It is used by the {@link FilesystemExtender#getFstabList()}, {@link FilesystemExtender#getMountList()}, {@link FilesystemExtender.Device#statFstab()} and {@link FilesystemExtender.Device#statMount()} methods.
 	 */
-	public static class MountStat {
+	public static class MountStat extends BasicContainer {
 		private String mDevice;
 		private String mLocation;
 		private String mFstype;

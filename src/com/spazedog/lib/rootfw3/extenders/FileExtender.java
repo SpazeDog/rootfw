@@ -36,6 +36,7 @@ import android.text.TextUtils;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
+import com.spazedog.lib.rootfw3.containers.BasicContainer;
 import com.spazedog.lib.rootfw3.containers.Data;
 import com.spazedog.lib.rootfw3.extenders.FilesystemExtender.DiskStat;
 import com.spazedog.lib.rootfw3.extenders.FilesystemExtender.MountStat;
@@ -1458,7 +1459,7 @@ public class FileExtender {
 	/**
 	 * This class is a container which is used by {@link FileExtender#getDetails()} and {@link FileExtender#getDetailedList(Integer)}
 	 */
-	public static class FileStat {
+	public static class FileStat extends BasicContainer {
 		private String mName;
 		private String mLink;
 		private String mType;

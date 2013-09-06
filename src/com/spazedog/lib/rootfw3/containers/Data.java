@@ -30,7 +30,7 @@ import android.text.TextUtils;
  * This container is used to store any kind of data. All of the data is located within a String Array, where each index is considered a line. 
  */
 @SuppressWarnings("unchecked")
-public class Data<DATATYPE extends Data<DATATYPE>> {
+public class Data<DATATYPE extends Data<DATATYPE>> extends BasicContainer {
 	protected String[] mLines;
 	
 	/**

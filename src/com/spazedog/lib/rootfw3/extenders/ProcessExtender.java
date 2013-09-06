@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
+import com.spazedog.lib.rootfw3.containers.BasicContainer;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender.ShellResult;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
@@ -406,7 +407,7 @@ public class ProcessExtender {
 	/**
 	 * This is a container class used to store information about a process.
 	 */
-	public static class ProcessInfo {
+	public static class ProcessInfo extends BasicContainer {
 		private String mPath;
 		private String mProcess;
 		private Integer mProcessId;

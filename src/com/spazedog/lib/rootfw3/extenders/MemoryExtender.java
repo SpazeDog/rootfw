@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
+import com.spazedog.lib.rootfw3.containers.BasicContainer;
 import com.spazedog.lib.rootfw3.extenders.FileExtender.FileData;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
@@ -199,7 +200,7 @@ public class MemoryExtender {
 	/**
 	 * This is a container which is used to store information about a SWAP device
 	 */
-	public static class SwapStat {
+	public static class SwapStat extends BasicContainer {
 		private String mDevice;
 		private Long mSize;
 		private Long mUsage;
@@ -229,7 +230,7 @@ public class MemoryExtender {
 		}
 	}
 	
-	public static class MemStat {
+	public static class MemStat extends BasicContainer {
 		private Long mMemTotal = 0L;
 		private Long mMemFree = 0L;
 		private Long mMemCached = 0L;
