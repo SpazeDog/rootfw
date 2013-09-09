@@ -169,8 +169,7 @@ public class InstanceExtender {
 		 * Note that this could provide issues if other methods are using this connection.
 		 */
 		public void destroy() {
-			oInstances[mInstance].mLocks = 0;
-			oInstances[mInstance].disconnect();
+			oInstances[mInstance].destroy();
 			oInstances[mInstance] = null;
 		}
 	}
@@ -182,6 +181,7 @@ public class InstanceExtender {
 	 */
 	protected static class InstanceRootFW extends RootFW {
 		public Integer mLocks = 0;
+		public Boolean mDisconnecting = false;
 		
 		public InstanceRootFW(Boolean useRoot) {
 			super(useRoot);
@@ -206,7 +206,23 @@ public class InstanceExtender {
 		@Override
 		public void disconnect() {
 			if (mLocks == 0) {
+				mDisconnecting = true;
 				super.disconnect();
+				mDisconnecting = false;
+				
+				InstanceExtender.Instance.onDisconnect(isRoot());
+			}
+		}
+		
+		/**
+		 * This will overwrite the destroy() method in the main RootFW and implement feature of locking a connection.
+		 */
+		@Override
+		public void destroy() {
+			mLocks = 0;
+			super.destroy();
+			
+			if (!mDisconnecting) {
 				InstanceExtender.Instance.onDisconnect(isRoot());
 			}
 		}
