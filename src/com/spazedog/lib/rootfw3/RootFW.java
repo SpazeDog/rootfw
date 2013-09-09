@@ -36,6 +36,7 @@ import com.spazedog.lib.rootfw3.extenders.FileExtender;
 import com.spazedog.lib.rootfw3.extenders.FilesystemExtender;
 import com.spazedog.lib.rootfw3.extenders.InstanceExtender;
 import com.spazedog.lib.rootfw3.extenders.MemoryExtender;
+import com.spazedog.lib.rootfw3.extenders.PackageExtender;
 import com.spazedog.lib.rootfw3.extenders.ProcessExtender;
 import com.spazedog.lib.rootfw3.extenders.PropertyExtender;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender;
@@ -589,6 +590,23 @@ public class RootFW {
 		}
 		
 		return (ProcessExtender.Process) mExternderInstances.get(name);
+	}
+	
+	/**
+	 * Return a new instance of the {@link PackageExtender.Packages} class.
+	 *    
+	 * @see PackageExtender.Packages
+	 */
+	public PackageExtender.Packages packages() {
+		if (!mExternderInstances.containsKey("PackageExtender.Packages")) {
+			PackageExtender.Packages extender = (PackageExtender.Packages) PackageExtender.Packages.getInstance(this, new ExtenderGroupTransfer()).instance;
+			
+			mExternderInstances.put("PackageExtender.Packages", extender);
+			
+			return extender;
+		}
+		
+		return (PackageExtender.Packages) mExternderInstances.get("PackageExtender.Packages");
 	}
 	
 	/**
