@@ -123,47 +123,57 @@ public class RootFW {
 	protected final Object mConnectionLock = new Object();
 	
 	/**
-	 * Get an root instance of RootFW.
-	 * <br />
-	 * This instance is globally shared instance. If no connection is currently opened, a new instance is created and a connection is auto established. Otherwise, the current instance is returned.
-	 * <br />
-	 * This makes it possible for multiple classes and methods to share the same shell connection.
-	 * 
-	 * @return
-	 *     A new {@link InstanceExtender.Instance} containing the shared shell connection
+	 * @deprecated
+	 *     This method is deprecated as of version 1.1.0
+	 *     
+	 * @see #getSharedRoot()
 	 */
 	public static InstanceExtender.Instance rootInstance() {
-		if (!mExternderInstances.containsKey("InstanceExtender.Instance:Root")) {
-			InstanceExtender.Instance extender = (InstanceExtender.Instance) InstanceExtender.Instance.getInstance(null, new ExtenderGroupTransfer((Object) true)).instance;
-			
-			mExternderInstances.put("InstanceExtender.Instance:Root", (ExtenderGroup) extender);
-		}
-		
-		mExternderInstances.get("InstanceExtender.Instance:Root").onExtenderReconfigure();
-		
-		return (InstanceExtender.Instance) mExternderInstances.get("InstanceExtender.Instance:Root");
+		return (InstanceExtender.Instance) getSharedRoot();
 	}
 	
 	/**
-	 * Get an user instance of RootFW.
+	 * @deprecated
+	 *     This method is deprecated as of version 1.1.0
+	 *     
+	 * @see #getSharedUser()
+	 */
+	public static InstanceExtender.Instance userInstance() {
+		return (InstanceExtender.Instance) getSharedUser();
+	}
+	
+	/**
+	 * Get an extended root instance of RootFW.
 	 * <br />
 	 * This instance is globally shared instance. If no connection is currently opened, a new instance is created and a connection is auto established. Otherwise, the current instance is returned.
 	 * <br />
-	 * This makes it possible for multiple classes and methods to share the same shell connection.
-	 * 
-	 * @return
-	 *     A new {@link InstanceExtender.Instance} instance containing the shared shell connection
+	 * This makes it possible for multiple classes and methods to share the same shell connection
 	 */
-	public static InstanceExtender.Instance userInstance() {
-		if (!mExternderInstances.containsKey("InstanceExtender.Instance:User")) {
-			InstanceExtender.Instance extender = (InstanceExtender.Instance) InstanceExtender.Instance.getInstance(null, new ExtenderGroupTransfer((Object) false)).instance;
-			
-			mExternderInstances.put("InstanceExtender.Instance:User", (ExtenderGroup) extender);
+	public static InstanceExtender.SharedRootFW getSharedRoot() {
+		if (!RootFW.mExternderInstances.containsKey("InstanceExtender:Root")) {
+			RootFW.mExternderInstances.put("InstanceExtender:Root", (ExtenderGroup) InstanceExtender.getInstance(null, new ExtenderGroupTransfer((Object) true)).instance);
 		}
 		
-		mExternderInstances.get("InstanceExtender.Instance:User").onExtenderReconfigure();
+		RootFW.mExternderInstances.get("InstanceExtender:Root").onExtenderReconfigure();
 		
-		return (InstanceExtender.Instance) mExternderInstances.get("InstanceExtender.Instance:User");
+		return (InstanceExtender.SharedRootFW) RootFW.mExternderInstances.get("InstanceExtender:Root");
+	}
+	
+	/**
+	 * Get an extended user instance of RootFW.
+	 * <br />
+	 * This instance is globally shared instance. If no connection is currently opened, a new instance is created and a connection is auto established. Otherwise, the current instance is returned.
+	 * <br />
+	 * This makes it possible for multiple classes and methods to share the same shell connection
+	 */
+	public static InstanceExtender.SharedRootFW getSharedUser() {
+		if (!RootFW.mExternderInstances.containsKey("InstanceExtender:User")) {
+			RootFW.mExternderInstances.put("InstanceExtender:User", (ExtenderGroup) InstanceExtender.getInstance(null, new ExtenderGroupTransfer((Object) false)).instance);
+		}
+		
+		RootFW.mExternderInstances.get("InstanceExtender:User").onExtenderReconfigure();
+		
+		return (InstanceExtender.SharedRootFW) RootFW.mExternderInstances.get("InstanceExtender:User");
 	}
 	
 	/**
@@ -339,15 +349,15 @@ public class RootFW {
 		java.io.File fileObject = new java.io.File(file);
 		String name = "FileExtender.File:" + FileExtender.resolvePath( fileObject.getAbsolutePath() );
 		
-		if (!mExternderInstances.containsKey(name)) {
+		if (!RootFW.mExternderInstances.containsKey(name)) {
 			FileExtender.File extender = (FileExtender.File) FileExtender.File.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
 			
-			mExternderInstances.put(name, extender);
+			RootFW.mExternderInstances.put(name, extender);
 			
 			return extender;
 		}
 		
-		return (FileExtender.File) mExternderInstances.get(name);
+		return (FileExtender.File) RootFW.mExternderInstances.get(name);
 	}
 	
 	/**
@@ -356,15 +366,15 @@ public class RootFW {
 	 * @see MemoryExtender.Memory
 	 */
 	public MemoryExtender.Memory memory() {
-		if (!mExternderInstances.containsKey("MemoryExtender.Memory")) {
+		if (!RootFW.mExternderInstances.containsKey("MemoryExtender.Memory")) {
 			MemoryExtender.Memory extender = (MemoryExtender.Memory) MemoryExtender.Memory.getInstance(this, new ExtenderGroupTransfer()).instance;
 			
-			mExternderInstances.put("MemoryExtender.Memory", (ExtenderGroup) extender);
+			RootFW.mExternderInstances.put("MemoryExtender.Memory", (ExtenderGroup) extender);
 			
 			return extender;
 		}
 		
-		return (MemoryExtender.Memory) mExternderInstances.get("MemoryExtender.Memory");
+		return (MemoryExtender.Memory) RootFW.mExternderInstances.get("MemoryExtender.Memory");
 	}
 	
 	/**
@@ -379,15 +389,15 @@ public class RootFW {
 		java.io.File fileObject = new java.io.File(device);
 		String name = "MemoryExtender.Device:" + FileExtender.resolvePath( fileObject.getAbsolutePath() );
 		
-		if (!mExternderInstances.containsKey(name)) {
+		if (!RootFW.mExternderInstances.containsKey(name)) {
 			MemoryExtender.Device extender = (MemoryExtender.Device) MemoryExtender.Device.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
 			
-			mExternderInstances.put(name, extender);
+			RootFW.mExternderInstances.put(name, extender);
 			
 			return extender;
 		}
 		
-		return (MemoryExtender.Device) mExternderInstances.get(name);
+		return (MemoryExtender.Device) RootFW.mExternderInstances.get(name);
 	}
 	
 	/**
@@ -396,15 +406,15 @@ public class RootFW {
 	 * @see PropertyExtender.Properties
 	 */
 	public PropertyExtender.Properties property() {
-		if (!mExternderInstances.containsKey("PropertyExtender.Properties")) {
+		if (!RootFW.mExternderInstances.containsKey("PropertyExtender.Properties")) {
 			PropertyExtender.Properties extender = (PropertyExtender.Properties) PropertyExtender.Properties.getInstance(this, new ExtenderGroupTransfer()).instance;
 			
-			mExternderInstances.put("PropertyExtender.Properties", (ExtenderGroup) extender);
+			RootFW.mExternderInstances.put("PropertyExtender.Properties", (ExtenderGroup) extender);
 			
 			return extender;
 		}
 		
-		return (PropertyExtender.Properties) mExternderInstances.get("PropertyExtender.Properties");
+		return (PropertyExtender.Properties) RootFW.mExternderInstances.get("PropertyExtender.Properties");
 	}
 	
 	/**
@@ -419,15 +429,15 @@ public class RootFW {
 		java.io.File fileObject = new java.io.File(file);
 		String name = "PropertyExtender.File:" + FileExtender.resolvePath( fileObject.getAbsolutePath() );
 		
-		if (!mExternderInstances.containsKey(name)) {
+		if (!RootFW.mExternderInstances.containsKey(name)) {
 			PropertyExtender.File extender = (PropertyExtender.File) PropertyExtender.File.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
 			
-			mExternderInstances.put(name, extender);
+			RootFW.mExternderInstances.put(name, extender);
 			
 			return extender;
 		}
 		
-		return (PropertyExtender.File) mExternderInstances.get(name);
+		return (PropertyExtender.File) RootFW.mExternderInstances.get(name);
 	}
 	
 	/**
@@ -436,15 +446,15 @@ public class RootFW {
 	 * @see FilesystemExtender.Filesystem
 	 */
 	public FilesystemExtender.Filesystem filesystem() {
-		if (!mExternderInstances.containsKey("FilesystemExtender.Filesystem")) {
+		if (!RootFW.mExternderInstances.containsKey("FilesystemExtender.Filesystem")) {
 			FilesystemExtender.Filesystem extender = (FilesystemExtender.Filesystem) FilesystemExtender.Filesystem.getInstance(this, new ExtenderGroupTransfer()).instance;
 			
-			mExternderInstances.put("FilesystemExtender.Filesystem", (ExtenderGroup) extender);
+			RootFW.mExternderInstances.put("FilesystemExtender.Filesystem", (ExtenderGroup) extender);
 			
 			return extender;
 		}
 		
-		return (FilesystemExtender.Filesystem) mExternderInstances.get("FilesystemExtender.Filesystem");
+		return (FilesystemExtender.Filesystem) RootFW.mExternderInstances.get("FilesystemExtender.Filesystem");
 	}
 	
 	/**
@@ -460,15 +470,15 @@ public class RootFW {
 		java.io.File fileObject = new java.io.File(device);
 		String name = "FilesystemExtender.Device:" + FileExtender.resolvePath( fileObject.getAbsolutePath() );
 		
-		if (!mExternderInstances.containsKey(name)) {
+		if (!RootFW.mExternderInstances.containsKey(name)) {
 			FilesystemExtender.Device extender = (FilesystemExtender.Device) FilesystemExtender.Device.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
 			
-			mExternderInstances.put(name, extender);
+			RootFW.mExternderInstances.put(name, extender);
 			
 			return extender;
 		}
 		
-		return (FilesystemExtender.Device) mExternderInstances.get(name);
+		return (FilesystemExtender.Device) RootFW.mExternderInstances.get(name);
 	}
 	
 	/**
@@ -497,15 +507,15 @@ public class RootFW {
 		String path = binary.contains("/") ? FileExtender.resolvePath( new java.io.File(binary).getAbsolutePath() ) : binary;
 		String name = "BinaryExtender.Busybox:" + path;
 		
-		if (!mExternderInstances.containsKey(name)) {
+		if (!RootFW.mExternderInstances.containsKey(name)) {
 			BinaryExtender.Busybox extender = (BinaryExtender.Busybox) BinaryExtender.Busybox.getInstance(this, new ExtenderGroupTransfer( (Object) path )).instance;
 			
-			mExternderInstances.put(name, extender);
+			RootFW.mExternderInstances.put(name, extender);
 			
 			return extender;
 		}
 		
-		return (BinaryExtender.Busybox) mExternderInstances.get(name);
+		return (BinaryExtender.Busybox) RootFW.mExternderInstances.get(name);
 	}
 	
 	/**
@@ -520,15 +530,15 @@ public class RootFW {
 		String binaryName = binary.contains("/") ? binary.substring( binary.lastIndexOf("/")+1 ) : binary;
 		String name = "BinaryExtender.Binary:" + binary;
 		
-		if (!mExternderInstances.containsKey(name)) {
+		if (!RootFW.mExternderInstances.containsKey(name)) {
 			BinaryExtender.Binary extender = (BinaryExtender.Binary) BinaryExtender.Binary.getInstance(this, new ExtenderGroupTransfer( (Object) binaryName )).instance;
 			
-			mExternderInstances.put(name, extender);
+			RootFW.mExternderInstances.put(name, extender);
 			
 			return extender;
 		}
 		
-		return (BinaryExtender.Binary) mExternderInstances.get(name);
+		return (BinaryExtender.Binary) RootFW.mExternderInstances.get(name);
 	}
 	
 	/**
@@ -537,15 +547,15 @@ public class RootFW {
 	 * @see ProcessExtender.Processes
 	 */
 	public ProcessExtender.Processes processes() {
-		if (!mExternderInstances.containsKey("ProcessExtender.Processes")) {
+		if (!RootFW.mExternderInstances.containsKey("ProcessExtender.Processes")) {
 			ProcessExtender.Processes extender = (ProcessExtender.Processes) ProcessExtender.Processes.getInstance(this, new ExtenderGroupTransfer()).instance;
 			
-			mExternderInstances.put("ProcessExtender.Processes", (ExtenderGroup) extender);
+			RootFW.mExternderInstances.put("ProcessExtender.Processes", (ExtenderGroup) extender);
 			
 			return extender;
 		}
 		
-		return (ProcessExtender.Processes) mExternderInstances.get("ProcessExtender.Processes");
+		return (ProcessExtender.Processes) RootFW.mExternderInstances.get("ProcessExtender.Processes");
 	}
 
 	/**
@@ -559,15 +569,15 @@ public class RootFW {
 	public ProcessExtender.Process process(String process) {
 		String name = "ProcessExtender.Process:" + process;
 		
-		if (!mExternderInstances.containsKey(name)) {
+		if (!RootFW.mExternderInstances.containsKey(name)) {
 			ProcessExtender.Process extender = (ProcessExtender.Process) ProcessExtender.Process.getInstance(this, new ExtenderGroupTransfer( (Object) process )).instance;
 			
-			mExternderInstances.put(name, extender);
+			RootFW.mExternderInstances.put(name, extender);
 			
 			return extender;
 		}
 		
-		return (ProcessExtender.Process) mExternderInstances.get(name);
+		return (ProcessExtender.Process) RootFW.mExternderInstances.get(name);
 	}
 	
 	/**
@@ -581,15 +591,15 @@ public class RootFW {
 	public ProcessExtender.Process process(Integer pid) {
 		String name = "ProcessExtender.Process:" + pid;
 		
-		if (!mExternderInstances.containsKey(name)) {
+		if (!RootFW.mExternderInstances.containsKey(name)) {
 			ProcessExtender.Process extender = (ProcessExtender.Process) ProcessExtender.Process.getInstance(this, new ExtenderGroupTransfer( (Object) pid )).instance;
 			
-			mExternderInstances.put(name, extender);
+			RootFW.mExternderInstances.put(name, extender);
 			
 			return extender;
 		}
 		
-		return (ProcessExtender.Process) mExternderInstances.get(name);
+		return (ProcessExtender.Process) RootFW.mExternderInstances.get(name);
 	}
 	
 	/**
@@ -598,15 +608,15 @@ public class RootFW {
 	 * @see PackageExtender.Packages
 	 */
 	public PackageExtender.Packages packages() {
-		if (!mExternderInstances.containsKey("PackageExtender.Packages")) {
+		if (!RootFW.mExternderInstances.containsKey("PackageExtender.Packages")) {
 			PackageExtender.Packages extender = (PackageExtender.Packages) PackageExtender.Packages.getInstance(this, new ExtenderGroupTransfer()).instance;
 			
-			mExternderInstances.put("PackageExtender.Packages", extender);
+			RootFW.mExternderInstances.put("PackageExtender.Packages", extender);
 			
 			return extender;
 		}
 		
-		return (PackageExtender.Packages) mExternderInstances.get("PackageExtender.Packages");
+		return (PackageExtender.Packages) RootFW.mExternderInstances.get("PackageExtender.Packages");
 	}
 	
 	/**

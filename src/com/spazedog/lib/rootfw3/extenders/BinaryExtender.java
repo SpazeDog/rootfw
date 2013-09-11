@@ -6,7 +6,6 @@ import android.text.TextUtils;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
-import com.spazedog.lib.rootfw3.extenders.InstanceExtender.InstanceRootFW;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender.ShellResult;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
