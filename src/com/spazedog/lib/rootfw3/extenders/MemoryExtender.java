@@ -59,6 +59,13 @@ public class MemoryExtender {
 		}
 		
 		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
+		
+		/**
 		 * Get memory information like ram usage, ram total, cached memory, swap total etc.
 		 */
 		public MemStat getUsage() {
@@ -160,6 +167,13 @@ public class MemoryExtender {
 			mParent = parent;
 			mDevice = device;
 		}
+		
+		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
 		
 		/**
 		 * Get information like size and usage of a specific SWAP device. This method will return null if the device does not exist, or if it has not been activated.

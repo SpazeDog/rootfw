@@ -71,6 +71,13 @@ public class ShellExtender {
 		}
 		
 		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
+		
+		/**
 		 * This is the same as addCommands(), only this one will auto create multiple attempts for each command using each defined binary in RootFW.Config.BINARY. You can use the prefix %binary to represent where the binary should be injected. 
 		 * <br />
 		 * For an example, if you add the command <code>buildCommands('%binary df -h')</code>, this method will create <code>new String[]{'busybox df -h', 'toolbox df -h', 'df -h'}</code>. This makes it easier to add multiple attempts without having to type in each attempt via addAttempts().
@@ -283,6 +290,8 @@ public class ShellExtender {
 								}
 							
 							} catch (Throwable e) {
+								RootFW.log(TAG + "::run()", "The shell execution failed", RootFW.E_WARNING, e);
+								
 								result[0] = -1;
 								output.clear();
 							}

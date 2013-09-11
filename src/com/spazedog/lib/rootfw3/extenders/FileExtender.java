@@ -117,6 +117,13 @@ public class FileExtender {
 		}
 		
 		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
+		
+		/**
 		 * This is used internally to check whether or not the file exists and whether or not it's a directory or a file. 
 		 */
 		private void createFileValidation() {

@@ -62,6 +62,13 @@ public class PropertyExtender {
 		}
 		
 		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
+		
+		/**
 		 * Get a list of all the global properties that is registered on the device.
 		 * 
 		 * @return
@@ -173,6 +180,13 @@ public class PropertyExtender {
 		private File(RootFW parent, java.io.File file) {
 			mFile = parent.file(file.getAbsolutePath());
 		}
+		
+		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
 		
 		/**
 		 * Get a list of all the properties that is defined in the property file.

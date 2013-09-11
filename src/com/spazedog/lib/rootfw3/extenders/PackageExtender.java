@@ -53,6 +53,13 @@ public class PackageExtender {
 		}
 		
 		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
+		
+		/**
 		 * Get a list of all packages defined in Android's packages.xml file. 
 		 * This will only provide you with package names, versions and paths, and you will need 
 		 * to use Android's Package Manager to get more details. However this will also provide 

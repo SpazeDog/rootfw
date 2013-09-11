@@ -6,6 +6,7 @@ import android.text.TextUtils;
 
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
+import com.spazedog.lib.rootfw3.extenders.InstanceExtender.InstanceRootFW;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender.ShellResult;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
@@ -41,6 +42,13 @@ public class BinaryExtender {
 			mShell = parent.shell();
 			mBinary = binary;
 		}
+		
+		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
 		
 		/**
 		 * Check whether a binary exists in one of the <code>$PATH</code> variable directories.
@@ -95,6 +103,13 @@ public class BinaryExtender {
 			mShell = parent.shell();
 			mBinary = binary;
 		}
+		
+		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
 		
 		/**
 		 * Check whether or not the busybox binary exists and is executable.

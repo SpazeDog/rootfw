@@ -59,6 +59,13 @@ public class ProcessExtender {
 		}
 		
 		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
+		
+		/**
 		 * Return a list of all active processes.
 		 */
 		public ProcessInfo[] getList() {
@@ -173,6 +180,13 @@ public class ProcessExtender {
 			mShell = parent.shell();
 			mProcess = process;
 		}
+		
+		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
 		
 		/**
 		 * Create a new instance of this class.
@@ -356,6 +370,13 @@ public class ProcessExtender {
 		private Power(RootFW parent) {
 			mShell = parent.shell();
 		}
+		
+		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
 		
 		/**
 		 * Trigger sysrq to sync all file systems and perform a soft reboot (Kill all processes except for init)

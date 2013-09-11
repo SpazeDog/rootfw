@@ -77,6 +77,13 @@ public class FilesystemExtender {
 		}
 		
 		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
+		
+		/**
 		 * This will return a list of all currently mounted file systems, with information like 
 		 * device path, mount location, file system type and mount options.
 		 *     
@@ -243,6 +250,13 @@ public class FilesystemExtender {
 			mDevice = parent.file(device.getAbsolutePath());
 			mParent = parent;
 		}
+		
+		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
 		
 		/**
 		 * This is a short method for adding additional options to a mount location or device. 

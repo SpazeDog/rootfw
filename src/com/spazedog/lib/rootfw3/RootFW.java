@@ -137,9 +137,9 @@ public class RootFW {
 			InstanceExtender.Instance extender = (InstanceExtender.Instance) InstanceExtender.Instance.getInstance(null, new ExtenderGroupTransfer((Object) true)).instance;
 			
 			mExternderInstances.put("InstanceExtender.Instance:Root", (ExtenderGroup) extender);
-			
-			return extender;
 		}
+		
+		mExternderInstances.get("InstanceExtender.Instance:Root").onExtenderReconfigure();
 		
 		return (InstanceExtender.Instance) mExternderInstances.get("InstanceExtender.Instance:Root");
 	}
@@ -159,9 +159,9 @@ public class RootFW {
 			InstanceExtender.Instance extender = (InstanceExtender.Instance) InstanceExtender.Instance.getInstance(null, new ExtenderGroupTransfer((Object) false)).instance;
 			
 			mExternderInstances.put("InstanceExtender.Instance:User", (ExtenderGroup) extender);
-			
-			return extender;
 		}
+		
+		mExternderInstances.get("InstanceExtender.Instance:User").onExtenderReconfigure();
 		
 		return (InstanceExtender.Instance) mExternderInstances.get("InstanceExtender.Instance:User");
 	}
