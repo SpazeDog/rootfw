@@ -635,6 +635,13 @@ public class FileExtender {
 		}
 		
 		/**
+		 * @see #move(String, Boolean)
+		 */
+		public Boolean move(String dstPath) {
+			return move(dstPath, false);
+		}
+		
+		/**
 		 * Move the file to another location. 
 		 * <br />
 		 * Note that moving the file, will not change this objects file pointer. 
@@ -648,13 +655,13 @@ public class FileExtender {
 		 * @return
 		 *     <code>True</code> on success, <code>False</code> otherwise
 		 */
-		public Boolean move(String dstPath) {
+		public Boolean move(String dstPath, Boolean overwrite) {
 			synchronized (mLock) {
 				if (exists()) {
 					FileExtender.File destFile = openNew(dstPath);
 					
 					synchronized (destFile.mLock) {
-						if (!destFile.exists()) {
+						if (!destFile.exists() || (overwrite && destFile.remove())) {
 							if (!mFile.renameTo(destFile.mFile)) {
 								if (!mShell.buildAttempts("%binary mv -f '" + getAbsolutePath() + "' '" + destFile.getAbsolutePath() + "'").run().wasSuccessful()) {
 									return false;
@@ -693,6 +700,10 @@ public class FileExtender {
 			return move( (getParentPath() == null ? "" : getParentPath()) + "/" + name );
 		}
 		
+		public Boolean copy(String dstPath) {
+			return copy(dstPath, false);
+		}
+		
 		/**
 		 * Copy the file to another location.
 		 * 
@@ -702,13 +713,13 @@ public class FileExtender {
 		 * @return
 		 *     <code>True</code> on success, <code>False</code> otherwise
 		 */
-		public Boolean copy(String dstPath) {
+		public Boolean copy(String dstPath, Boolean overwrite) {
 			synchronized (mLock) {
 				if (exists()) {
 					FileExtender.File destFile = openNew(dstPath);
 					
 					synchronized (destFile.mLock) {
-						if (!destFile.exists()) {
+						if (!destFile.exists() || (overwrite && destFile.remove())) {
 							Boolean status = false;
 							
 							if (!isRestricted() && mFile.canRead()) {
@@ -717,7 +728,7 @@ public class FileExtender {
 									
 									if (list != null) {
 										for (int i=0; i < list.length; i++) {
-											if (!(status = open(list[i]).copy( destFile.getAbsolutePath() + "/" + list[i] ))) {
+											if (!(status = open(list[i]).copy( destFile.getAbsolutePath() + "/" + list[i] , overwrite))) {
 												break;
 											}
 										}
@@ -890,7 +901,7 @@ public class FileExtender {
 							
 						} catch(Throwable e) { return false; }
 						
-						if (srcFile.move( getAbsolutePath() )) {
+						if (srcFile.move( getAbsolutePath() , true)) {
 							if ((permissions == null || (setPermissions(permissions)) && (user == null || setOwner(user)) && (group == null || setGroup(group)))) {
 								return true;
 							}
