@@ -73,6 +73,76 @@ public class FileExtender {
 	}
 	
 	/**
+	 * This class contains file tools not specific to one file or folder
+	 */
+	public static class FileUtil implements ExtenderGroup {
+		private RootFW mParent;
+		
+		/**
+		 * This is used internally by {@link RootFW} to get a new instance of this class. 
+		 */
+		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+			return transfer.setInstance((ExtenderGroup) new FileUtil(parent));
+		}
+		
+		/**
+		 * Create a new instance of this class.
+		 * 
+		 * @param parent
+		 *     A reference to the {@link RootFW} instance
+		 *     
+		 * @param file
+		 *     A {@link java.io.File} object
+		 */
+		private FileUtil(RootFW parent) {
+			mParent = parent;
+		}
+		
+		/**
+		 * Used by RootFW to tell the extender that someone has asked for an instance. 
+		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
+		 */
+		@Override
+		public void onExtenderReconfigure() {}
+		
+		public Boolean runFromResource(Context context, String asset) {
+			FileExtender.File file = mParent.file(context.getFilesDir() + "/rootfw.tmp.bin");
+			
+			if (file.extractFromResource(context, asset, "0775")) {
+				if (mParent.shell().run(file.getResolvedPath()).wasSuccessful()) {
+					file.remove(); return true;
+				}
+			}
+			
+			return false;
+		}
+		
+		public Boolean runFromResource(Context context, Integer resourceId) {
+			FileExtender.File file = mParent.file(context.getFilesDir() + "/rootfw.tmp.bin");
+			
+			if (file.extractFromResource(context, resourceId, "0775")) {
+				if (mParent.shell().run(file.getResolvedPath()).wasSuccessful()) {
+					file.remove(); return true;
+				}
+			}
+			
+			return false;
+		}
+		
+		public Boolean runFromResource(Context context, InputStream resource) {
+			FileExtender.File file = mParent.file(context.getFilesDir() + "/rootfw.tmp.bin");
+			
+			if (file.extractFromResource(context, resource, "0775")) {
+				if (mParent.shell().run(file.getResolvedPath()).wasSuccessful()) {
+					file.remove(); return true;
+				}
+			}
+			
+			return false;
+		}
+	}
+	
+	/**
 	 * This is kind of an extension of {@link java.io.File}, only this does not just come with a lot more tools, 
 	 * it also switches to the <code>root/shell</code> whenever a file operation is not possible using the regular applications permissions.
 	 * <br />
@@ -778,6 +848,13 @@ public class FileExtender {
 		}
 		
 		/**
+		 * @see #extractFromResource(Context, String, String, String, String)
+		 */
+		public Boolean extractFromResource(Context context, String asset, String permissions) {
+			return extractFromResource(context, asset, permissions, null, null);
+		}
+		
+		/**
 		 * Extract data from an Android Assets Path (files located in /assets/) and add it to the current file location.
 		 * If the file already exist, it will be overwritten. Otherwise the file will be created. 
 		 * 
@@ -818,6 +895,13 @@ public class FileExtender {
 		}
 		
 		/**
+		 * @see #extractFromResource(Context, Integer, String, String, String)
+		 */
+		public Boolean extractFromResource(Context context, Integer resourceid, String permissions) {
+			return extractFromResource(context, resourceid, permissions, null, null);
+		}
+		
+		/**
 		 * Extract data from an Android resource id (files located in /res/) and add it to the current file location.
 		 * If the file already exist, it will be overwritten. Otherwise the file will be created. 
 		 * 
@@ -855,6 +939,13 @@ public class FileExtender {
 		 */
 		public Boolean extractFromResource(Context context, InputStream resource) {
 			return extractFromResource(context, resource, null, null, null);
+		}
+		
+		/**
+		 * @see #extractFromResource(Context, InputStream, String, String, String)
+		 */
+		public Boolean extractFromResource(Context context, InputStream resource, String permissions) {
+			return extractFromResource(context, resource, permissions, null, null);
 		}
 		
 		/**
@@ -902,7 +993,7 @@ public class FileExtender {
 						} catch(Throwable e) { return false; }
 						
 						if (srcFile.move( getAbsolutePath() , true)) {
-							if ((permissions == null || (setPermissions(permissions)) && (user == null || setOwner(user)) && (group == null || setGroup(group)))) {
+							if ((permissions == null || setPermissions(permissions)) && (user == null || setOwner(user)) && (group == null || setGroup(group))) {
 								return true;
 							}
 						}

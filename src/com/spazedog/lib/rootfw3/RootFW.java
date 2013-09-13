@@ -338,6 +338,23 @@ public class RootFW {
 	}
 	
 	/**
+	 * Return a new instance of the {@link FileExtender.FileUtil} class. 
+	 * 
+	 * @see FileExtender.FileUtil
+	 */
+	public FileExtender.FileUtil file() {
+		if (!RootFW.mExternderInstances.containsKey("FileExtender.FileUtil")) {
+			FileExtender.FileUtil extender = (FileExtender.FileUtil) FileExtender.FileUtil.getInstance(this, new ExtenderGroupTransfer()).instance;
+			
+			RootFW.mExternderInstances.put("FileExtender.FileUtil", extender);
+			
+			return extender;
+		}
+		
+		return (FileExtender.FileUtil) RootFW.mExternderInstances.get("FileExtender.FileUtil");
+	}
+	
+	/**
 	 * Return a new instance of the {@link FileExtender.File} class for the file defined in the argument. 
 	 * <br />
 	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
