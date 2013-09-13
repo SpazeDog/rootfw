@@ -972,30 +972,28 @@ public class FileExtender {
 		 */
 		public Boolean extractFromResource(Context context, InputStream resource, String permissions, String user, String group) {
 			synchronized (mLock) {
-				if (!exists()) {
-					FileExtender.File srcFile = openNew(context.getFilesDir().getAbsolutePath() + "/rootfw.tmp.raw");
-					
-					synchronized (srcFile.mLock) {
-						try {
-							FileOutputStream output = context.openFileOutput(srcFile.getName(), 0);
-							
-							byte[] buffer = new byte[1024];
-							Integer loc = 0;
-							
-							while ((loc = resource.read(buffer)) > 0) {
-								output.write(buffer, 0, loc);
-							}
-							
-							output.close();
-							
-							srcFile.createFileValidation(true, false, false, 0);
-							
-						} catch(Throwable e) { return false; }
+				FileExtender.File srcFile = openNew(context.getFilesDir().getAbsolutePath() + "/rootfw.tmp.raw");
+				
+				synchronized (srcFile.mLock) {
+					try {
+						FileOutputStream output = context.openFileOutput(srcFile.getName(), 0);
 						
-						if (srcFile.move( getAbsolutePath() , true)) {
-							if ((permissions == null || setPermissions(permissions)) && (user == null || setOwner(user)) && (group == null || setGroup(group))) {
-								return true;
-							}
+						byte[] buffer = new byte[1024];
+						Integer loc = 0;
+						
+						while ((loc = resource.read(buffer)) > 0) {
+							output.write(buffer, 0, loc);
+						}
+						
+						output.close();
+						
+						srcFile.createFileValidation(true, false, false, 0);
+						
+					} catch(Throwable e) { return false; }
+					
+					if (srcFile.move( getAbsolutePath() , true)) {
+						if ((permissions == null || setPermissions(permissions)) && (user == null || setOwner(user)) && (group == null || setGroup(group))) {
+							return true;
 						}
 					}
 				}
