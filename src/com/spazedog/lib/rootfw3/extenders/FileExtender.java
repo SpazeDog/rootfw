@@ -501,6 +501,38 @@ public class FileExtender {
 		}
 		
 		/**
+		 * Create a new empty file based on the path from this file object.
+		 * 
+		 * @return
+		 *     <code>True</code> if the file was created successfully or if it existed to begin with, <code>False</code> oherwise
+		 */
+		public Boolean createFile() {
+			synchronized (mLock) {
+				if (!exists()) {
+					try {
+						mFile.createNewFile();
+						
+					} catch (Throwable e) {
+						ShellResult result = mShell.run("echo '' > '" + getAbsolutePath() + "' 2> /dev/null");
+						
+						if (!result.wasSuccessful() || !"true".equals( mShell.buildCommands("( %binary test -f '" + getAbsolutePath() + "' && echo true ) || ( %binary test ! -f '" + getAbsolutePath() + "' && echo false )").run().getLine() )) {
+							return false;
+						}
+					}
+					
+					createFileValidation(true, false, false, 0);
+					
+					return true;
+					
+				} else if (!isDirectory()) {
+					return true;
+				}
+				
+				return true;
+			}
+		}
+		
+		/**
 		 * Create a new directory based on the path from this file object.
 		 * 
 		 * @see #createDirectories()
