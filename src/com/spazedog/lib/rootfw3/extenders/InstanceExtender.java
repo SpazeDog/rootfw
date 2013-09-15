@@ -103,6 +103,8 @@ public class InstanceExtender implements ExtenderGroup {
 		public void removeInstanceListener(ConnectionListener listener);
 		public ConnectionController addInstanceController(ConnectionController controller);
 		public void removeInstanceController(ConnectionController controller);
+		public SharedRootFW addLock();
+		public SharedRootFW removeLock();
 	}
 	
 	/**
@@ -161,10 +163,31 @@ public class InstanceExtender implements ExtenderGroup {
 		}
 		
 		/**
-		 * Add a lock to the connection. This will make sure that the connection cannot be closed until the connection is unlocked()
+		 * Add a lock to the connection. This will make sure that the connection cannot be closed until the connection is unlocked
+		 * 
+		 * @deprecated
+		 *     This method has been deprecated as of version 1.3.0. Instead use {@link #addLock()}
 		 */
 		@Override
 		public Instance lock() {
+			return (Instance) addLock();
+		}
+		
+		/**
+		 * Remove the lock on the connection. Note that although you remove this lock, others might also have a lock added to the connection. These must also be removed in order to close the connection.
+		 * 
+		 * @deprecated
+		 *     This method has been deprecated as of version 1.3.0. Instead use {@link #removeLock()}
+		 */
+		@Override
+		public Instance unlock() {
+			return (Instance) removeLock();
+		}
+		
+		/**
+		 * Add a lock to the connection. This will make sure that the connection cannot be closed until the connection is unlocked
+		 */
+		public SharedRootFW addLock() {
 			synchronized (mInstanceLock) {
 				mLockCount += 1;
 				
@@ -175,8 +198,7 @@ public class InstanceExtender implements ExtenderGroup {
 		/**
 		 * Remove the lock on the connection. Note that although you remove this lock, others might also have a lock added to the connection. These must also be removed in order to close the connection.
 		 */
-		@Override
-		public Instance unlock() {
+		public SharedRootFW removeLock() {
 			synchronized (mInstanceLock) {
 				if (mLockCount > 0) {
 					mLockCount -= 1;
