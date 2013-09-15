@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -61,7 +62,7 @@ public class FilesystemExtender {
 		/**
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+		public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
 			return transfer.setInstance((ExtenderGroup) new Filesystem(parent));
 		}
 		
@@ -81,7 +82,7 @@ public class FilesystemExtender {
 		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
 		 */
 		@Override
-		public void onExtenderReconfigure() {}
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {}
 		
 		/**
 		 * This will return a list of all currently mounted file systems, with information like 
@@ -235,8 +236,8 @@ public class FilesystemExtender {
 		/**
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
-			return transfer.setInstance((ExtenderGroup) new Device(parent, (java.io.File) transfer.arguments[0]));
+		public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
+			return transfer.setInstance((ExtenderGroup) new Device(parent, (String) transfer.arguments[0]));
 		}
 		
 		/**
@@ -245,9 +246,9 @@ public class FilesystemExtender {
 		 * @param parent
 		 *     A reference to the {@link RootFW} instance
 		 */
-		private Device(RootFW parent, java.io.File device) {
+		private Device(RootFW parent, String device) {
 			mShell = parent.shell();
-			mDevice = parent.file(device.getAbsolutePath());
+			mDevice = parent.file(device);
 			mParent = parent;
 		}
 		
@@ -256,7 +257,7 @@ public class FilesystemExtender {
 		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
 		 */
 		@Override
-		public void onExtenderReconfigure() {}
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {}
 		
 		/**
 		 * This is a short method for adding additional options to a mount location or device. 

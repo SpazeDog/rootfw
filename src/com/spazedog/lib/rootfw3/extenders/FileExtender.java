@@ -32,8 +32,9 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import android.content.Context;
-import android.text.TextUtils;
+import android.os.Bundle;
 
+import com.spazedog.lib.rootfw3.Common;
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
 import com.spazedog.lib.rootfw3.containers.BasicContainer;
@@ -49,29 +50,7 @@ public class FileExtender {
 	private final static Pattern oPatternSpaceSearch = Pattern.compile("[ \t]+");
 	private final static Pattern oPatternStatSplitter = Pattern.compile("\\|");
 	private final static Pattern oPatternStatSearch = Pattern.compile("^([a-z-]+)(?:[ \t]+([0-9]+))?[ \t]+([0-9a-z_]+)[ \t]+([0-9a-z_]+)(?:[ \t]+(?:([0-9]+),[ \t]+)?([0-9]+))?[ \t]+([A-Za-z]+[ \t]+[0-9]+[ \t]+[0-9:]+|[0-9-/]+[ \t]+[0-9:]+)[ \t]+(?:(.*) -> )?(.*)$");
-	
-	public static String resolvePath(String path) {
-		if (path.contains(".")) {
-			String[] directories = ("/".equals(path) ? path : path.endsWith("/") ? path.substring(1, path.length() - 1) : path.substring(1)).split("/");
-			List<String> resolved = new ArrayList<String>();
-			
-			for (int i=0; i < directories.length; i++) {
-				if (directories[i].equals("..")) {
-					if (resolved.size() > 0) {
-						resolved.remove( resolved.size()-1 );
-					}
-					
-				} else if (!directories[i].equals(".")) {
-					resolved.add(directories[i]);
-				}
-			}
-			
-			return resolved.size() > 0 ? "/" + TextUtils.join("/", resolved) : "/";
-		}
-		
-		return path;
-	}
-	
+
 	/**
 	 * This class contains file tools not specific to one file or folder
 	 */
@@ -81,7 +60,7 @@ public class FileExtender {
 		/**
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+		public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
 			return transfer.setInstance((ExtenderGroup) new FileUtil(parent));
 		}
 		
@@ -103,7 +82,7 @@ public class FileExtender {
 		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
 		 */
 		@Override
-		public void onExtenderReconfigure() {}
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {}
 		
 		public Boolean runFromResource(Context context, String asset) {
 			FileExtender.File file = mParent.file(context.getFilesDir() + "/rootfw.tmp.bin");
@@ -151,6 +130,7 @@ public class FileExtender {
 	public static class File implements ExtenderGroup {
 		
 		private RootFW mParent;
+		private Object mParentLock;
 		private ShellExtender.Shell mShell;
 		
 		private java.io.File mFile;
@@ -165,8 +145,8 @@ public class FileExtender {
 		/**
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
-			return transfer.setInstance((ExtenderGroup) new File(parent, (java.io.File) transfer.arguments[0]));
+		public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
+			return transfer.setInstance((ExtenderGroup) new File(parent, instanceLock, (String) transfer.arguments[0]));
 		}
 		
 		/**
@@ -178,9 +158,10 @@ public class FileExtender {
 		 * @param file
 		 *     A {@link java.io.File} object
 		 */
-		private File(RootFW parent, java.io.File file) {
+		private File(RootFW parent, Object instanceLock, String file) {
 			mParent = parent;
-			mFile = file;
+			mParentLock = instanceLock;
+			mFile = new java.io.File(file);
 			mShell = parent.shell();
 			
 			createFileValidation();
@@ -191,8 +172,24 @@ public class FileExtender {
 		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
 		 */
 		@Override
-		public void onExtenderReconfigure() {}
-		
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {
+			if (broadcastType == RootFW.BROADCAST_EXTENDER && arguments.getBoolean("broadcast_action_file")) {
+				if (arguments.getBoolean("file_action_update") && this.getResolvedPath().equals(arguments.getString("file_source_path"))) {
+					if (arguments.containsKey("file_status_exists")) 
+						iExists = arguments.getBoolean("file_status_exists");
+					
+					if (arguments.containsKey("file_status_folder")) 
+						iIsFolder = arguments.getBoolean("file_status_folder");
+					
+					if (arguments.containsKey("file_status_restricted")) 
+						iIsRestricted = arguments.getBoolean("file_status_restricted");
+					
+					if (arguments.containsKey("file_status_link")) 
+						iIsLink = arguments.getInt("file_status_link");
+				}
+			}
+		}
+
 		/**
 		 * This is used internally to check whether or not the file exists and whether or not it's a directory or a file. 
 		 */
@@ -221,6 +218,26 @@ public class FileExtender {
 				iIsFolder = folder;
 				iIsRestricted = restricted;
 				iIsLink = link;
+			}
+		}
+		
+		/**
+		 * This is used internally to broadcast file validation to other instances with the same file
+		 * 
+		 * @see #createFileValidation(Boolean, Boolean, Boolean, Integer)
+		 */
+		private void broadcastFileValidation(Boolean exists, Boolean folder, Boolean restricted, Integer link) {
+			synchronized (mLock) {
+				Bundle bundle = new Bundle();
+				bundle.putBoolean("broadcast_action_file", true);
+				bundle.putString("file_source_path", getResolvedPath());
+				bundle.putBoolean("file_action_update", true);
+				bundle.putBoolean("file_status_exists", exists);
+				bundle.putBoolean("file_status_folder", folder);
+				bundle.putBoolean("file_status_restricted", restricted);
+				bundle.putInt("file_status_link", link);
+				
+				mParent._sendGlobalBroadcast(mParentLock, RootFW.BROADCAST_EXTENDER, bundle);
 			}
 		}
 		
@@ -486,6 +503,9 @@ public class FileExtender {
 		public Boolean write(String[] input, Boolean append) {
 			synchronized (mLock) {
 				if (!isDirectory()) {
+					Boolean status = false;
+					Boolean exists = exists();
+					
 					if (!isRestricted() && mFile.canWrite()) {
 						try {
 							BufferedWriter output = new BufferedWriter(new FileWriter(mFile, append));
@@ -499,7 +519,7 @@ public class FileExtender {
 							
 							createFileValidation(mFile.exists(), false, false, iIsLink);
 							
-							return exists();
+							status = exists();
 							
 						} catch(Throwable e) {}
 						
@@ -519,7 +539,11 @@ public class FileExtender {
 						
 						createFileValidation(result.wasSuccessful() || exists(), false, false, iIsLink);
 						
-						return result.wasSuccessful();
+						status = result.wasSuccessful();
+					}
+					
+					if (status && !exists) {
+						broadcastFileValidation(iExists, iIsFolder, iIsRestricted, iIsLink);
 					}
 				}
 				
@@ -552,12 +576,14 @@ public class FileExtender {
 						
 						if (result.wasSuccessful()) {
 							createFileValidation(false, false, false, -1);
+							broadcastFileValidation(false, false, false, -1);
 							
 							return true;
 						}
 						
 					} else {
 						createFileValidation(false, false, false, -1);
+						broadcastFileValidation(false, false, false, -1);
 						
 						return true;
 					}
@@ -591,6 +617,7 @@ public class FileExtender {
 					}
 					
 					createFileValidation(true, false, false, 0);
+					broadcastFileValidation(true, false, false, 0);
 					
 					return true;
 					
@@ -622,6 +649,7 @@ public class FileExtender {
 					}
 					
 					createFileValidation(true, true, false, 0);
+					broadcastFileValidation(true, true, false, 0);
 					
 					return true;
 					
@@ -663,6 +691,7 @@ public class FileExtender {
 					}
 					
 					createFileValidation(true, true, false, 0);
+					broadcastFileValidation(true, true, false, 0);
 					
 					return true;
 					
@@ -693,6 +722,7 @@ public class FileExtender {
 							if(mShell.buildAttempts("%binary ln -s '" + getAbsolutePath() + "' '" + destFile.getAbsolutePath() + "' 2> /dev/null").run().wasSuccessful()) {
 								/* Someone could have a copy of this instance created somewhere else */
 								destFile.createFileValidation(iExists, iIsFolder, iIsRestricted, 1);
+								destFile.broadcastFileValidation(iExists, iIsFolder, iIsRestricted, 1);
 								
 								return true;
 							}
@@ -739,8 +769,10 @@ public class FileExtender {
 							}
 							
 							destFile.createFileValidation(iExists, iIsFolder, iIsRestricted, iIsLink);
+							destFile.broadcastFileValidation(iExists, iIsFolder, iIsRestricted, iIsLink);
 							
 							createFileValidation(false, false, false, -1);
+							broadcastFileValidation(false, false, false, -1);
 							
 							return true;
 						}
@@ -827,6 +859,7 @@ public class FileExtender {
 
 							if (status || mShell.buildAttempts("%binary cp -fa '" + getAbsolutePath() + "' '" + destFile.getAbsolutePath() + "'").run().wasSuccessful()) {
 								destFile.createFileValidation(iExists, iIsFolder, iIsRestricted, iIsLink);
+								destFile.broadcastFileValidation(iExists, iIsFolder, iIsRestricted, iIsLink);
 								
 								return true;
 							}
@@ -988,6 +1021,7 @@ public class FileExtender {
 						output.close();
 						
 						srcFile.createFileValidation(true, false, false, 0);
+						srcFile.broadcastFileValidation(true, false, false, 0);
 						
 					} catch(Throwable e) { return false; }
 					
@@ -1001,7 +1035,7 @@ public class FileExtender {
 				return false;
 			}
 		}
-		
+				
 		/**
 		 * @see #setPermissions(String, Boolean)
 		 */
@@ -1218,7 +1252,7 @@ public class FileExtender {
 		 *     The absolute path
 		 */
 		public String getResolvedPath() {
-			return resolvePath(getAbsolutePath());
+			return Common.resolveFilePath(getAbsolutePath());
 		}
 		
 		/**

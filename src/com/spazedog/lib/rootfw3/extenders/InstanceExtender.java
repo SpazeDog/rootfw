@@ -22,20 +22,22 @@ package com.spazedog.lib.rootfw3.extenders;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.os.Bundle;
+
 import com.spazedog.lib.rootfw3.RootFW;
+import com.spazedog.lib.rootfw3.RootFW.ConnectionListener;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
-import com.spazedog.lib.rootfw3.extenders.FilesystemExtender.Filesystem;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
 public class InstanceExtender implements ExtenderGroup {
-	protected static InstanceRootFW[] oInstances = new InstanceRootFW[2];
+	private static InstanceRootFW[] oInstances = new InstanceRootFW[2];
 	
 	private InstanceExtender() {}
 	
 	/**
 	 * This is used internally by {@link RootFW} to get a new instance of this class. 
 	 */
-	public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+	public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
 		Integer index = (Boolean) transfer.arguments[0] ? 1 : 0;
 		InstanceRootFW instance = oInstances[index] != null ? oInstances[index] : new InstanceRootFW(index == 1);
 		
@@ -43,7 +45,7 @@ public class InstanceExtender implements ExtenderGroup {
 	}
 	
 	@Override
-	public void onExtenderReconfigure() {}
+	public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {}
 	
 	/**
 	 * This interface is used to keep compatibility with older implementations of {@link InstanceExtender}
@@ -86,10 +88,14 @@ public class InstanceExtender implements ExtenderGroup {
 		public PackageExtender.Packages packages();
 		public ProcessExtender.Power power();
 		public String[] getEnvironmentVariable();
+		public Long getInstanceId();
 	}
 	
 	/**
 	 * This interface is used when adding connection callbacks via {@link InstanceRootFW#addCallback}
+	 * 
+	 * @deprecated
+	 *     As of version 1.3.0, this class is deprecated. You should instead make use of {@link RootFW#ConnectionListener}
 	 */
 	public static abstract class InstanceCallback {
 		/**
@@ -108,14 +114,11 @@ public class InstanceExtender implements ExtenderGroup {
 		public void onFailed(RootFW instance) {}
 	}
 	
-	private static class InstanceRootFW extends RootFW implements ExtenderGroup, Instance, SharedRootFW {
+	private final static class InstanceRootFW extends RootFW implements ExtenderGroup, Instance, SharedRootFW, ConnectionListener {
 		protected List<InstanceCallback> mCallbacks = new ArrayList<InstanceCallback>();
+		protected List<ConnectionListener> mConnectionListeners = new ArrayList<ConnectionListener>();
 		
 		protected Integer mLockCount = 0;
-		
-		protected Boolean mDisconnecting = false;
-		
-		protected Boolean mConnected = false;
 		
 		/**
 		 * Create a new instance of this class.
@@ -125,8 +128,8 @@ public class InstanceExtender implements ExtenderGroup {
 		}
 		
 		@Override
-		public void onExtenderReconfigure() {
-			if (!mConnected) {
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {
+			if (broadcastType == RootFW.BROADCAST_RETRIEVE && !mConnectionEstablished) {
 				connect();
 			}
 		}
@@ -147,9 +150,11 @@ public class InstanceExtender implements ExtenderGroup {
 		 */
 		@Override
 		public Instance lock() {
-			mLockCount += 1;
-			
-			return this;
+			synchronized (mInstanceLock) {
+				mLockCount += 1;
+				
+				return this;
+			}
 		}
 		
 		/**
@@ -157,11 +162,13 @@ public class InstanceExtender implements ExtenderGroup {
 		 */
 		@Override
 		public Instance unlock() {
-			if (mLockCount > 0) {
-				mLockCount -= 1;
+			synchronized (mInstanceLock) {
+				if (mLockCount > 0) {
+					mLockCount -= 1;
+				}
+				
+				return this;
 			}
-			
-			return this;
 		}
 		
 		/**
@@ -172,32 +179,9 @@ public class InstanceExtender implements ExtenderGroup {
 		 */
 		@Override
 		public Boolean isLocked() {
-			return mLockCount > 0;
-		}
-		
-		/**
-		 * This will overwrite the connect() method in the main RootFW and implement feature of locking the connection 
-		 * and add callback features.
-		 */
-		@Override
-		public Boolean connect() {
-			if (super.connect()) {
-				mConnected = true;
-				
-				for (int i=0; i < mCallbacks.size(); i++) {
-					mCallbacks.get(i).onConnect(this);
-				}
-				
-				return true;
+			synchronized (mInstanceLock) {
+				return mLockCount > 0;
 			}
-			
-			mConnected = false;
-			
-			for (int i=0; i < mCallbacks.size(); i++) {
-				mCallbacks.get(i).onFailed(this);
-			}
-			
-			return false;
 		}
 		
 		/**
@@ -206,15 +190,9 @@ public class InstanceExtender implements ExtenderGroup {
 		 */
 		@Override
 		public void disconnect() {
-			if (mLockCount == 0) {
-				mDisconnecting = true;
-				super.disconnect();
-				mDisconnecting = false;
-				
-				mConnected = false;
-				
-				for (int i=0; i < mCallbacks.size(); i++) {
-					mCallbacks.get(i).onDisconnect(this);
+			synchronized (mInstanceLock) {
+				if (mLockCount == 0) {
+					super.disconnect();
 				}
 			}
 		}
@@ -225,26 +203,109 @@ public class InstanceExtender implements ExtenderGroup {
 		 */
 		@Override
 		public void destroy() {
-			mLockCount = 0;
-			super.destroy();
-			
-			if (!mDisconnecting) {
-				mConnected = false;
-				
-				for (int i=0; i < mCallbacks.size(); i++) {
-					mCallbacks.get(i).onDisconnect(this);
-				}
+			synchronized (mInstanceLock) {
+				mLockCount = 0;
+				super.destroy();
 			}
 		}
 		
 		/**
 		 * Add a {@link InstanceCallback} object to this shared instance.
 		 * 
+		 * @deprecated
+		 *     As of version 1.3.0 this method has been deprecated. Instead you should use {@link #addInstanceListener(ConnectionListener)}
+		 * 
 		 * @param callback
 		 *     A {@link InstanceCallback} object
 		 */
 		public void addCallback(InstanceCallback callback) {
-			mCallbacks.add(callback);
+			synchronized (mInstanceLock) {
+				mCallbacks.add(callback);
+			}
+		}
+		
+		/**
+		 * This is used to add a connection listener to this instance. Unlike {@link RootFW#addConnectionListener(ConnectionListener)}, 
+		 * this will only set the listener on this specific instance. 
+		 * 
+		 * @param listener
+		 *     A {@link RootFW#ConnectionListener} object
+		 */
+		public ConnectionListener addInstanceListener(ConnectionListener listener) {
+			synchronized (mInstanceLock) {
+				if (!mConnectionListeners.contains(listener)) {
+					mConnectionListeners.add(listener);
+				}
+				
+				return listener;
+			}
+		}
+		
+		/**
+		 * Remove an {@link RootFW#ConnectionListener} from this instance
+		 * 
+		 * @see #addInstanceListener(ConnectionListener)
+		 */
+		public void removeInstanceListener(ConnectionListener listener) {
+			synchronized (mInstanceLock) {
+				mConnectionListeners.remove(listener);
+			}
+		}
+		
+		/**
+		 * Remove all {@link RootFW#ConnectionListener} from this instance
+		 * 
+		 * @see #addInstanceListener(ConnectionListener)
+		 */
+		public void removeInstanceListeners() {
+			synchronized (mInstanceLock) {
+				mConnectionListeners.clear();
+			}
+		}
+
+		@Override
+		public void onConnectionEstablished(RootFW instance) {
+			synchronized (mInstanceLock) {
+				if (instance.getInstanceId() == getInstanceId()) {
+					for (ConnectionListener listener : mConnectionListeners) {
+						listener.onConnectionEstablished(this);
+					}
+					
+					for (InstanceCallback callback : mCallbacks) {
+						callback.onConnect(this);
+					}
+				}
+			}
+		}
+
+		@Override
+		public void onConnectionFailed(RootFW instance) {
+			synchronized (mInstanceLock) {
+				if (instance.getInstanceId() == getInstanceId()) {
+					for (ConnectionListener listener : mConnectionListeners) {
+						listener.onConnectionFailed(this);
+					}
+					
+					for (InstanceCallback callback : mCallbacks) {
+						callback.onFailed(this);
+					}
+				}
+			}
+		}
+
+		@Override
+		public void onConnectionClosed(RootFW instance) {
+			synchronized (mInstanceLock) {
+				if (instance.getInstanceId() == getInstanceId()) {
+					for (ConnectionListener listener : mConnectionListeners) {
+						listener.onConnectionClosed(this);
+					}
+					
+					for (InstanceCallback callback : mCallbacks) {
+						callback.onDisconnect(this);
+					}
+				}
+			}
 		}
 	}
 }

@@ -19,9 +19,11 @@
 
 package com.spazedog.lib.rootfw3.interfaces;
 
+import android.os.Bundle;
+
 /**
  * This interface is implemented in all of the extender classes. It does not really provide anything, but enabled each extender to be cast to one shared data type.
  */
 public interface ExtenderGroup {
-	public void onExtenderReconfigure();
+	public void onBroadcastReceive(Integer broadcastType, Bundle arguments);
 }

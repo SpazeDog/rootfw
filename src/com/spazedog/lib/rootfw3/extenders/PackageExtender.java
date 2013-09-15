@@ -26,6 +26,8 @@ import java.util.Map;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
 
+import android.os.Bundle;
+
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
 import com.spazedog.lib.rootfw3.containers.BasicContainer;
@@ -38,7 +40,7 @@ public class PackageExtender {
 		/**
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+		public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
 			return transfer.setInstance((ExtenderGroup) new Packages(parent));
 		}
 		
@@ -57,7 +59,7 @@ public class PackageExtender {
 		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
 		 */
 		@Override
-		public void onExtenderReconfigure() {}
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {}
 		
 		/**
 		 * Get a list of all packages defined in Android's packages.xml file. 

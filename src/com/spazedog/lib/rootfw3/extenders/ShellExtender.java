@@ -19,14 +19,16 @@
 
 package com.spazedog.lib.rootfw3.extenders;
 
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import android.os.Bundle;
+
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
+import com.spazedog.lib.rootfw3.RootFW.ShellInputStream;
+import com.spazedog.lib.rootfw3.RootFW.ShellOutputStream;
 import com.spazedog.lib.rootfw3.containers.Data;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
@@ -44,6 +46,8 @@ public class ShellExtender {
 
 		protected Object mConnectionLock;
 		
+		protected Object mParentLock;
+		
 		protected RootFW mParent;
 		
 		protected Integer[] mResultCodes = new Integer[]{0};
@@ -52,8 +56,8 @@ public class ShellExtender {
 		/**
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
-			return transfer.setInstance((ExtenderGroup) new Shell(parent, (Object) transfer.arguments[0]));
+		public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
+			return transfer.setInstance((ExtenderGroup) new Shell(parent, instanceLock, transfer.arguments[0]));
 		}
 		
 		/**
@@ -65,9 +69,10 @@ public class ShellExtender {
 		 * @param output
 		 *     The OutputStream from the RootFW connection
 		 */
-		private Shell(RootFW parent, Object lock) {
+		private Shell(RootFW parent, Object instanceLock, Object connectionLock) {
 			mParent = parent;
-			mConnectionLock = lock;
+			mParentLock = instanceLock;
+			mConnectionLock = connectionLock;
 		}
 		
 		/**
@@ -75,7 +80,7 @@ public class ShellExtender {
 		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
 		 */
 		@Override
-		public void onExtenderReconfigure() {}
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {}
 		
 		/**
 		 * This is the same as addCommands(), only this one will auto create multiple attempts for each command using each defined binary in RootFW.Config.BINARY. You can use the prefix %binary to represent where the binary should be injected. 
@@ -219,8 +224,8 @@ public class ShellExtender {
 						@Override
 						public void run() {
 							try {
-								BufferedReader inputStream = mParent.getInputStream(mConnectionLock);
-								DataOutputStream outputStream = mParent.getOutputStream(mConnectionLock);
+								ShellInputStream inputStream = mParent._getInputStream(mParentLock);
+								ShellOutputStream outputStream = mParent._getOutputStream(mParentLock);
 								
 								commandLoop:
 								for (int i=0; i < mCommands.size(); i++) {

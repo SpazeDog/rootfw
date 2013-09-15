@@ -2,6 +2,7 @@ package com.spazedog.lib.rootfw3.extenders;
 
 import java.util.regex.Pattern;
 
+import android.os.Bundle;
 import android.text.TextUtils;
 
 import com.spazedog.lib.rootfw3.RootFW;
@@ -26,7 +27,7 @@ public class BinaryExtender {
 		/**
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+		public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
 			return transfer.setInstance((ExtenderGroup) new Binary(parent, (String) transfer.arguments[0]));
 		}
 		
@@ -47,7 +48,7 @@ public class BinaryExtender {
 		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
 		 */
 		@Override
-		public void onExtenderReconfigure() {}
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {}
 		
 		/**
 		 * Check whether a binary exists in one of the <code>$PATH</code> variable directories.
@@ -88,7 +89,7 @@ public class BinaryExtender {
 		/**
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+		public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
 			return transfer.setInstance((ExtenderGroup) new Busybox(parent, (String) transfer.arguments[0]));
 		}
 		
@@ -108,7 +109,7 @@ public class BinaryExtender {
 		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
 		 */
 		@Override
-		public void onExtenderReconfigure() {}
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {}
 		
 		/**
 		 * Check whether or not the busybox binary exists and is executable.

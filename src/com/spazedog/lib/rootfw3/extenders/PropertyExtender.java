@@ -22,6 +22,8 @@ package com.spazedog.lib.rootfw3.extenders;
 import java.util.HashMap;
 import java.util.Map;
 
+import android.os.Bundle;
+
 import com.spazedog.lib.rootfw3.RootFW;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
 import com.spazedog.lib.rootfw3.containers.Data.DataReplace;
@@ -47,7 +49,7 @@ public class PropertyExtender {
 		/**
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+		public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
 			return transfer.setInstance((ExtenderGroup) new Properties(parent));
 		}
 		
@@ -66,7 +68,7 @@ public class PropertyExtender {
 		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
 		 */
 		@Override
-		public void onExtenderReconfigure() {}
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {}
 		
 		/**
 		 * Get a list of all the global properties that is registered on the device.
@@ -164,7 +166,7 @@ public class PropertyExtender {
 		/**
 		 * This is used internally by {@link RootFW} to get a new instance of this class. 
 		 */
-		public static ExtenderGroupTransfer getInstance(RootFW parent, ExtenderGroupTransfer transfer) {
+		public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
 			return transfer.setInstance((ExtenderGroup) new File(parent, (java.io.File) transfer.arguments[0]));
 		}
 		
@@ -186,7 +188,7 @@ public class PropertyExtender {
 		 * This is useful because RootFW saves instances, and therefore we can't be sure that the constructor is called. 
 		 */
 		@Override
-		public void onExtenderReconfigure() {}
+		public void onBroadcastReceive(Integer broadcastType, Bundle arguments) {}
 		
 		/**
 		 * Get a list of all the properties that is defined in the property file.

@@ -22,15 +22,22 @@ package com.spazedog.lib.rootfw3;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
+import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.spazedog.lib.rootfw3.RootFW.Config;
+import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
 import com.spazedog.lib.rootfw3.extenders.BinaryExtender;
 import com.spazedog.lib.rootfw3.extenders.FileExtender;
 import com.spazedog.lib.rootfw3.extenders.FilesystemExtender;
@@ -39,93 +46,85 @@ import com.spazedog.lib.rootfw3.extenders.MemoryExtender;
 import com.spazedog.lib.rootfw3.extenders.PackageExtender;
 import com.spazedog.lib.rootfw3.extenders.ProcessExtender;
 import com.spazedog.lib.rootfw3.extenders.PropertyExtender;
+import com.spazedog.lib.rootfw3.extenders.InstanceExtender.SharedRootFW;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
-/**
- * <dl>
- * <dt><span class="strong">Example:</span></dt>
- * <dd><code><pre>
- * RootFW root = new RootFW();
- * 
- * if (root.connect()) {
- *     ...
- *     
- *     root.disconnect();
- * }
- * </pre></code></dd>
- * </dl>
- */
 public class RootFW {
 	public final static String TAG = "RootFW";
 	
-	public final static Integer E_DEBUG = 2;
-	public final static Integer E_INFO = 4;
-	public final static Integer E_WARNING = 8;
-	public final static Integer E_ERROR = 16;
+	private static Integer oCounter = 1;
 	
-	private static Map<String, ExtenderGroup> mExternderInstances = new WeakHashMap<String, ExtenderGroup>();
+	public final static Integer E_DEBUG = (oCounter *= 2);
+	public final static Integer E_INFO = (oCounter *= 2);
+	public final static Integer E_WARNING = (oCounter *= 2);
+	public final static Integer E_ERROR = (oCounter *= 2);
 	
-	/**
-	 * A static configuration class where some configs can be changed for the framework.
-	 * 
-	 * <dl>
-	 * <dt><span class="strong">Example:</span></dt>
-	 * <dd><code><pre>RootFW.Config.PATH.add("/data/local/bin");</pre></code></dd>
-	 * </dl>
-	 */
-	public final static class Config {
-		/**
-		 * Used to extend the shell PATH variable. Each index in the ArrayList should contain a path to one or more binaries. Each index will be added in front of the standard variables.
-		 */
-		public static final List<String> PATH = new ArrayList<String>();
-		
-		/**
-		 * This property contains all of the all-in-one binaries that an be used on a device. By default, it contains busybox and toolbox if available in the PATH variable paths
-		 */
-		public static final List<String> BINARIES = new ArrayList<String>();
-		
-		/**
-		 * This property decides what should be logged. You can add one or more of the RootFW.E properties to this one to enable logging.
-		 */
-		public static Integer LOG = RootFW.E_ERROR|RootFW.E_WARNING;
-		
-		/**
-		 * This class defines connection configs.
-		 */
-		public final static class Connection {
-			/**
-			 * Amount of milliseconds the shell can take before it is killed.
-			 */
-			public static Integer TIMEOUT = 15000;
-			
-			/**
-			 * Amount attempts to retry after a connection is killed.
-			 * 2 attempts is at least recommended to fix issues with Kutch superuser daemon mode.
-			 */
-			public static Integer TRIES = 2;
-		}
-	}
+	public final static Integer BROADCAST_RETRIEVE = (oCounter *= 2);
+	public final static Integer BROADCAST_EXTENDER = (oCounter *= 2);
 	
-	static {
-		Config.BINARIES.add("busybox");
-		Config.BINARIES.add("toolbox");
-	}
+	private static SharedRootFW oSharedRootInstance;
+	private static SharedRootFW oSharedUserInstance;
 	
-	protected Boolean mRootUser = false;
+	private static final AtomicLong oIdGenerator = new AtomicLong(0);
 	
-	protected Process mShell = null;
+	private final Long mInstanceId = RootFW.oIdGenerator.incrementAndGet();
+	private final String mInstanceName = "reference-" + mInstanceId;
 	
-	protected BufferedReader mInputStream;
-	protected DataOutputStream mOutputStream;
-	
+	private final static Object oClassLock = new Object();
 	protected final Object mInstanceLock = new Object();
 	protected final Object mConnectionLock = new Object();
 	
+	private final static Map<String, RootFW> oRootFWInstances = new WeakHashMap<String, RootFW>();
+	protected final Map<String, ExtenderGroup> mExternderInstances = new WeakHashMap<String, ExtenderGroup>();
+	private final static List<ConnectionListener> oListenerInstances = new ArrayList<ConnectionListener>();
+	
+	protected Process mConnectionProcess;
+	protected Boolean mConnectionIsRoot;
+	protected Boolean mConnectionEstablished = false;
+	protected ShellInputStream mConnectionInputStream;
+	protected ShellOutputStream mConnectionOutputStream;
+	
+	/**
+	 * Add a {@link #ConnectionListener} to the RootFW. This will allow you to 
+	 * get a notice every time the connection state changes on a RootFW instance. 
+	 */
+	public static ConnectionListener addConnectionListener(ConnectionListener listener) {
+		synchronized (RootFW.oClassLock) {
+			if (!RootFW.oListenerInstances.contains(listener)) {
+				RootFW.oListenerInstances.add(listener);
+			}
+			
+			return listener;
+		}
+	}
+	
+	/**
+	 * Remove a {@link #ConnectionListener} from the stack.
+	 * 
+	 * @see #addConnectionListener(ConnectionListener)
+	 */
+	public static void removeConnectionListener(ConnectionListener listener) {
+		synchronized (RootFW.oClassLock) {
+			RootFW.oListenerInstances.remove(listener);
+		}
+	}
+	
+	/**
+	 * Clear the entire {@link #ConnectionListener} stack.
+	 * 
+	 * @see #addConnectionListener(ConnectionListener)
+	 */
+	public static void removeConnectionListeners() {
+		synchronized (RootFW.oClassLock) {
+			RootFW.oListenerInstances.clear();
+		}
+	}
+	
 	/**
 	 * @deprecated
-	 *     This method is deprecated as of version 1.1.0
-	 *     
+	 * This method is deprecated as of version 1.1.0
+	 *
 	 * @see #getSharedRoot()
 	 */
 	public static InstanceExtender.Instance rootInstance() {
@@ -134,8 +133,8 @@ public class RootFW {
 	
 	/**
 	 * @deprecated
-	 *     This method is deprecated as of version 1.1.0
-	 *     
+	 * This method is deprecated as of version 1.1.0
+	 *
 	 * @see #getSharedUser()
 	 */
 	public static InstanceExtender.Instance userInstance() {
@@ -143,37 +142,41 @@ public class RootFW {
 	}
 	
 	/**
-	 * Get an extended root instance of RootFW.
-	 * <br />
-	 * This instance is globally shared instance. If no connection is currently opened, a new instance is created and a connection is auto established. Otherwise, the current instance is returned.
-	 * <br />
-	 * This makes it possible for multiple classes and methods to share the same shell connection
+	 * This will return a shared and extended version of RootFW connected as root. 
+	 * This will return the same instance across all classes and methods which will allow you to use one single 
+	 * instance across all of your code and avoid constant connects and disconnects. 
+	 * 
+	 * @see getSharedUser()
 	 */
 	public static InstanceExtender.SharedRootFW getSharedRoot() {
-		if (!RootFW.mExternderInstances.containsKey("InstanceExtender:Root")) {
-			RootFW.mExternderInstances.put("InstanceExtender:Root", (ExtenderGroup) InstanceExtender.getInstance(null, new ExtenderGroupTransfer((Object) true)).instance);
+		synchronized (RootFW.oClassLock) {
+			if (RootFW.oSharedRootInstance == null) {
+				RootFW.oSharedRootInstance = (SharedRootFW) InstanceExtender.getInstance(null, null, new ExtenderGroupTransfer((Object) true)).instance;
+			}
+			
+			((ExtenderGroup) RootFW.oSharedRootInstance).onBroadcastReceive(BROADCAST_RETRIEVE, null);
+			
+			return RootFW.oSharedRootInstance;
 		}
-		
-		RootFW.mExternderInstances.get("InstanceExtender:Root").onExtenderReconfigure();
-		
-		return (InstanceExtender.SharedRootFW) RootFW.mExternderInstances.get("InstanceExtender:Root");
 	}
 	
 	/**
-	 * Get an extended user instance of RootFW.
-	 * <br />
-	 * This instance is globally shared instance. If no connection is currently opened, a new instance is created and a connection is auto established. Otherwise, the current instance is returned.
-	 * <br />
-	 * This makes it possible for multiple classes and methods to share the same shell connection
+	 * This will return a shared and extended version of RootFW connected as a regular user. 
+	 * This will return the same instance across all classes and methods which will allow you to use one single 
+	 * instance across all of your code and avoid constant connects and disconnects. 
+	 * 
+	 * @see getSharedRoot()
 	 */
 	public static InstanceExtender.SharedRootFW getSharedUser() {
-		if (!RootFW.mExternderInstances.containsKey("InstanceExtender:User")) {
-			RootFW.mExternderInstances.put("InstanceExtender:User", (ExtenderGroup) InstanceExtender.getInstance(null, new ExtenderGroupTransfer((Object) false)).instance);
+		synchronized (RootFW.oClassLock) {
+			if (RootFW.oSharedUserInstance == null) {
+				RootFW.oSharedUserInstance = (SharedRootFW) InstanceExtender.getInstance(null, null, new ExtenderGroupTransfer((Object) false)).instance;
+			}
+			
+			((ExtenderGroup) RootFW.oSharedUserInstance).onBroadcastReceive(BROADCAST_RETRIEVE, null);
+			
+			return RootFW.oSharedUserInstance;
 		}
-		
-		RootFW.mExternderInstances.get("InstanceExtender:User").onExtenderReconfigure();
-		
-		return (InstanceExtender.SharedRootFW) RootFW.mExternderInstances.get("InstanceExtender:User");
 	}
 	
 	/**
@@ -182,49 +185,61 @@ public class RootFW {
 	public RootFW() {
 		this(true);
 	}
-
+	
 	/**
 	 * Create a new instance of RootFW
-	 *    
-	 * @param aRoot
-	 *     Whether to create a root shell or a regular user shell
+	 *
+	 * @param useRoot
+	 * 		Whether to create a root shell or a regular user shell
 	 */
-	public RootFW(Boolean root) {
-		mRootUser = root;
+	public RootFW(Boolean useRoot) {
+		mConnectionIsRoot = useRoot;
 	}
 	
 	/**
 	 * Establish a connection to the shell
-	 *    
-	 * @return
-	 *     <code>True</code> on successful connection
 	 */
 	public Boolean connect() {
 		synchronized (mInstanceLock) {
-			if (!isConnected()) {
+			if (!mConnectionEstablished) {
 				ProcessBuilder builder;
-				builder = new ProcessBuilder(mRootUser ? "su" : "sh");
+				builder = new ProcessBuilder(mConnectionIsRoot ? "su" : "sh");
 				builder.redirectErrorStream(true);
 	
 				try {
-					mShell = builder.start();
+					mConnectionProcess = builder.start();
+					mConnectionInputStream = new ShellInputStream(mConnectionProcess.getInputStream());
+					mConnectionOutputStream = new ShellOutputStream(mConnectionProcess.getOutputStream());
+					mConnectionEstablished = "connected".equals( shell("echo 'connected'") );
 					
-					mInputStream = new BufferedReader( new InputStreamReader(mShell.getInputStream()) );
-					mOutputStream = new DataOutputStream(mShell.getOutputStream());
-					
-					if(isConnected()) {
+					if(mConnectionEstablished) {
 						if (Config.PATH.size() > 0) {
 							shell("PATH=\"" + TextUtils.join(":", Config.PATH) + ":$PATH\"");
 						}
 						
+						RootFW.oRootFWInstances.put(mInstanceName, this);
+						
+						synchronized (oClassLock) {
+							for (ConnectionListener listener : RootFW.oListenerInstances) {
+								listener.onConnectionEstablished(this);
+							}
+						}
+						
 						return true;
 						
-					} else if (mShell != null) {
-						mShell.destroy();
-						mShell = null;
+					} else if (mConnectionProcess != null) {
+						throw new Throwable();
 					}
 					
-				} catch (Throwable e) {}
+				} catch (Throwable e) {
+					synchronized (RootFW.oClassLock) {
+						for (ConnectionListener listener : RootFW.oListenerInstances) {
+							listener.onConnectionFailed(this);
+						}
+					}
+					
+					mConnectionProcess.destroy();
+				}
 				
 				return false;
 			}
@@ -238,19 +253,20 @@ public class RootFW {
 	 */
 	public void disconnect() {
 		synchronized (mInstanceLock) {
-			if (mShell != null) {
+			if (mConnectionProcess != null) {
 				/* If mShell is not null, then the connection should be active. 
 				 * If not, then something is wrong and we will destroy it instead.
 				 */
-				if(isConnected() && shell().run("exit 0").wasSuccessful()) {
+				if(mConnectionEstablished && shell().run("exit 0").wasSuccessful()) {
 					try {
-						mInputStream.close();
-						mOutputStream.close();
+						mConnectionInputStream.close();
+						mConnectionOutputStream.close();
 						
 					} catch (IOException e) {}
 					
-					mShell.destroy();
-					mShell = null;
+					mConnectionProcess.destroy();
+					
+					cleanup();
 					
 				} else {
 					destroy();
@@ -260,396 +276,343 @@ public class RootFW {
 	}
 	
 	/**
-	 * Destroys a shell connection. 
-	 * It's better to use {{@link #disconnect()} to close the connection in a more clean manner. 
+	 * Destroys a shell connection.
+	 * It's better to use {{@link #disconnect()} to close the connection in a more clean manner.
 	 */
 	public void destroy() {
 		synchronized (mInstanceLock) {
-			if (mShell != null) {
-				mInputStream = null;
-				mOutputStream = null;
+			if (mConnectionProcess != null) {
+				mConnectionProcess.destroy();
 				
-				mShell.destroy();
-				mShell = null;
+				cleanup();
 			}
 		}
 	}
 	
 	/**
-	 * This is used internally by extenders to get the connection input stream.
+	 * Internal method to clean up after disconnecting from the shell
 	 */
-	public BufferedReader getInputStream(Object lock) {
-		return lock == mConnectionLock ? 
-				mInputStream : null;
+	protected void cleanup() {
+		synchronized (mInstanceLock) {
+			mConnectionProcess = null;
+			mConnectionInputStream = null;
+			mConnectionOutputStream = null;
+			mConnectionEstablished = false;
+			
+			oRootFWInstances.remove(mInstanceName);
+			mExternderInstances.clear();
+			
+			synchronized (RootFW.oClassLock) {
+				for (ConnectionListener listener : RootFW.oListenerInstances) {
+					listener.onConnectionClosed(this);
+				}
+			}
+		}
 	}
 	
 	/**
-	 * This is used internally by extenders to get the connection output stream.
+	 * Internal method used by extenders to send broadcasts to one another
 	 */
-	public DataOutputStream getOutputStream(Object lock) {
-		return lock == mConnectionLock ? 
-				mOutputStream : null;
+	public void _sendGlobalBroadcast(Object lock, Integer broadcastType, Bundle arguments) {
+		if (lock == mInstanceLock) {
+			for (String instanceKey : oRootFWInstances.keySet()) {
+				RootFW instance = oRootFWInstances.get(instanceKey);
+						
+				for (String extenderKey : instance.mExternderInstances.keySet()) {
+					instance.mExternderInstances.get(extenderKey).onBroadcastReceive(broadcastType, arguments);
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Internal method used by extenders to send broadcasts to one another
+	 */
+	public void _sendLocalBroadcast(Object lock, Integer broadcastType, Bundle arguments) {
+		if (lock == mInstanceLock) {
+			for (String key : mExternderInstances.keySet()) {
+				mExternderInstances.get(key).onBroadcastReceive(broadcastType, arguments);
+			}
+		}
+	}
+	
+	/**
+	 * Internal method used by extenders to get the shell InputStream
+	 */
+	public ShellInputStream _getInputStream(Object lock) {
+		return lock == mInstanceLock ? 
+				mConnectionInputStream : null;
+	}
+	
+	/**
+	 * Internal method used by extenders to get the shell OutputStream
+	 */
+	public ShellOutputStream _getOutputStream(Object lock) {
+		return lock == mInstanceLock ? 
+				mConnectionOutputStream : null;
+	}
+	
+	/**
+	 * Get the unique id for this instance
+	 */
+	public Long getInstanceId() {
+		return mInstanceId;
 	}
 	
 	/**
 	 * Check whether a shell connection has been established
-	 *    
-	 * @return
-	 *     <code>True</code> if the connection is open
 	 */
 	public Boolean isConnected() {
 		synchronized (mInstanceLock) {
-			return mShell != null && "connected".equals( shell("echo 'connected'") );
+			return mConnectionEstablished;
 		}
 	}
 	
 	/**
 	 * Check whether this shell is a root shell or a reglar user shell
-	 *    
-	 * @return
-	 *     <code>True</code> if this is a root shell
 	 */
 	public Boolean isRoot() {
-		return mRootUser && isConnected();
+		return mConnectionIsRoot;
 	}
 	
 	/**
-	 * Return a new {@link ShellExtender.Shell} instance which can be used to communicate with the shell.
-	 * 
-	 * @see ShellExtender.Shell
+	 * Internal extender control method
+	 */
+	private Boolean checkExtender(String name) {
+		synchronized (mInstanceLock) {
+			return mExternderInstances.containsKey(name);
+		}
+	}
+	
+	/**
+	 * Internal extender control method
+	 */
+	private ExtenderGroup addExtender(String name, ExtenderGroup extender) {
+		synchronized (mInstanceLock) {
+			mExternderInstances.put(name, extender);
+			
+			return getExtender(name);
+		}
+	}
+	
+	/**
+	 * Internal extender control method
+	 */
+	private ExtenderGroup getExtender(String name) {
+		synchronized (mInstanceLock) {
+			ExtenderGroup extender = mExternderInstances.get(name);
+			
+			extender.onBroadcastReceive(BROADCAST_RETRIEVE, null);
+			
+			return extender;
+		}
+	}
+	
+	/**
+	 * Get an instance of {@link ShellExtender.Shell}
 	 */
 	public ShellExtender.Shell shell() {
-		return (ShellExtender.Shell) ShellExtender.Shell.getInstance(this, new ExtenderGroupTransfer( mConnectionLock )).instance;
+		return (ShellExtender.Shell) ShellExtender.Shell.getInstance(this, mInstanceLock, new ExtenderGroupTransfer(mConnectionLock)).instance;
 	}
 	
 	/**
-	 * This is a quick shell executer, which can be used for small fast shell work. It allows you to execute one single command, and then returns the last line of the output.
-	 * 
-	 * <dl><dt><span class="strong">Example:</span></dt><dd><code>String line = rootfwInstance.shell("df -h /dev/block/mmcblk0p1");</code></dd></dl>
-	 * 
-	 * @param aRoot
-	 *     Whether to connect as root or as a regular user
-	 *    
-	 * @return
-	 *     The last line of the shell output
+	 * Execute one shell command and return the last output line
 	 */
 	public String shell(String command) {
 		return shell().run(command).getLine();
 	}
 	
 	/**
-	 * Return a new instance of the {@link FileExtender.FileUtil} class. 
-	 * 
-	 * @see FileExtender.FileUtil
+	 * Get an instance of {@link FileExtender.FileUtil}.
+	 * <br />
+	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public FileExtender.FileUtil file() {
-		if (!RootFW.mExternderInstances.containsKey("FileExtender.FileUtil")) {
-			FileExtender.FileUtil extender = (FileExtender.FileUtil) FileExtender.FileUtil.getInstance(this, new ExtenderGroupTransfer()).instance;
-			
-			RootFW.mExternderInstances.put("FileExtender.FileUtil", extender);
-			
-			return extender;
-		}
-		
-		return (FileExtender.FileUtil) RootFW.mExternderInstances.get("FileExtender.FileUtil");
+		return (FileExtender.FileUtil) (checkExtender("FileExtender.FileUtil") ? 
+				getExtender("FileExtender.FileUtil") : 
+					addExtender("FileExtender.FileUtil", FileExtender.FileUtil.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link FileExtender.File} class for the file defined in the argument. 
+	 * Get an instance of {@link FileExtender.File}.
 	 * <br />
-	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
-	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
-	 * 
-	 * @see FileExtender.File
+	 * This method uses caching which means that multiple calls to the same file will not provide multiple instances.
 	 */
 	public FileExtender.File file(String file) {
-		java.io.File fileObject = new java.io.File(file);
-		String name = "FileExtender.File:" + FileExtender.resolvePath( fileObject.getAbsolutePath() );
+		String path = Common.resolveFilePath(file);
 		
-		if (!RootFW.mExternderInstances.containsKey(name)) {
-			FileExtender.File extender = (FileExtender.File) FileExtender.File.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
-			
-			RootFW.mExternderInstances.put(name, extender);
-			
-			return extender;
-		}
-		
-		return (FileExtender.File) RootFW.mExternderInstances.get(name);
+		return (FileExtender.File) (checkExtender("FileExtender.File:" + path) ? 
+				getExtender("FileExtender.File:" + path) : 
+					addExtender("FileExtender.File:" + path, FileExtender.File.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) file )).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link MemoryExtender.Memory} class.
-	 *    
-	 * @see MemoryExtender.Memory
+	 * Get an instance of {@link MemoryExtender.Memory}.
+	 * <br />
+	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public MemoryExtender.Memory memory() {
-		if (!RootFW.mExternderInstances.containsKey("MemoryExtender.Memory")) {
-			MemoryExtender.Memory extender = (MemoryExtender.Memory) MemoryExtender.Memory.getInstance(this, new ExtenderGroupTransfer()).instance;
-			
-			RootFW.mExternderInstances.put("MemoryExtender.Memory", (ExtenderGroup) extender);
-			
-			return extender;
-		}
-		
-		return (MemoryExtender.Memory) RootFW.mExternderInstances.get("MemoryExtender.Memory");
+		return (MemoryExtender.Memory) (checkExtender("MemoryExtender.Memory") ? 
+				getExtender("MemoryExtender.Memory") : 
+					addExtender("MemoryExtender.Memory", MemoryExtender.Memory.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link MemoryExtender.Device} class for the device defined in the argument. 
+	 * Get an instance of {@link MemoryExtender.Device}.
 	 * <br />
-	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
-	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
-	 * 
-	 * @see MemoryExtender.Device
+	 * This method uses caching which means that multiple calls to the same device will not provide multiple instances.
 	 */
 	public MemoryExtender.Device memory(String device) {
-		java.io.File fileObject = new java.io.File(device);
-		String name = "MemoryExtender.Device:" + FileExtender.resolvePath( fileObject.getAbsolutePath() );
+		String path = Common.resolveFilePath(device);
 		
-		if (!RootFW.mExternderInstances.containsKey(name)) {
-			MemoryExtender.Device extender = (MemoryExtender.Device) MemoryExtender.Device.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
-			
-			RootFW.mExternderInstances.put(name, extender);
-			
-			return extender;
-		}
-		
-		return (MemoryExtender.Device) RootFW.mExternderInstances.get(name);
+		return (MemoryExtender.Device) (checkExtender("MemoryExtender.Device:" + path) ? 
+				getExtender("MemoryExtender.Device:" + path) : 
+					addExtender("MemoryExtender.Device:" + path, MemoryExtender.Device.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link PropertyExtender.Properties} class.
-	 *    
-	 * @see PropertyExtender.Properties
+	 * Get an instance of {@link PropertyExtender.Properties}.
+	 * <br />
+	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public PropertyExtender.Properties property() {
-		if (!RootFW.mExternderInstances.containsKey("PropertyExtender.Properties")) {
-			PropertyExtender.Properties extender = (PropertyExtender.Properties) PropertyExtender.Properties.getInstance(this, new ExtenderGroupTransfer()).instance;
-			
-			RootFW.mExternderInstances.put("PropertyExtender.Properties", (ExtenderGroup) extender);
-			
-			return extender;
-		}
-		
-		return (PropertyExtender.Properties) RootFW.mExternderInstances.get("PropertyExtender.Properties");
+		return (PropertyExtender.Properties) (checkExtender("PropertyExtender.Properties") ? 
+				getExtender("PropertyExtender.Properties") : 
+					addExtender("PropertyExtender.Properties", PropertyExtender.Properties.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link PropertyExtender.File} class for the file defined in the argument. 
+	 * Get an instance of {@link PropertyExtender.File}.
 	 * <br />
-	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
-	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
-	 * 
-	 * @see PropertyExtender.File
+	 * This method uses caching which means that multiple calls to the same file will not provide multiple instances.
 	 */
 	public PropertyExtender.File property(String file) {
-		java.io.File fileObject = new java.io.File(file);
-		String name = "PropertyExtender.File:" + FileExtender.resolvePath( fileObject.getAbsolutePath() );
+		String path = Common.resolveFilePath(file);
 		
-		if (!RootFW.mExternderInstances.containsKey(name)) {
-			PropertyExtender.File extender = (PropertyExtender.File) PropertyExtender.File.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
-			
-			RootFW.mExternderInstances.put(name, extender);
-			
-			return extender;
-		}
-		
-		return (PropertyExtender.File) RootFW.mExternderInstances.get(name);
+		return (PropertyExtender.File) (checkExtender("PropertyExtender.File:" + path) ? 
+				getExtender("PropertyExtender.File:" + path) : 
+					addExtender("PropertyExtender.File:" + path, PropertyExtender.File.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link FilesystemExtender.Filesystem} class.
-	 *    
-	 * @see FilesystemExtender.Filesystem
+	 * Get an instance of {@link FilesystemExtender.Filesystem}.
+	 * <br />
+	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public FilesystemExtender.Filesystem filesystem() {
-		if (!RootFW.mExternderInstances.containsKey("FilesystemExtender.Filesystem")) {
-			FilesystemExtender.Filesystem extender = (FilesystemExtender.Filesystem) FilesystemExtender.Filesystem.getInstance(this, new ExtenderGroupTransfer()).instance;
-			
-			RootFW.mExternderInstances.put("FilesystemExtender.Filesystem", (ExtenderGroup) extender);
-			
-			return extender;
-		}
-		
-		return (FilesystemExtender.Filesystem) RootFW.mExternderInstances.get("FilesystemExtender.Filesystem");
+		return (FilesystemExtender.Filesystem) (checkExtender("FilesystemExtender.Filesystem") ? 
+				getExtender("FilesystemExtender.Filesystem") : 
+					addExtender("FilesystemExtender.Filesystem", FilesystemExtender.Filesystem.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
 	}
 	
 	/**
-	 * Return a new FilesystemExtender.Device instance which can be used to alter a device mount state, get mount information etc.
-	 * 
-	 * @param device
-	 *     The device or mount location to work with
-	 *    
-	 * @return
-	 *     A new FilesystemExtender.Device instance
+	 * Get an instance of {@link FilesystemExtender.Device}.
+	 * <br />
+	 * This method uses caching which means that multiple calls to the same device will not provide multiple instances.
 	 */
 	public FilesystemExtender.Device filesystem(String device) {
-		java.io.File fileObject = new java.io.File(device);
-		String name = "FilesystemExtender.Device:" + FileExtender.resolvePath( fileObject.getAbsolutePath() );
+		String path = Common.resolveFilePath(device);
 		
-		if (!RootFW.mExternderInstances.containsKey(name)) {
-			FilesystemExtender.Device extender = (FilesystemExtender.Device) FilesystemExtender.Device.getInstance(this, new ExtenderGroupTransfer( (Object) fileObject )).instance;
-			
-			RootFW.mExternderInstances.put(name, extender);
-			
-			return extender;
-		}
-		
-		return (FilesystemExtender.Device) RootFW.mExternderInstances.get(name);
+		return (FilesystemExtender.Device) (checkExtender("FilesystemExtender.Device:" + path) ? 
+				getExtender("FilesystemExtender.Device:" + path) : 
+					addExtender("FilesystemExtender.Device:" + path, FilesystemExtender.Device.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link BinaryExtender.Busybox} class set for the first busybox binary in the PATH environment variable. 
+	 * Get an instance of {@link BinaryExtender.Busybox}.
 	 * <br />
-	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
-	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
-	 * 
-	 * @see BinaryExtender.Busybox
-	 * @see #busybox(String)
+	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public BinaryExtender.Busybox busybox() {
-		return busybox("busybox");
+		return (BinaryExtender.Busybox) (checkExtender("BinaryExtender.Busybox") ? 
+				getExtender("BinaryExtender.Busybox") : 
+					addExtender("BinaryExtender.Busybox", BinaryExtender.Busybox.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) "busybox" )).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link BinaryExtender.Busybox} class set for the defined busybox binary.
+	 * Get an instance of {@link BinaryExtender.Busybox}.
 	 * <br />
-	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same file 
-	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
-	 * 
-	 * @see BinaryExtender.Busybox
-	 * @see #busybox()
+	 * This method uses caching which means that multiple calls to the same file will not provide multiple instances.
 	 */
-	public BinaryExtender.Busybox busybox(String binary) {
-		String path = binary.contains("/") ? FileExtender.resolvePath( new java.io.File(binary).getAbsolutePath() ) : binary;
-		String name = "BinaryExtender.Busybox:" + path;
+	public BinaryExtender.Busybox busybox(String file) {
+		String path = Common.resolveFilePath(file);
 		
-		if (!RootFW.mExternderInstances.containsKey(name)) {
-			BinaryExtender.Busybox extender = (BinaryExtender.Busybox) BinaryExtender.Busybox.getInstance(this, new ExtenderGroupTransfer( (Object) path )).instance;
-			
-			RootFW.mExternderInstances.put(name, extender);
-			
-			return extender;
-		}
-		
-		return (BinaryExtender.Busybox) RootFW.mExternderInstances.get(name);
+		return (BinaryExtender.Busybox) (checkExtender("BinaryExtender.Busybox:" + path) ? 
+				getExtender("BinaryExtender.Busybox:" + path) : 
+					addExtender("BinaryExtender.Busybox:" + path, BinaryExtender.Busybox.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link BinaryExtender.Binary} class set for the defined binary.
+	 * Get an instance of {@link BinaryExtender.Binary}.
 	 * <br />
-	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same binary 
-	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
-	 * 
-	 * @see BinaryExtender.Binary
+	 * This method uses caching which means that multiple calls to the same binary will not provide multiple instances.
 	 */
 	public BinaryExtender.Binary binary(String binary) {
-		String binaryName = binary.contains("/") ? binary.substring( binary.lastIndexOf("/")+1 ) : binary;
-		String name = "BinaryExtender.Binary:" + binary;
-		
-		if (!RootFW.mExternderInstances.containsKey(name)) {
-			BinaryExtender.Binary extender = (BinaryExtender.Binary) BinaryExtender.Binary.getInstance(this, new ExtenderGroupTransfer( (Object) binaryName )).instance;
-			
-			RootFW.mExternderInstances.put(name, extender);
-			
-			return extender;
-		}
-		
-		return (BinaryExtender.Binary) RootFW.mExternderInstances.get(name);
+		return (BinaryExtender.Binary) (checkExtender("BinaryExtender.Binary:" + binary) ? 
+				getExtender("BinaryExtender.Binary:" + binary) : 
+					addExtender("BinaryExtender.Binary:" + binary, BinaryExtender.Binary.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) binary )).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link ProcessExtender.Processes} class.
-	 *    
-	 * @see ProcessExtender.Processes
+	 * Get an instance of {@link ProcessExtender.Processes}.
+	 * <br />
+	 * This method uses caching which means that multiple calls to the same file will not provide multiple instances.
 	 */
 	public ProcessExtender.Processes processes() {
-		if (!RootFW.mExternderInstances.containsKey("ProcessExtender.Processes")) {
-			ProcessExtender.Processes extender = (ProcessExtender.Processes) ProcessExtender.Processes.getInstance(this, new ExtenderGroupTransfer()).instance;
-			
-			RootFW.mExternderInstances.put("ProcessExtender.Processes", (ExtenderGroup) extender);
-			
-			return extender;
-		}
-		
-		return (ProcessExtender.Processes) RootFW.mExternderInstances.get("ProcessExtender.Processes");
+		return (ProcessExtender.Processes) (checkExtender("ProcessExtender.Processes") ? 
+				getExtender("ProcessExtender.Processes") : 
+					addExtender("ProcessExtender.Processes", ProcessExtender.Processes.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
 	}
-
+	
 	/**
-	 * Return a new instance of the {@link ProcessExtender.Process} class set for the defined process.
+	 * Get an instance of {@link ProcessExtender.Process}.
 	 * <br />
-	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same process 
-	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
-	 * 
-	 * @see ProcessExtender.Process
+	 * This method uses caching which means that multiple calls to the same process will not provide multiple instances.
 	 */
 	public ProcessExtender.Process process(String process) {
-		String name = "ProcessExtender.Process:" + process;
-		
-		if (!RootFW.mExternderInstances.containsKey(name)) {
-			ProcessExtender.Process extender = (ProcessExtender.Process) ProcessExtender.Process.getInstance(this, new ExtenderGroupTransfer( (Object) process )).instance;
-			
-			RootFW.mExternderInstances.put(name, extender);
-			
-			return extender;
-		}
-		
-		return (ProcessExtender.Process) RootFW.mExternderInstances.get(name);
+		return (ProcessExtender.Process) (checkExtender("ProcessExtender.Process:" + process) ? 
+				getExtender("ProcessExtender.Process:" + process) : 
+					addExtender("ProcessExtender.Process:" + process, ProcessExtender.Process.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) process )).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link ProcessExtender.Process} class set for the defined process.
+	 * Get an instance of {@link ProcessExtender.Process}.
 	 * <br />
-	 * Note that this method keeps track of already existing instances. This means that if an instance already exist with the same process id 
-	 * (If it is being stored in another variable and therefore not yet been GC'd), a reference to the same instance is returned instead.
-	 * 
-	 * @see ProcessExtender.Process
+	 * This method uses caching which means that multiple calls to the same process id will not provide multiple instances.
 	 */
 	public ProcessExtender.Process process(Integer pid) {
-		String name = "ProcessExtender.Process:" + pid;
-		
-		if (!RootFW.mExternderInstances.containsKey(name)) {
-			ProcessExtender.Process extender = (ProcessExtender.Process) ProcessExtender.Process.getInstance(this, new ExtenderGroupTransfer( (Object) pid )).instance;
-			
-			RootFW.mExternderInstances.put(name, extender);
-			
-			return extender;
-		}
-		
-		return (ProcessExtender.Process) RootFW.mExternderInstances.get(name);
+		return (ProcessExtender.Process) (checkExtender("ProcessExtender.Process:" + pid) ? 
+				getExtender("ProcessExtender.Process:" + pid) : 
+					addExtender("ProcessExtender.Process:" + pid, ProcessExtender.Process.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) pid )).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link PackageExtender.Packages} class.
-	 *    
-	 * @see PackageExtender.Packages
+	 * Get an instance of {@link PackageExtender.Packages}.
+	 * <br />
+	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public PackageExtender.Packages packages() {
-		if (!RootFW.mExternderInstances.containsKey("PackageExtender.Packages")) {
-			PackageExtender.Packages extender = (PackageExtender.Packages) PackageExtender.Packages.getInstance(this, new ExtenderGroupTransfer()).instance;
-			
-			RootFW.mExternderInstances.put("PackageExtender.Packages", extender);
-			
-			return extender;
-		}
-		
-		return (PackageExtender.Packages) RootFW.mExternderInstances.get("PackageExtender.Packages");
+		return (PackageExtender.Packages) (checkExtender("PackageExtender.Packages") ? 
+				getExtender("PackageExtender.Packages") : 
+					addExtender("PackageExtender.Packages", PackageExtender.Packages.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
 	}
 	
 	/**
-	 * Return a new instance of the {@link ProcessExtender.Power} class set for the defined process.
-	 * 
-	 * @see ProcessExtender.Power
+	 * Get an instance of {@link ProcessExtender.Power}.
+	 * <br />
+	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public ProcessExtender.Power power() {
-		return (ProcessExtender.Power) ProcessExtender.Power.getInstance(this, new ExtenderGroupTransfer()).instance;
+		return (ProcessExtender.Power) (checkExtender("ProcessExtender.Power") ? 
+				getExtender("ProcessExtender.Power") : 
+					addExtender("ProcessExtender.Power", ProcessExtender.Power.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
 	}
 	
 	/**
 	 * A small method to get the shell environment variable.
 	 */
 	public String[] getEnvironmentVariable() {
-		String variable = shell().run("echo $PATH").getLine();
+		String variable = shell("echo $PATH");
 		
 		if (variable != null) {
 			return variable.split(":");
@@ -699,11 +662,7 @@ public class RootFW {
 		}
 	}
 	
-	/**
-	 * This class is used by RootFW when getting new instances of {@link ExtenderGroup} classes.
-	 * The constructor of this class is private as this is not meant to be used outside of the RootFW internal environment.
-	 */
-	public static class ExtenderGroupTransfer {
+	public final static class ExtenderGroupTransfer {
 		public ExtenderGroup instance;
 		public Object[] arguments;
 		
@@ -718,5 +677,65 @@ public class RootFW {
 			
 			return this;
 		}
+	}
+	
+	public final static class Config {
+		/**
+		 * Used to extend the shell PATH variable. Each index in the ArrayList should contain a path to one or more binaries. Each index will be added in front of the standard variables.
+		 */
+		public static final List<String> PATH = new ArrayList<String>();
+		
+		/**
+		 * This property contains all of the all-in-one binaries that an be used on a device. By default, it contains busybox and toolbox if available in the PATH variable paths
+		 */
+		public static final List<String> BINARIES = new ArrayList<String>();
+		
+		static {
+			BINARIES.add("busybox");
+			BINARIES.add("toolbox");
+		}
+		
+		/**
+		 * This property decides what should be logged. You can add one or more of the RootFW.E properties to this one to enable logging.
+		 */
+		public static Integer LOG = E_ERROR|E_WARNING;
+		
+		/**
+		 * This class defines connection configs.
+		 */
+		public final static class Connection {
+			/**
+			 * Amount of milliseconds the shell can take before it is killed.
+			 */
+			public static Integer TIMEOUT = 15000;
+			
+			/**
+			 * Amount attempts to retry after a connection is killed.
+			 * 2 attempts is at least recommended to fix issues with Kutch superuser daemon mode.
+			 */
+			public static Integer TRIES = 2;
+		}
+	}
+	
+	public final static class ShellInputStream extends BufferedReader {
+		public ShellInputStream(InputStream in) {
+			super( new BufferedReader( new InputStreamReader(in) ) );
+		}
+		
+		public ShellInputStream(Reader in) {
+			super(in);
+		}
+	}
+	
+	public final static class ShellOutputStream extends DataOutputStream {
+		public ShellOutputStream(OutputStream out) {
+			super(out);
+		}
+	}
+	
+	public static interface ConnectionListener {
+		public void onConnectionEstablished(RootFW instance);
+		public void onConnectionFailed(RootFW instance);
+		public void onConnectionClosed(RootFW instance);
 	}
 }
