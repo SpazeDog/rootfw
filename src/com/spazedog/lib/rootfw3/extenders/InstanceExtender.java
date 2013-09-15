@@ -25,6 +25,7 @@ import java.util.List;
 import android.os.Bundle;
 
 import com.spazedog.lib.rootfw3.RootFW;
+import com.spazedog.lib.rootfw3.RootFW.ConnectionController;
 import com.spazedog.lib.rootfw3.RootFW.ConnectionListener;
 import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
@@ -39,9 +40,15 @@ public class InstanceExtender implements ExtenderGroup {
 	 */
 	public static ExtenderGroupTransfer getInstance(RootFW parent, Object instanceLock, ExtenderGroupTransfer transfer) {
 		Integer index = (Boolean) transfer.arguments[0] ? 1 : 0;
-		InstanceRootFW instance = oInstances[index] != null ? oInstances[index] : new InstanceRootFW(index == 1);
 		
-		return transfer.setInstance((ExtenderGroup) instance);
+		if (oInstances[index] == null) {
+			oInstances[index] = new InstanceRootFW(index == 1);
+			
+			RootFW.addConnectionListener(oInstances[index]);
+			RootFW.addConnectionController(oInstances[index]);
+		}
+
+		return transfer.setInstance((ExtenderGroup) oInstances[index]);
 	}
 	
 	@Override
@@ -49,6 +56,9 @@ public class InstanceExtender implements ExtenderGroup {
 	
 	/**
 	 * This interface is used to keep compatibility with older implementations of {@link InstanceExtender}
+	 * 
+	 * @deprecated
+	 *     You should cast your object to {@link SharedRootFW} instead
 	 * 
 	 * @see SharedRootFW
 	 */
@@ -89,6 +99,10 @@ public class InstanceExtender implements ExtenderGroup {
 		public ProcessExtender.Power power();
 		public String[] getEnvironmentVariable();
 		public Long getInstanceId();
+		public ConnectionListener addInstanceListener(ConnectionListener listener);
+		public void removeInstanceListener(ConnectionListener listener);
+		public ConnectionController addInstanceController(ConnectionController controller);
+		public void removeInstanceController(ConnectionController controller);
 	}
 	
 	/**
@@ -114,9 +128,10 @@ public class InstanceExtender implements ExtenderGroup {
 		public void onFailed(RootFW instance) {}
 	}
 	
-	private final static class InstanceRootFW extends RootFW implements ExtenderGroup, Instance, SharedRootFW, ConnectionListener {
+	private final static class InstanceRootFW extends RootFW implements ExtenderGroup, Instance, SharedRootFW, ConnectionListener, ConnectionController {
 		protected List<InstanceCallback> mCallbacks = new ArrayList<InstanceCallback>();
 		protected List<ConnectionListener> mConnectionListeners = new ArrayList<ConnectionListener>();
+		protected List<ConnectionController> mConnectionControllers = new ArrayList<ConnectionController>();
 		
 		protected Integer mLockCount = 0;
 		
@@ -251,18 +266,35 @@ public class InstanceExtender implements ExtenderGroup {
 				mConnectionListeners.remove(listener);
 			}
 		}
-		
+
 		/**
-		 * Remove all {@link RootFW#ConnectionListener} from this instance
+		 * This is used to add a connection controller to this instance. Unlike {@link RootFW#addConnectionController(ConnectionController)}, 
+		 * this will only set the controller on this specific instance. 
 		 * 
-		 * @see #addInstanceListener(ConnectionListener)
+		 * @param listener
+		 *     A {@link RootFW#ConnectionListener} object
 		 */
-		public void removeInstanceListeners() {
+		public ConnectionController addInstanceController(ConnectionController controller) {
 			synchronized (mInstanceLock) {
-				mConnectionListeners.clear();
+				if (!mConnectionControllers.contains(controller)) {
+					mConnectionControllers.add(controller);
+				}
+				
+				return controller;
 			}
 		}
-
+		
+		/**
+		 * Remove an {@link RootFW#ConnectionController} from this instance
+		 * 
+		 * @see #addInstanceController(ConnectionController)
+		 */
+		public void removeInstanceController(ConnectionController controller) {
+			synchronized (mInstanceLock) {
+				mConnectionControllers.remove(controller);
+			}
+		}
+		
 		@Override
 		public void onConnectionEstablished(RootFW instance) {
 			synchronized (mInstanceLock) {
@@ -306,6 +338,36 @@ public class InstanceExtender implements ExtenderGroup {
 					}
 				}
 			}
+		}
+
+		@Override
+		public Boolean onConnectionEstablishing(RootFW instance) {
+			synchronized (mInstanceLock) {
+				if (instance.getInstanceId() == getInstanceId()) {
+					for (ConnectionController controller : mConnectionControllers) {
+						if (!controller.onConnectionEstablishing(this)) {
+							return false;
+						}
+					}
+				}
+			}
+			
+			return true;
+		}
+
+		@Override
+		public Boolean onConnectionClosing(RootFW instance) {
+			synchronized (mInstanceLock) {
+				if (instance.getInstanceId() == getInstanceId()) {
+					for (ConnectionController controller : mConnectionControllers) {
+						if (!controller.onConnectionClosing(this)) {
+							return false;
+						}
+					}
+				}
+			}
+			
+			return true;
 		}
 	}
 }

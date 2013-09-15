@@ -78,6 +78,7 @@ public class RootFW {
 	private final static Map<String, RootFW> oRootFWInstances = new WeakHashMap<String, RootFW>();
 	protected final Map<String, ExtenderGroup> mExternderInstances = new WeakHashMap<String, ExtenderGroup>();
 	private final static List<ConnectionListener> oListenerInstances = new ArrayList<ConnectionListener>();
+	private final static List<ConnectionController> oControllerInstances = new ArrayList<ConnectionController>();
 	
 	protected Process mConnectionProcess;
 	protected Boolean mConnectionIsRoot;
@@ -111,13 +112,27 @@ public class RootFW {
 	}
 	
 	/**
-	 * Clear the entire {@link #ConnectionListener} stack.
-	 * 
-	 * @see #addConnectionListener(ConnectionListener)
+	 * Add a {@link #ConnectionController} to the RootFW.
+	 * This will allow you to control whether or not an instance is allowed to connect or disconnect.
 	 */
-	public static void removeConnectionListeners() {
+	public static ConnectionController addConnectionController(ConnectionController controller) {
 		synchronized (RootFW.oClassLock) {
-			RootFW.oListenerInstances.clear();
+			if (!RootFW.oControllerInstances.contains(controller)) {
+				RootFW.oControllerInstances.add(controller);
+			}
+			
+			return controller;
+		}
+	}
+	
+	/**
+	 * Remove a {@link #ConnectionController} from the stack.
+	 * 
+	 * @see #addConnectionController(controller)
+	 */
+	public static void removeConnectionController(ConnectionController controller) {
+		synchronized (RootFW.oClassLock) {
+			RootFW.oControllerInstances.remove(controller);
 		}
 	}
 	
@@ -202,11 +217,19 @@ public class RootFW {
 	public Boolean connect() {
 		synchronized (mInstanceLock) {
 			if (!mConnectionEstablished) {
-				ProcessBuilder builder;
-				builder = new ProcessBuilder(mConnectionIsRoot ? "su" : "sh");
-				builder.redirectErrorStream(true);
-	
 				try {
+					synchronized (oClassLock) {
+						for (ConnectionController controller : RootFW.oControllerInstances) {
+							if(!controller.onConnectionEstablishing(this)) {
+								throw new Throwable();
+							}
+						}
+					}
+					
+					ProcessBuilder builder;
+					builder = new ProcessBuilder(mConnectionIsRoot ? "su" : "sh");
+					builder.redirectErrorStream(true);
+				
 					mConnectionProcess = builder.start();
 					mConnectionInputStream = new ShellInputStream(mConnectionProcess.getInputStream());
 					mConnectionOutputStream = new ShellOutputStream(mConnectionProcess.getOutputStream());
@@ -254,6 +277,14 @@ public class RootFW {
 	public void disconnect() {
 		synchronized (mInstanceLock) {
 			if (mConnectionProcess != null) {
+				synchronized (oClassLock) {
+					for (ConnectionController controller : RootFW.oControllerInstances) {
+						if(!controller.onConnectionClosing(this)) {
+							return;
+						}
+					}
+				}
+				
 				/* If mShell is not null, then the connection should be active. 
 				 * If not, then something is wrong and we will destroy it instead.
 				 */
@@ -737,5 +768,10 @@ public class RootFW {
 		public void onConnectionEstablished(RootFW instance);
 		public void onConnectionFailed(RootFW instance);
 		public void onConnectionClosed(RootFW instance);
+	}
+	
+	public static interface ConnectionController {
+		public Boolean onConnectionEstablishing(RootFW instance);
+		public Boolean onConnectionClosing(RootFW instance);
 	}
 }
