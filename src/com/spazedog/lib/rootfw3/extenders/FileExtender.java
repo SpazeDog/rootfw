@@ -33,6 +33,7 @@ import java.util.regex.Pattern;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.spazedog.lib.rootfw3.Common;
 import com.spazedog.lib.rootfw3.RootFW;
@@ -331,13 +332,12 @@ public class FileExtender {
 							return new FileData( content.toArray( new String[ content.size() ] ) );
 							
 						} catch(Throwable e) {}
-						
-					} else {
-						ShellResult result = mShell.buildCommands("%binary cat '" + getAbsolutePath() + "' 2> /dev/null").run();
-						
-						if (result.wasSuccessful()) {
-							return new FileData( result.getArray() );
-						}
+					}
+					
+					ShellResult result = mShell.buildCommands("%binary cat '" + getAbsolutePath() + "' 2> /dev/null").run();
+					
+					if (result.wasSuccessful()) {
+						return new FileData( result.getArray() );
 					}
 				}
 				
@@ -364,11 +364,11 @@ public class FileExtender {
 							
 						} catch (Throwable e) {}
 						
-					} else {
-						ShellResult result = mShell.buildAttempts("%binary sed -n '1p' '" + mFile.getAbsolutePath() + "' 2> /dev/null", "%binary cat '" + getAbsolutePath() + "' 2> /dev/null").run();
-						
-						return result.wasSuccessful() ? result.getLine(0) : null;
 					}
+					
+					ShellResult result = mShell.buildAttempts("%binary sed -n '1p' '" + mFile.getAbsolutePath() + "' 2> /dev/null", "%binary cat '" + getAbsolutePath() + "' 2> /dev/null").run();
+						
+					return result.wasSuccessful() ? result.getLine(0) : null;
 				}
 				
 				return null;
@@ -545,6 +545,8 @@ public class FileExtender {
 					if (status && !exists) {
 						broadcastFileValidation(iExists, iIsFolder, iIsRestricted, iIsLink);
 					}
+					
+					return status;
 				}
 				
 				return false;
