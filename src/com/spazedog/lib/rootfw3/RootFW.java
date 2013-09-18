@@ -263,7 +263,9 @@ public class RootFW {
 						}
 					}
 					
-					mConnectionProcess.destroy();
+					if (mConnectionProcess != null) {
+						mConnectionProcess.destroy();
+					}
 				}
 				
 				return false;
