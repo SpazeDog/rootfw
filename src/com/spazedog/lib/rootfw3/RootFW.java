@@ -86,6 +86,8 @@ public class RootFW {
 	protected ShellInputStream mConnectionInputStream;
 	protected ShellOutputStream mConnectionOutputStream;
 	
+	protected ExtenderGroup mTmpExtender;
+	
 	/**
 	 * Add a {@link #ConnectionListener} to the RootFW. This will allow you to 
 	 * get a notice every time the connection state changes on a RootFW instance. 
@@ -411,7 +413,8 @@ public class RootFW {
 	 */
 	private Boolean checkExtender(String name) {
 		synchronized (mInstanceLock) {
-			return mExternderInstances.containsKey(name);
+			return mExternderInstances.containsKey(name)
+					&& (mTmpExtender = mExternderInstances.get(name)) != null;
 		}
 	}
 	
@@ -422,7 +425,9 @@ public class RootFW {
 		synchronized (mInstanceLock) {
 			mExternderInstances.put(name, extender);
 			
-			return getExtender(name);
+			extender.onBroadcastReceive(BROADCAST_RETRIEVE, null);
+			
+			return extender;
 		}
 	}
 	
@@ -431,8 +436,9 @@ public class RootFW {
 	 */
 	private ExtenderGroup getExtender(String name) {
 		synchronized (mInstanceLock) {
-			ExtenderGroup extender = mExternderInstances.get(name);
+			ExtenderGroup extender = mTmpExtender != null ? mTmpExtender : mExternderInstances.get(name);
 			
+			mTmpExtender = null;
 			extender.onBroadcastReceive(BROADCAST_RETRIEVE, null);
 			
 			return extender;
@@ -459,9 +465,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public FileExtender.FileUtil file() {
-		return (FileExtender.FileUtil) (checkExtender("FileExtender.FileUtil") ? 
-				getExtender("FileExtender.FileUtil") : 
-					addExtender("FileExtender.FileUtil", FileExtender.FileUtil.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		synchronized (mInstanceLock) {
+			return (FileExtender.FileUtil) (checkExtender("FileExtender.FileUtil") ? 
+					getExtender("FileExtender.FileUtil") : 
+						addExtender("FileExtender.FileUtil", FileExtender.FileUtil.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		}
 	}
 	
 	/**
@@ -470,11 +478,13 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls to the same file will not provide multiple instances.
 	 */
 	public FileExtender.File file(String file) {
-		String path = Common.resolveFilePath(file);
-		
-		return (FileExtender.File) (checkExtender("FileExtender.File:" + path) ? 
-				getExtender("FileExtender.File:" + path) : 
-					addExtender("FileExtender.File:" + path, FileExtender.File.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) file )).instance));
+		synchronized (mInstanceLock) {
+			String path = Common.resolveFilePath(file);
+			
+			return (FileExtender.File) (checkExtender("FileExtender.File:" + path) ? 
+					getExtender("FileExtender.File:" + path) : 
+						addExtender("FileExtender.File:" + path, FileExtender.File.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) file )).instance));
+		}
 	}
 	
 	/**
@@ -483,9 +493,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public MemoryExtender.Memory memory() {
-		return (MemoryExtender.Memory) (checkExtender("MemoryExtender.Memory") ? 
-				getExtender("MemoryExtender.Memory") : 
-					addExtender("MemoryExtender.Memory", MemoryExtender.Memory.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		synchronized (mInstanceLock) {
+			return (MemoryExtender.Memory) (checkExtender("MemoryExtender.Memory") ? 
+					getExtender("MemoryExtender.Memory") : 
+						addExtender("MemoryExtender.Memory", MemoryExtender.Memory.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		}
 	}
 	
 	/**
@@ -494,11 +506,13 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls to the same device will not provide multiple instances.
 	 */
 	public MemoryExtender.Device memory(String device) {
-		String path = Common.resolveFilePath(device);
-		
-		return (MemoryExtender.Device) (checkExtender("MemoryExtender.Device:" + path) ? 
-				getExtender("MemoryExtender.Device:" + path) : 
-					addExtender("MemoryExtender.Device:" + path, MemoryExtender.Device.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
+		synchronized (mInstanceLock) {
+			String path = Common.resolveFilePath(device);
+			
+			return (MemoryExtender.Device) (checkExtender("MemoryExtender.Device:" + path) ? 
+					getExtender("MemoryExtender.Device:" + path) : 
+						addExtender("MemoryExtender.Device:" + path, MemoryExtender.Device.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
+		}
 	}
 	
 	/**
@@ -507,9 +521,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public PropertyExtender.Properties property() {
-		return (PropertyExtender.Properties) (checkExtender("PropertyExtender.Properties") ? 
-				getExtender("PropertyExtender.Properties") : 
-					addExtender("PropertyExtender.Properties", PropertyExtender.Properties.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		synchronized (mInstanceLock) {
+			return (PropertyExtender.Properties) (checkExtender("PropertyExtender.Properties") ? 
+					getExtender("PropertyExtender.Properties") : 
+						addExtender("PropertyExtender.Properties", PropertyExtender.Properties.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		}
 	}
 	
 	/**
@@ -518,11 +534,13 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls to the same file will not provide multiple instances.
 	 */
 	public PropertyExtender.File property(String file) {
-		String path = Common.resolveFilePath(file);
-		
-		return (PropertyExtender.File) (checkExtender("PropertyExtender.File:" + path) ? 
-				getExtender("PropertyExtender.File:" + path) : 
-					addExtender("PropertyExtender.File:" + path, PropertyExtender.File.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
+		synchronized (mInstanceLock) {
+			String path = Common.resolveFilePath(file);
+			
+			return (PropertyExtender.File) (checkExtender("PropertyExtender.File:" + path) ? 
+					getExtender("PropertyExtender.File:" + path) : 
+						addExtender("PropertyExtender.File:" + path, PropertyExtender.File.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
+		}
 	}
 	
 	/**
@@ -531,9 +549,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public FilesystemExtender.Filesystem filesystem() {
-		return (FilesystemExtender.Filesystem) (checkExtender("FilesystemExtender.Filesystem") ? 
-				getExtender("FilesystemExtender.Filesystem") : 
-					addExtender("FilesystemExtender.Filesystem", FilesystemExtender.Filesystem.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		synchronized (mInstanceLock) {
+			return (FilesystemExtender.Filesystem) (checkExtender("FilesystemExtender.Filesystem") ? 
+					getExtender("FilesystemExtender.Filesystem") : 
+						addExtender("FilesystemExtender.Filesystem", FilesystemExtender.Filesystem.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		}
 	}
 	
 	/**
@@ -542,11 +562,13 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls to the same device will not provide multiple instances.
 	 */
 	public FilesystemExtender.Device filesystem(String device) {
+		synchronized (mInstanceLock) {
 		String path = Common.resolveFilePath(device);
 		
 		return (FilesystemExtender.Device) (checkExtender("FilesystemExtender.Device:" + path) ? 
 				getExtender("FilesystemExtender.Device:" + path) : 
 					addExtender("FilesystemExtender.Device:" + path, FilesystemExtender.Device.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
+		}
 	}
 	
 	/**
@@ -555,9 +577,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public BinaryExtender.Busybox busybox() {
-		return (BinaryExtender.Busybox) (checkExtender("BinaryExtender.Busybox") ? 
-				getExtender("BinaryExtender.Busybox") : 
-					addExtender("BinaryExtender.Busybox", BinaryExtender.Busybox.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) "busybox" )).instance));
+		synchronized (mInstanceLock) {
+			return (BinaryExtender.Busybox) (checkExtender("BinaryExtender.Busybox") ? 
+					getExtender("BinaryExtender.Busybox") : 
+						addExtender("BinaryExtender.Busybox", BinaryExtender.Busybox.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) "busybox" )).instance));
+		}
 	}
 	
 	/**
@@ -566,11 +590,13 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls to the same file will not provide multiple instances.
 	 */
 	public BinaryExtender.Busybox busybox(String file) {
-		String path = Common.resolveFilePath(file);
-		
-		return (BinaryExtender.Busybox) (checkExtender("BinaryExtender.Busybox:" + path) ? 
-				getExtender("BinaryExtender.Busybox:" + path) : 
-					addExtender("BinaryExtender.Busybox:" + path, BinaryExtender.Busybox.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
+		synchronized (mInstanceLock) {
+			String path = Common.resolveFilePath(file);
+			
+			return (BinaryExtender.Busybox) (checkExtender("BinaryExtender.Busybox:" + path) ? 
+					getExtender("BinaryExtender.Busybox:" + path) : 
+						addExtender("BinaryExtender.Busybox:" + path, BinaryExtender.Busybox.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) path )).instance));
+		}
 	}
 	
 	/**
@@ -579,9 +605,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls to the same binary will not provide multiple instances.
 	 */
 	public BinaryExtender.Binary binary(String binary) {
-		return (BinaryExtender.Binary) (checkExtender("BinaryExtender.Binary:" + binary) ? 
-				getExtender("BinaryExtender.Binary:" + binary) : 
-					addExtender("BinaryExtender.Binary:" + binary, BinaryExtender.Binary.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) binary )).instance));
+		synchronized (mInstanceLock) {
+			return (BinaryExtender.Binary) (checkExtender("BinaryExtender.Binary:" + binary) ? 
+					getExtender("BinaryExtender.Binary:" + binary) : 
+						addExtender("BinaryExtender.Binary:" + binary, BinaryExtender.Binary.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) binary )).instance));
+		}
 	}
 	
 	/**
@@ -590,9 +618,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls to the same file will not provide multiple instances.
 	 */
 	public ProcessExtender.Processes processes() {
-		return (ProcessExtender.Processes) (checkExtender("ProcessExtender.Processes") ? 
-				getExtender("ProcessExtender.Processes") : 
-					addExtender("ProcessExtender.Processes", ProcessExtender.Processes.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		synchronized (mInstanceLock) {
+			return (ProcessExtender.Processes) (checkExtender("ProcessExtender.Processes") ? 
+					getExtender("ProcessExtender.Processes") : 
+						addExtender("ProcessExtender.Processes", ProcessExtender.Processes.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		}
 	}
 	
 	/**
@@ -601,9 +631,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls to the same process will not provide multiple instances.
 	 */
 	public ProcessExtender.Process process(String process) {
-		return (ProcessExtender.Process) (checkExtender("ProcessExtender.Process:" + process) ? 
-				getExtender("ProcessExtender.Process:" + process) : 
-					addExtender("ProcessExtender.Process:" + process, ProcessExtender.Process.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) process )).instance));
+		synchronized (mInstanceLock) {
+			return (ProcessExtender.Process) (checkExtender("ProcessExtender.Process:" + process) ? 
+					getExtender("ProcessExtender.Process:" + process) : 
+						addExtender("ProcessExtender.Process:" + process, ProcessExtender.Process.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) process )).instance));
+		}
 	}
 	
 	/**
@@ -612,9 +644,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls to the same process id will not provide multiple instances.
 	 */
 	public ProcessExtender.Process process(Integer pid) {
-		return (ProcessExtender.Process) (checkExtender("ProcessExtender.Process:" + pid) ? 
-				getExtender("ProcessExtender.Process:" + pid) : 
-					addExtender("ProcessExtender.Process:" + pid, ProcessExtender.Process.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) pid )).instance));
+		synchronized (mInstanceLock) {
+			return (ProcessExtender.Process) (checkExtender("ProcessExtender.Process:" + pid) ? 
+					getExtender("ProcessExtender.Process:" + pid) : 
+						addExtender("ProcessExtender.Process:" + pid, ProcessExtender.Process.getInstance(this, mInstanceLock, new ExtenderGroupTransfer( (Object) pid )).instance));
+		}
 	}
 	
 	/**
@@ -623,9 +657,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public PackageExtender.Packages packages() {
-		return (PackageExtender.Packages) (checkExtender("PackageExtender.Packages") ? 
-				getExtender("PackageExtender.Packages") : 
-					addExtender("PackageExtender.Packages", PackageExtender.Packages.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		synchronized (mInstanceLock) {
+			return (PackageExtender.Packages) (checkExtender("PackageExtender.Packages") ? 
+					getExtender("PackageExtender.Packages") : 
+						addExtender("PackageExtender.Packages", PackageExtender.Packages.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		}
 	}
 	
 	/**
@@ -634,9 +670,11 @@ public class RootFW {
 	 * This method uses caching which means that multiple calls will not provide multiple instances.
 	 */
 	public ProcessExtender.Power power() {
-		return (ProcessExtender.Power) (checkExtender("ProcessExtender.Power") ? 
-				getExtender("ProcessExtender.Power") : 
-					addExtender("ProcessExtender.Power", ProcessExtender.Power.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		synchronized (mInstanceLock) {
+			return (ProcessExtender.Power) (checkExtender("ProcessExtender.Power") ? 
+					getExtender("ProcessExtender.Power") : 
+						addExtender("ProcessExtender.Power", ProcessExtender.Power.getInstance(this, mInstanceLock, new ExtenderGroupTransfer()).instance));
+		}
 	}
 	
 	/**
