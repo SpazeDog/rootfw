@@ -85,10 +85,12 @@ public class PropertyExtender {
 						String[] props = result.getArray();
 						
 						for (int i=0; i < props.length; i++) {
-							String key = props[i].substring(1, props[i].indexOf("]"));
-							String value = props[i].substring(props[i].lastIndexOf("[")+1, props[i].length()-1);
-							
-							mProperties.put(key, value);
+							if (props[i].contains("[") && props[i].contains("]")) {
+								String key = props[i].substring(1, props[i].indexOf("]"));
+								String value = props[i].substring(props[i].lastIndexOf("[")+1, props[i].length()-1);
+								
+								mProperties.put(key, value);
+							}
 						}
 					}
 				}
