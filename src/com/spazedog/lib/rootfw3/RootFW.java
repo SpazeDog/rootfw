@@ -27,6 +27,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -36,17 +37,15 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.spazedog.lib.rootfw3.RootFW.Config;
-import com.spazedog.lib.rootfw3.RootFW.ExtenderGroupTransfer;
 import com.spazedog.lib.rootfw3.extenders.BinaryExtender;
 import com.spazedog.lib.rootfw3.extenders.FileExtender;
 import com.spazedog.lib.rootfw3.extenders.FilesystemExtender;
 import com.spazedog.lib.rootfw3.extenders.InstanceExtender;
+import com.spazedog.lib.rootfw3.extenders.InstanceExtender.SharedRootFW;
 import com.spazedog.lib.rootfw3.extenders.MemoryExtender;
 import com.spazedog.lib.rootfw3.extenders.PackageExtender;
 import com.spazedog.lib.rootfw3.extenders.ProcessExtender;
 import com.spazedog.lib.rootfw3.extenders.PropertyExtender;
-import com.spazedog.lib.rootfw3.extenders.InstanceExtender.SharedRootFW;
 import com.spazedog.lib.rootfw3.extenders.ShellExtender;
 import com.spazedog.lib.rootfw3.interfaces.ExtenderGroup;
 
@@ -353,9 +352,12 @@ public class RootFW {
 			for (String instanceKey : oRootFWInstances.keySet()) {
 				RootFW instance = oRootFWInstances.get(instanceKey);
 						
-				for (String extenderKey : instance.mExternderInstances.keySet()) {
-					instance.mExternderInstances.get(extenderKey).onBroadcastReceive(broadcastType, arguments);
-				}
+				try {
+					for (String extenderKey : instance.mExternderInstances.keySet()) {
+						instance.mExternderInstances.get(extenderKey).onBroadcastReceive(broadcastType, arguments);
+					}
+					
+				} catch(ConcurrentModificationException e) {}
 			}
 		}
 	}
