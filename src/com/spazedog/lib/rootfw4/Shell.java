@@ -190,8 +190,10 @@ public class Shell {
 						}
 					}
 					
-					for (OnShellConnectionListener reciever : mConnectionRecievers) {
-						reciever.onShellDisconnect();
+					if (!mIsConnected) {
+						for (OnShellConnectionListener reciever : mConnectionRecievers) {
+							reciever.onShellDisconnect();
+						}
 					}
 				}
 			});
