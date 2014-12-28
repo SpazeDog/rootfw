@@ -21,8 +21,10 @@ package com.spazedog.lib.rootfw4;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 
@@ -41,6 +43,7 @@ public class Shell {
 	public static final String TAG = Common.TAG + ".Shell";
 	
 	protected static Set<Shell> mInstances = Collections.newSetFromMap(new WeakHashMap<Shell, Boolean>());
+	protected static Map<String, String> mBinaries = new HashMap<String, String>();
 	
 	protected Set<OnShellBroadcastListener> mBroadcastRecievers = Collections.newSetFromMap(new WeakHashMap<OnShellBroadcastListener, Boolean>());
 	protected Set<OnShellConnectionListener> mConnectionRecievers = new HashSet<OnShellConnectionListener>();
@@ -131,6 +134,54 @@ public class Shell {
 	}
 	
 	/**
+	 * A class containing automatically created shell attempts and links to both {@link Shell#executeAsync(String[], Integer[], OnShellResultListener)} and {@link Shell#execute(String[], Integer[])} <br /><br />
+	 * 
+	 * All attempts are created based on {@link Common#BINARIES}. <br /><br />
+	 * 
+	 * Example: String("ls") would become String["ls", "busybox ls", "toolbox ls"] if {@link Common#BINARIES} equals String[null, "busybox", "toolbox"].<br /><br />
+	 * 
+	 * You can also apply the keyword %binary if you need to apply the binaries to more than the beginning of a command. <br /><br />
+	 * 
+	 * Example: String("(%binary test -d '%binary pwd') || exit 1") would become String["(test -d 'pwd') || exit 1", "(busybox test -d 'busybox pwd') || exit 1", "(toolbox test -d 'toolbox pwd') || exit 1"]
+	 * 
+	 * @see Shell#createAttempts(String)
+	 */
+	public class Attempts {
+		protected String[] mAttempts;
+		protected Integer[] mResultCodes;
+		
+		protected Attempts(String command) {
+			if (command != null) {
+				Integer pos = 0;
+				mAttempts = new String[ Common.BINARIES.length ];
+				
+				for (String binary : Common.BINARIES) {
+					if (command.contains("%binary ")) {
+						mAttempts[pos] = command.replaceAll("%binary ", (binary != null && binary.length() > 0 ? binary + " " : ""));
+						
+					} else {
+						mAttempts[pos] = (binary != null && binary.length() > 0 ? binary + " " : "") + command;
+					}
+					
+					pos += 1;
+				}
+			}
+		}
+		
+		public Attempts setResultCodes(Integer... resultCodes) {
+			mResultCodes = resultCodes; return this;
+		}
+		
+		public Result execute() {
+			return Shell.this.execute(mAttempts, null);
+		}
+		
+		public void executeAsync(OnShellResultListener listener) {
+			Shell.this.executeAsync(mAttempts, null, listener);
+		}
+	}
+	
+	/**
 	 * Establish a {@link ShellStream} connection.
 	 * 
 	 * @param requestRoot
@@ -215,13 +266,25 @@ public class Shell {
 	/**
 	 * Execute a shell command.
 	 * 
-	 * @see Shell#execute(String[])
+	 * @see Shell#execute(String[], Integer[])
 	 * 
 	 * @param command
 	 *     The command to execute
 	 */
 	public Result execute(String command) {
-		return execute(new String[]{command});
+		return execute(new String[]{command}, null);
+	}
+	
+	/**
+	 * Execute a range of commands until one is successful.
+	 * 
+	 * @see Shell#execute(String[], Integer[])
+	 * 
+	 * @param commands
+	 *     The commands to try
+	 */
+	public Result execute(String[] commands) {
+		return execute(commands, null);
 	}
 	
 	/**
@@ -237,11 +300,19 @@ public class Shell {
 	 * 
 	 * @param commands
 	 *     The commands to try
+	 *     
+	 * @param
+	 *     Result Codes representing successful execution. These will be temp. merged with {@link Shell#addResultCode(Integer)}. 
 	 */
-	public Result execute(String[] commands) {
+	public Result execute(String[] commands, Integer[] resultCodes) {
 		synchronized(mLock) {
 			if (mStream.waitFor(mShellTimeout)) {
 				Integer cmdCount = 0;
+				Set<Integer> codes = new HashSet<Integer>(mResultCodes);
+				
+				if (resultCodes != null) {
+					Collections.addAll(codes, resultCodes);
+				}
 				
 				for (String command : commands) {
 					if(Common.DEBUG)Log.d(TAG, "execute: Executing the command '" + command + "'");
@@ -259,14 +330,14 @@ public class Shell {
 					
 					if(Common.DEBUG)Log.d(TAG, "execute: The command finished with the result code '" + mResultCode + "'");
 					
-					if (mResultCodes.contains(mResultCode)) {
+					if (codes.contains(mResultCode)) {
 						break;
 					}
 					
 					cmdCount += 1;
 				}
 				
-				return new Result(mOutput.toArray(new String[mOutput.size()]), mResultCode, mResultCodes.toArray(new Integer[mResultCodes.size()]), cmdCount);
+				return new Result(mOutput.toArray(new String[mOutput.size()]), mResultCode, codes.toArray(new Integer[codes.size()]), cmdCount);
 			}
 			
 			return null;
@@ -276,7 +347,7 @@ public class Shell {
 	/**
 	 * Execute a shell command asynchronous.
 	 * 
-	 * @see Shell#executeAsync(String[], OnShellResultListener)
+	 * @see Shell#executeAsync(String[], Integer[], OnShellResultListener)
 	 * 
 	 * @param command
 	 *     The command to execute
@@ -285,13 +356,13 @@ public class Shell {
 	 *     A {@link Shell.OnShellResultListener} callback instance
 	 */
 	public void executeAsync(String command, OnShellResultListener listener) {
-		executeAsync(new String[]{command}, listener);
+		executeAsync(new String[]{command}, null, listener);
 	}
 	
 	/**
-	 * Execute a range of commands asynchronous until one is successful
+	 * Execute a range of commands asynchronous until one is successful.
 	 * 
-	 * @see Shell#execute(String[])
+	 * @see Shell#executeAsync(String[], Integer[], OnShellResultListener)
 	 * 
 	 * @param commands
 	 *     The commands to try
@@ -299,7 +370,25 @@ public class Shell {
 	 * @param listener
 	 *     A {@link Shell.OnShellResultListener} callback instance
 	 */
-	public synchronized void executeAsync(final String[] commands, final OnShellResultListener listener) {
+	public synchronized void executeAsync(String[] commands, OnShellResultListener listener) {
+		executeAsync(commands, null, listener);
+	}
+	
+	/**
+	 * Execute a range of commands asynchronous until one is successful.
+	 * 
+	 * @see Shell#execute(String[], Integer[])
+	 * 
+	 * @param commands
+	 *     The commands to try
+	 *     
+	 * @param
+	 *     Result Codes representing successful execution. These will be temp. merged with {@link Shell#addResultCode(Integer)}.
+	 * 
+	 * @param listener
+	 *     A {@link Shell.OnShellResultListener} callback instance
+	 */
+	public synchronized void executeAsync(final String[] commands, final Integer[] resultCodes, final OnShellResultListener listener) {
 		if(Common.DEBUG)Log.d(TAG, "executeAsync: Starting an async shell execution");
 		
 		/*
@@ -316,7 +405,7 @@ public class Shell {
 				}
 				
 				synchronized(mLock) {
-					Result result = Shell.this.execute(commands);
+					Result result = Shell.this.execute(commands, resultCodes);
 					listener.onShellResult(result);
 				}
 			}
@@ -467,5 +556,46 @@ public class Shell {
 			mInstances.remove(this);
 			mBroadcastRecievers.clear();
 		}
+	}
+	
+	/**
+	 * Locate whichever toolbox in {@value Common#BINARIES} that supports a specific command.<br /><br />
+	 * 
+	 * Example: String("cat") might return String("busybox cat") or String("toolbox cat")
+	 * 
+	 * @param bin
+	 *     The command to check
+	 */
+	public String getBinary(String bin) {
+		if (!mBinaries.containsKey(bin)) {
+			for (String toolbox : Common.BINARIES) {
+				String cmd = toolbox != null && toolbox.length() > 0 ? toolbox + " " + bin : bin;
+				Result result = execute( cmd + " -h" );
+					
+				if (result != null) {
+					String line = result.getLine();
+					
+					if (!line.endsWith("not found") && !line.endsWith("such tool")) {
+						mBinaries.put(bin, cmd); break;
+					}
+				}
+			}
+		}
+		
+		return mBinaries.get(bin);
+	}
+	
+	/**
+	 * Create a new instance of {@link Attempts}
+	 * 
+	 * @param command
+	 *     The command to convert into multiple attempts
+	 */
+	public Attempts createAttempts(String command) {
+		if (command != null) {
+			return new Attempts(command);
+		}
+		
+		return null;
 	}
 }
