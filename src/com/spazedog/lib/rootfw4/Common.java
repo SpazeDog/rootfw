@@ -22,4 +22,5 @@ package com.spazedog.lib.rootfw4;
 public class Common {
 	public static final String TAG = Common.class.getPackage().getName();
 	public static Boolean DEBUG = true;
+	public static String[] BINARIES = new String[]{null, "busybox", "toolbox"};
 }
