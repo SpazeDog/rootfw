@@ -45,13 +45,42 @@ public class ShellStream {
 	
 	protected OnStreamListener mListener;
 	
-	protected Object mLock = new Object();
+	protected final Counter mCounter = new Counter();
+	protected final Object mLock = new Object();
 	protected List<Object> mLocks = new ArrayList<Object>();
-	protected Boolean mIsRunning = false;
 	protected Boolean mIsActive = false;
 	protected Boolean mIsRoot = false;
 	
 	protected String mCommandEnd = "EOL:a00c38d8:EOL";
+	
+	protected static class Counter {
+		private volatile Integer mCount = 0;
+		private volatile Object mLock = new Object();
+		
+		public Integer size() {
+			synchronized(mLock) {
+				return mCount;
+			}
+		}
+		
+		public Integer encrease() {
+			synchronized(mLock) {
+				return (mCount += 1);
+			}
+		}
+		
+		public Integer decrease() {
+			synchronized(mLock) {
+				return mCount > 0 ? (mCount -= 1) : (mCount = 0);
+			}
+		}
+		
+		public void reset() {
+			synchronized(mLock) {
+				mCount = 0;
+			}
+		}
+	}
 	
 	/**
 	 * This interface is used to read the input from the shell.
@@ -109,7 +138,7 @@ public class ShellStream {
 					
 					try {
 						while (mIsActive && (output = mStdOutput.readLine()) != null) {
-							if (mListener != null && mIsRunning) {
+							if (mListener != null && mCounter.size() > 0) {
 								if (output.startsWith(mCommandEnd)) {
 									Integer result = 0;
 									
@@ -121,18 +150,10 @@ public class ShellStream {
 									}
 									
 									mListener.onStreamStop(result);
-									mIsRunning = false;
+									mCounter.decrease();
 									
-									synchronized (mLocks) {
-										if (mLocks.size() > 0) {
-											Object lock = mLocks.get(0);
-											
-											synchronized(lock) {
-												lock.notifyAll();
-											}
-											
-											mLocks.remove(0);
-										}
+									synchronized(mLock) {
+										mLock.notifyAll();
 									}
 									
 								} else {
@@ -173,29 +194,24 @@ public class ShellStream {
 		new Thread() {
 			@Override
 			public void run() {
-				synchronized (mLock) {
-					synchronized (mLocks) {
-						mLocks.add(new Object());
-						
-						synchronized (lock) {
-							lock.notifyAll();
-						}
-					}
+				mCounter.encrease();
+				
+				synchronized(lock) {
+					lock.notifyAll();
+				}
+				
+				if (waitFor(0, -1)) {
+					mListener.onStreamStart();
 					
-					if (waitFor(0, -1)) {
-						mIsRunning = true;
-						mListener.onStreamStart();
+					String input = command + "\n";
+					input += "echo " + mCommandEnd + " $?\n";
+					
+					try {
+						mStdInput.write( input.getBytes() );
+						mStdInput.flush();
 						
-						String input = command + "\n";
-						input += "echo " + mCommandEnd + " $?\n";
-						
-						try {
-							mStdInput.write( input.getBytes() );
-							mStdInput.flush();
-							
-						} catch (IOException e) {
-							Log.w(TAG, e.getMessage(), e);
-						}
+					} catch (IOException e) {
+						Log.w(TAG, e.getMessage(), e);
 					}
 				}
 			}
@@ -244,37 +260,33 @@ public class ShellStream {
 	 * This is an internal method, which is used to change which object to add a lock to.
 	 */
 	protected Boolean waitFor(Integer timeout, Integer index) {
-		Object lock = null;
+		Integer counter = mCounter.size()+index;
 		
-		synchronized (mLocks) {
-			Integer lockCount = mLocks.size()+index;
-			
-			if (lockCount > 0) {
-				lock = mLocks.get(lockCount-1);
-				
-			} else {
-				return mIsActive;
-			}
-		}
-		
-		synchronized (lock) {
+		if (counter > 0) {
 			Long timeoutMilis = timeout > 0 ? System.currentTimeMillis() + timeout : 0L;
 			
-			while (mIsRunning && mIsActive) {
+			while (mCounter.size() > 0 && mIsActive) {
 				try {
-					lock.wait(timeout.longValue());
+					counter -= 1;
+					
+					synchronized(mLock) {
+						mLock.wait(timeout.longValue());
+					}
 					
 					if (timeout > 0 && System.currentTimeMillis() >= timeoutMilis) {
-						return !mIsRunning && mIsActive;
+						return mCounter.size() == 0 && mIsActive;
+						
+					} else if (counter <= 0) {
+						break;
 					}
 					
 				} catch (InterruptedException e) {
-					Log.w(TAG, e.getMessage(), e); return false;
+					Log.w(TAG, e.getMessage(), e);
 				}
 			}
-			
-			return mIsActive;
 		}
+		
+		return mIsActive;
 	}
 	
 	/**
@@ -294,7 +306,7 @@ public class ShellStream {
 	 *     True if the shell is busy or False otherwise
 	 */
 	public Boolean isRunning() {
-		return mIsRunning;
+		return mCounter.size() > 0;
 	}
 	
 	/**
@@ -315,7 +327,8 @@ public class ShellStream {
 	public synchronized void destroy() {
 		if (mStdInput != null) {
 			mIsActive = false;
-			mIsRunning = false;
+			
+			mCounter.reset();
 			
 			try {
 				mStdInput.close();
