@@ -10,7 +10,11 @@ Table of content
 
 * Basic Overview
     * [Usage](#usage)
+	* [Attempts](#attempts)
 	* [Stream](#stream)
+
+* Utils/IO
+	* [FileReader](#filereader)
 
 Usage
 -----
@@ -90,6 +94,32 @@ conn.executeAsync("cat /data/file.txt", new OnShellResultListener(){
 });
 ```
 
+Attempts
+--------
+
+Using attempts is a good way to support different kinds of invironments. But it can be a pain to manually create a range of commands for each command that you wish to execute, so to help with this we have an `Attempts` class that can be accessed using `Shell#createAttempts`. 
+
+```java
+// Create a new Shell instance
+Shell conn = new Shell(true);
+
+// Create a range of attempts
+Attempts attempts = conn.createAttempts("ls"); // This will create `ls`, `busybox ls` and `toolbox ls` by default. 
+
+// Execute normal
+Result result = attempts.execute();
+
+// Execute asynchronous
+attempts.executeAsync(new OnShellResultListener(){
+    @Override
+    public void onShellResult(Result result) {
+        
+    }
+});
+
+Each attempt is created based on `Common#BINARIES` which by default contains `String[null, "busybox", "toolbox"]`.
+```
+
 Stream
 ------
 
@@ -119,4 +149,22 @@ ShellStream stream = new ShellStream(true, new OnStreamListener(){
 stream.execute("cat /dev/input/event1");
 ```
 
+FileReader
+----------
 
+RootFW comes with it's own `FileReader` class. Unlike the `java.io.FileReader`, this one is also able to access protected files via a SuperUser shell. However the shell is only used in cases where it is needed, otherwise a regular reader is used to access the file. 
+
+```java
+// Create an instance of com.spazedog.lib.rootfw4.utils.io.FileReader
+FileReader reader = new FileReader("/data/data/com.some.package/shared_prefs/pref.xml");
+
+// Add the reader to a regular java.io.BufferedReader
+BufferedReader buffer = new BufferedReader(reader);
+
+String line = null;
+while ((line = buffer.readLine()) != null) {
+
+}
+```
+
+Like mentioned above, the SuperUser shell will not be used unless it has to. If the app running, has access to the file, then a regular reader is used to access it. 
