@@ -22,6 +22,7 @@ package com.spazedog.lib.rootfw4.utils.io;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -61,7 +62,7 @@ public class FileReader extends Reader {
 		String filePath = new File(file).getAbsolutePath();
 		
 		try {
-			mStream = new java.io.FileReader(filePath);
+			mStream = new InputStreamReader(new FileInputStream(filePath));
 			
 		} catch (FileNotFoundException e) {
 			String binary = shell != null ? shell.getBinary("cat") : "toolbox cat";
