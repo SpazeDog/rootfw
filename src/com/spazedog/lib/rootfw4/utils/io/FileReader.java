@@ -28,75 +28,66 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.CharBuffer;
 
-import android.util.Log;
-
 import com.spazedog.lib.rootfw4.Common;
 import com.spazedog.lib.rootfw4.Shell;
-import com.spazedog.lib.rootfw4.Shell.Result;
+import com.spazedog.lib.rootfw4.ShellStream;
 
 /**
  * This class allows you to open a file as root, if needed. 
  * Files that are not protected will be handled by a regular {@link java.io.FileReader} while protected files 
- * will use a shell streamer instead. Both of which will act as a normal reader that can be used together with other classes like {@link BufferedReader} and such. 
+ * will use a shell streamer instead. Both of which will act as a normal reader that can be used together with other classes like {@link BufferedReader} and such. <br /><br />
+ * 
+ * Note that this should not be used for unending streams. This is only meant for regular files. If you need unending streams, like <code>/dev/input/event*</code>, 
+ * you should use {@link ShellStream} instead. 
  */
 public class FileReader extends Reader {
 	public static final String TAG = Common.TAG + ".FileReader";
 
 	protected InputStreamReader mStream;
 	
+	/**
+	 * Create a new {@link InputStreamReader}. However {@link FileReader#FileReader(Shell, String)} is a better option.
+	 */
 	public FileReader(String file) throws FileNotFoundException {
-		this(new Shell(true), file);
+		this(null, file);
 	}
 	
+	/**
+	 * Create a new {@link InputStreamReader}. If <code>shell</code> is not <code>NULL</code>, then
+	 * the best match for <code>cat</code> will be located whenever a SuperUser connection is needed. This will be the best 
+	 * option for multiple environments. 
+	 */
 	public FileReader(Shell shell, String file) throws FileNotFoundException {
-		File fileObj = new File(file);
-		String filePath = fileObj.getAbsolutePath();
-		String cmd = "( %binary test -e '" + filePath + "' && echo true ) || ( %binary test ! -e '" + filePath + "' && echo false )";
-		Result shellResult = shell.createAttempts(cmd).execute();
+		String filePath = new File(file).getAbsolutePath();
 		
-		if (shellResult != null && "true".equals(shellResult.getLine())) {
-			if (fileObj.exists() && fileObj.canRead()) {
-				if(Common.DEBUG)Log.d(TAG, "Construct: Opening file '" + filePath + "' using native FileReader");
-				
-				try {
-					mStream = new java.io.FileReader(filePath);
-					
-				} catch (FileNotFoundException e) {
-					throw new FileNotFoundException(e.getMessage());
-				}
-				
-			} else {
-				if(Common.DEBUG)Log.d(TAG, "Construct: Opening file '" + filePath + "' using a SuperUser shell InputReader");
-				
+		try {
+			mStream = new java.io.FileReader(filePath);
+			
+		} catch (FileNotFoundException e) {
+			String binary = shell != null ? shell.getBinary("cat") : "toolbox cat";
+			
+			try {
 				ProcessBuilder builder = new ProcessBuilder("su");
 				builder.redirectErrorStream(true);
 				
-				try {
-					Process process = builder.start();
-					mStream = new InputStreamReader(process.getInputStream());
-					
-					DataOutputStream stdIn = new DataOutputStream(process.getOutputStream());
-					stdIn.write( (shell.getBinary("cat") + " '" + filePath + "'\n").getBytes() );
-					stdIn.write( ("exit $?\n").getBytes() );
-					stdIn.flush();
-					stdIn.close();
-					
-					try {
-						Integer resultCode = process.waitFor();
-						
-						if (!resultCode.equals(0)) {
-							throw new FileNotFoundException("Problems loading the content of the file " + filePath);
-						}
-						
-					} catch (InterruptedException e) {}
-					
-				} catch (IOException e) {
+				Process process = builder.start();
+				mStream = new InputStreamReader(process.getInputStream());
+				
+				DataOutputStream stdIn = new DataOutputStream(process.getOutputStream());
+				stdIn.write( (binary + " '" + filePath + "'\n").getBytes() );
+				stdIn.write( ("exit $?\n").getBytes() );
+				stdIn.flush();
+				stdIn.close();
+				
+				Integer resultCode = process.waitFor();
+				
+				if (!resultCode.equals(0)) {
 					throw new FileNotFoundException(e.getMessage());
 				}
+				
+			} catch (Throwable te) {
+				throw new FileNotFoundException(te.getMessage());
 			}
-			
-		} else {
-			throw new FileNotFoundException("Could not find the file " + filePath);
 		}
 	}
 	
