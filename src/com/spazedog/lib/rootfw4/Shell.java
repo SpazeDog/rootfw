@@ -19,6 +19,8 @@
 
 package com.spazedog.lib.rootfw4;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -33,6 +35,8 @@ import android.util.Log;
 
 import com.spazedog.lib.rootfw4.ShellStream.OnStreamListener;
 import com.spazedog.lib.rootfw4.containers.Data;
+import com.spazedog.lib.rootfw4.utils.io.FileReader;
+import com.spazedog.lib.rootfw4.utils.io.FileWriter;
 
 /**
  * This class is a front-end to {@link ShellStream} which makes it easier to work
@@ -597,5 +601,44 @@ public class Shell {
 		}
 		
 		return null;
+	}
+	
+	/**
+	 * Open a new RootFW {@link FileReader}. This is the same as {@link FileReader#FileReader(Shell, String)}.
+	 * 
+	 * @param file
+	 *     Path to the file
+	 *     
+	 * @return
+	 *     NULL if the file could not be opened
+	 */
+	public FileReader getFileReader(String file) {
+		try {
+			return new FileReader(this, file);
+			
+		} catch (FileNotFoundException e) {
+			return null;
+		}
+	}
+	
+	/**
+	 * Open a new RootFW {@link FileWriter}. This is the same as {@link FileWriter#FileWriter(Shell, String, boolean)}.
+	 * 
+	 * @param file
+	 *     Path to the file
+	 *     
+	 * @param append
+	 *     Whether or not to append new content to existing content
+	 *     
+	 * @return
+	 *     NULL if the file could not be opened
+	 */
+	public FileWriter getFileWriter(String file, Boolean append) {
+		try {
+			return new FileWriter(this, file, append);
+			
+		} catch (IOException e) {
+			return null;
+		}
 	}
 }
