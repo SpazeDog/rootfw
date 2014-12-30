@@ -35,6 +35,7 @@ import android.util.Log;
 
 import com.spazedog.lib.rootfw4.ShellStream.OnStreamListener;
 import com.spazedog.lib.rootfw4.containers.Data;
+import com.spazedog.lib.rootfw4.utils.File;
 import com.spazedog.lib.rootfw4.utils.io.FileReader;
 import com.spazedog.lib.rootfw4.utils.io.FileWriter;
 
@@ -79,6 +80,32 @@ public class Shell {
 		 *     The result from the asynchronous execution
 		 */
 		public void onShellResult(Result result);
+	}
+	
+	/**
+	 * This interface is for use with the execute methods. It can be used to validate an attempt command, if that command 
+	 * cannot be validated by result code alone. 
+	 */
+	public static interface OnShellValidateListener {
+		/**
+		 * Called at the end of each attempt in order to validate it. If this method returns false, then the next attempt will be executed. 
+		 * 
+		 * @param command
+		 *     The command that was executed during this attempt
+		 *     
+		 * @param result
+		 *     The result code from this attempt
+		 *     
+		 * @param output
+		 *     The output from this attempt
+		 *     
+		 * @param resultCodes
+		 *     All of the result codes that has been added as successful ones
+		 *     
+		 * @return 
+		 *     False to continue to the next attempts, or True to stop the current execution
+		 */
+		public Boolean onShellValidate(String command, Integer result, List<String> output, Set<Integer> resultCodes);
 	}
 	
 	/**
@@ -153,6 +180,8 @@ public class Shell {
 	public class Attempts {
 		protected String[] mAttempts;
 		protected Integer[] mResultCodes;
+		protected OnShellValidateListener mValidateListener;
+		protected OnShellResultListener mResultListener;
 		
 		protected Attempts(String command) {
 			if (command != null) {
@@ -172,16 +201,32 @@ public class Shell {
 			}
 		}
 		
+		public Attempts setValidateListener(OnShellValidateListener listener) {
+			mValidateListener = listener; return this;
+		}
+		
+		public Attempts setResultListener(OnShellResultListener listener) {
+			mResultListener = listener; return this;
+		}
+		
 		public Attempts setResultCodes(Integer... resultCodes) {
 			mResultCodes = resultCodes; return this;
 		}
 		
+		public Result execute(OnShellValidateListener listener) {
+			return setValidateListener(listener).execute();
+		}
+		
 		public Result execute() {
-			return Shell.this.execute(mAttempts, null);
+			return Shell.this.execute(mAttempts, mResultCodes, mValidateListener);
 		}
 		
 		public void executeAsync(OnShellResultListener listener) {
-			Shell.this.executeAsync(mAttempts, null, listener);
+			setResultListener(listener).executeAsync();
+		}
+		
+		public void executeAsync() {
+			Shell.this.executeAsync(mAttempts, mResultCodes, mValidateListener, mResultListener);
 		}
 	}
 	
@@ -276,7 +321,7 @@ public class Shell {
 	 *     The command to execute
 	 */
 	public Result execute(String command) {
-		return execute(new String[]{command}, null);
+		return execute(new String[]{command}, null, null);
 	}
 	
 	/**
@@ -288,7 +333,7 @@ public class Shell {
 	 *     The commands to try
 	 */
 	public Result execute(String[] commands) {
-		return execute(commands, null);
+		return execute(commands, null, null);
 	}
 	
 	/**
@@ -305,10 +350,13 @@ public class Shell {
 	 * @param commands
 	 *     The commands to try
 	 *     
-	 * @param
+	 * @param resultCodes
 	 *     Result Codes representing successful execution. These will be temp. merged with {@link Shell#addResultCode(Integer)}. 
+	 *     
+	 * @param validater
+	 *     A {@link OnShellValidateListener} instance or NULL
 	 */
-	public Result execute(String[] commands, Integer[] resultCodes) {
+	public Result execute(String[] commands, Integer[] resultCodes, OnShellValidateListener validater) {
 		synchronized(mLock) {
 			if (mStream.waitFor(mShellTimeout)) {
 				Integer cmdCount = 0;
@@ -334,8 +382,11 @@ public class Shell {
 					
 					if(Common.DEBUG)Log.d(TAG, "execute: The command finished with the result code '" + mResultCode + "'");
 					
-					if (codes.contains(mResultCode)) {
-						break;
+					if ((validater != null && validater.onShellValidate(command, mResultCode, mOutput, codes)) || codes.contains(mResultCode)) {
+						/*
+						 * If a validater excepts this, then add the result code to the list of successful codes 
+						 */
+						codes.add(mResultCode); break;
 					}
 					
 					cmdCount += 1;
@@ -360,7 +411,7 @@ public class Shell {
 	 *     A {@link Shell.OnShellResultListener} callback instance
 	 */
 	public void executeAsync(String command, OnShellResultListener listener) {
-		executeAsync(new String[]{command}, null, listener);
+		executeAsync(new String[]{command}, null, null, listener);
 	}
 	
 	/**
@@ -375,7 +426,7 @@ public class Shell {
 	 *     A {@link Shell.OnShellResultListener} callback instance
 	 */
 	public synchronized void executeAsync(String[] commands, OnShellResultListener listener) {
-		executeAsync(commands, null, listener);
+		executeAsync(commands, null, null, listener);
 	}
 	
 	/**
@@ -386,13 +437,16 @@ public class Shell {
 	 * @param commands
 	 *     The commands to try
 	 *     
-	 * @param
+	 * @param resultCodes
 	 *     Result Codes representing successful execution. These will be temp. merged with {@link Shell#addResultCode(Integer)}.
+	 *     
+	 * @param validater
+	 *     A {@link OnShellValidateListener} instance or NULL
 	 * 
 	 * @param listener
 	 *     A {@link Shell.OnShellResultListener} callback instance
 	 */
-	public synchronized void executeAsync(final String[] commands, final Integer[] resultCodes, final OnShellResultListener listener) {
+	public synchronized void executeAsync(final String[] commands, final Integer[] resultCodes, final OnShellValidateListener validater, final OnShellResultListener listener) {
 		if(Common.DEBUG)Log.d(TAG, "executeAsync: Starting an async shell execution");
 		
 		/*
@@ -409,7 +463,7 @@ public class Shell {
 				}
 				
 				synchronized(mLock) {
-					Result result = Shell.this.execute(commands, resultCodes);
+					Result result = Shell.this.execute(commands, resultCodes, validater);
 					listener.onShellResult(result);
 				}
 			}
