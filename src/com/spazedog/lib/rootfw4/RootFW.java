@@ -95,15 +95,23 @@ public class RootFW {
 	}
 	
 	/**
+	 * @see #disconnect(Boolean)
+	 */
+	public static void disconnect() {
+		disconnect(false);
+	}
+	
+	/**
 	 * Destroy the connection to the global shell.<br /><br />
 	 * 
 	 * The connection will only be destroyed if there is no current locks on this connecton. 
 	 * 
 	 * @see #lock()
 	 */
-	public static void disconnect() {
+	public static void disconnect(Boolean force) {
 		synchronized(mLock) {
-			if (mLockCount == 0) {
+			if (mLockCount == 0 || force) {
+				mLockCount = 0;
 				mShell.destroy();
 				mShell = null;
 			}
@@ -135,6 +143,15 @@ public class RootFW {
 			} else {
 				mLockCount = 0;
 			}
+		}
+	}
+	
+	/**
+	 * Checks if there are any active locks on the connection.
+	 */
+	public static Boolean isLocked() {
+		synchronized(mLock) {
+			return mLockCount == 0;
 		}
 	}
 	
