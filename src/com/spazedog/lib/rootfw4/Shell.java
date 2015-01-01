@@ -484,7 +484,7 @@ public class Shell {
 	/**
 	 * For internal usage
 	 */
-	public void sendBroadcast(String key, Bundle data) {
+	public static void sendBroadcast(String key, Bundle data) {
 		for (Shell instance : mInstances) {
 			instance.broadcastReciever(key, data);
 		}
