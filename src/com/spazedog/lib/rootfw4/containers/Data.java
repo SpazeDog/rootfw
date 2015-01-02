@@ -331,7 +331,7 @@ public class Data<DATATYPE extends Data<DATATYPE>> extends BasicContainer {
 	 *     The data array
 	 */
 	public String[] getArray() {
-		return size() > 0 ? mLines : null;
+		return mLines;
 	}
 	
 	/**
