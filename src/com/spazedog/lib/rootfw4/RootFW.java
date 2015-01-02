@@ -27,6 +27,7 @@ import com.spazedog.lib.rootfw4.Shell.OnShellConnectionListener;
 import com.spazedog.lib.rootfw4.Shell.OnShellResultListener;
 import com.spazedog.lib.rootfw4.Shell.OnShellValidateListener;
 import com.spazedog.lib.rootfw4.Shell.Result;
+import com.spazedog.lib.rootfw4.utils.File;
 import com.spazedog.lib.rootfw4.utils.io.FileReader;
 import com.spazedog.lib.rootfw4.utils.io.FileWriter;
 
@@ -273,5 +274,12 @@ public class RootFW {
 	 */
 	public static FileWriter getFileWriter(String file, Boolean append) {
 		return mShell.getFileWriter(file, append);
+	}
+	
+	/**
+	 * @see Shell#getFile(String)
+	 */
+	public static File getFile(String file) {
+		return mShell.getFile(file);
 	}
 }

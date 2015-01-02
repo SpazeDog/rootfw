@@ -425,7 +425,7 @@ public class Shell {
 	 * @param listener
 	 *     A {@link Shell.OnShellResultListener} callback instance
 	 */
-	public synchronized void executeAsync(String[] commands, OnShellResultListener listener) {
+	public void executeAsync(String[] commands, OnShellResultListener listener) {
 		executeAsync(commands, null, null, listener);
 	}
 	
@@ -694,5 +694,15 @@ public class Shell {
 		} catch (IOException e) {
 			return null;
 		}
+	}
+	
+	/**
+	 * Get a new {@link File} instance.
+	 * 
+	 * @param file
+	 *     Path to the file or directory
+	 */
+	public File getFile(String file) {
+		return new File(this, file);
 	}
 }
