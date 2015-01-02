@@ -36,6 +36,8 @@ import android.util.Log;
 import com.spazedog.lib.rootfw4.ShellStream.OnStreamListener;
 import com.spazedog.lib.rootfw4.containers.Data;
 import com.spazedog.lib.rootfw4.utils.File;
+import com.spazedog.lib.rootfw4.utils.Filesystem;
+import com.spazedog.lib.rootfw4.utils.Filesystem.Disk;
 import com.spazedog.lib.rootfw4.utils.io.FileReader;
 import com.spazedog.lib.rootfw4.utils.io.FileWriter;
 
@@ -704,5 +706,22 @@ public class Shell {
 	 */
 	public File getFile(String file) {
 		return new File(this, file);
+	}
+	
+	/**
+	 * Get a new {@link Filesystem} instance.
+	 */
+	public Filesystem getFilesystem() {
+		return new Filesystem(this);
+	}
+	
+	/**
+	 * Get a new {@link Disk} instance.
+	 * 
+	 * @param disk
+	 *     Path to a disk, partition or a mount point
+	 */
+	public Disk getDisk(String disk) {
+		return new Disk(this, disk);
 	}
 }

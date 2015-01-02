@@ -23,9 +23,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import android.os.Build;
 import android.os.Process;
 
 public class Common {
+	private static Boolean oEmulator = false;
+	
 	public static final String TAG = Common.class.getPackage().getName();
 	public static Boolean DEBUG = true;
 	public static String[] BINARIES = new String[]{null, "busybox", "toolbox"};
@@ -62,6 +65,18 @@ public class Common {
 		for (Entry<String, Integer> entry : UIDS.entrySet()) {
 			UNAMES.put(entry.getValue(), entry.getKey());
 		}
+		
+		oEmulator = Build.BRAND.equalsIgnoreCase("generic") || 
+				Build.MODEL.contains("google_sdk") || 
+				Build.MODEL.contains("Emulator") || 
+				Build.MODEL.contains("Android SDK");
+	}
+	
+	/**
+	 * Check if the current device is an emulator 
+	 */
+	public static Boolean isEmulator() {
+		return oEmulator;
 	}
 	
 	public static Integer getUID(String name) {

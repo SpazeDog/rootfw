@@ -28,6 +28,8 @@ import com.spazedog.lib.rootfw4.Shell.OnShellResultListener;
 import com.spazedog.lib.rootfw4.Shell.OnShellValidateListener;
 import com.spazedog.lib.rootfw4.Shell.Result;
 import com.spazedog.lib.rootfw4.utils.File;
+import com.spazedog.lib.rootfw4.utils.Filesystem;
+import com.spazedog.lib.rootfw4.utils.Filesystem.Disk;
 import com.spazedog.lib.rootfw4.utils.io.FileReader;
 import com.spazedog.lib.rootfw4.utils.io.FileWriter;
 
@@ -281,5 +283,19 @@ public class RootFW {
 	 */
 	public static File getFile(String file) {
 		return mShell.getFile(file);
+	}
+	
+	/**
+	 * @see Shell#getFilesystem()
+	 */
+	public static Filesystem getFilesystem() {
+		return mShell.getFilesystem();
+	}
+	
+	/**
+	 * @see Shell#getDisk(String)
+	 */
+	public static Disk getDisk(String disk) {
+		return mShell.getDisk(disk);
 	}
 }
