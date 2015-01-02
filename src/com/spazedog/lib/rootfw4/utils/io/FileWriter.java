@@ -25,6 +25,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Writer;
 
+import android.os.Bundle;
+
 import com.spazedog.lib.rootfw4.Common;
 import com.spazedog.lib.rootfw4.Shell;
 
@@ -87,6 +89,12 @@ public class FileWriter extends Writer {
 				throw new IOException(te.getMessage());
 			}
 		}
+		
+		Bundle bundle = new Bundle();
+		bundle.putString("action", "exists");
+		bundle.putString("location", filePath);
+		
+		Shell.sendBroadcast("file", bundle);
 	}
 
 	/**
@@ -94,6 +102,7 @@ public class FileWriter extends Writer {
 	 */
 	@Override
 	public void close() throws IOException {
+		mStream.flush();
 		mStream.close();
 		mStream = null;
 		
@@ -124,6 +133,18 @@ public class FileWriter extends Writer {
 			}
 			
 			mStream.write(bytes, offset, count);
+		}
+	}
+	
+	public void write(byte[] buf, int offset, int count) throws IOException {
+		synchronized(lock) {
+			mStream.write(buf, offset, count);
+		}
+	}
+	
+	public void write(byte[] buf) throws IOException {
+		synchronized(lock) {
+			mStream.write(buf);
 		}
 	}
 }
