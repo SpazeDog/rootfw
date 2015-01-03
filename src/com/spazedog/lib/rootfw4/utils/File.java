@@ -34,6 +34,7 @@ import java.util.regex.Pattern;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.spazedog.lib.rootfw4.Common;
@@ -46,6 +47,8 @@ import com.spazedog.lib.rootfw4.Shell.Result;
 import com.spazedog.lib.rootfw4.containers.BasicContainer;
 import com.spazedog.lib.rootfw4.containers.Data;
 import com.spazedog.lib.rootfw4.containers.Data.DataSorting;
+import com.spazedog.lib.rootfw4.utils.Filesystem.DiskStat;
+import com.spazedog.lib.rootfw4.utils.Filesystem.MountStat;
 import com.spazedog.lib.rootfw4.utils.io.FileReader;
 import com.spazedog.lib.rootfw4.utils.io.FileWriter;
 
@@ -1187,6 +1190,88 @@ public class File {
 	}
 	
 	/**
+	 * Reboot into recovery and run this file/package
+	 * <br />
+	 * This method will add a command file in /cache/recovery which will tell the recovery the location of this 
+	 * package. The recovery will then run the package and then automatically reboot back into Android. 
+	 * <br />
+	 * Note that this will also work on ROM's that changes the cache location or device. The method will 
+	 * locate the real internal cache partition, and it will also mount it at a second location 
+	 * if it is not already mounted.
+	 * 
+	 * @param context
+	 *     A {@link Context} that can be used together with the Android <code>REBOOT</code> permission 
+	 *     to use the <code>PowerManager</code> to reboot into recovery. This can be set to NULL 
+	 *     if you want to just use the <code>toolbox reboot</code> command, however do note that not all 
+	 *     toolbox versions support this command. 
+	 * 
+	 * @param args
+	 *     Arguments which will be parsed to the recovery package. 
+	 *     Each argument equels one prop line.
+	 *     <br />
+	 *     Each prop line is added to /cache/recovery/rootfw.prop and named (argument[argument number] = [value]).
+	 *     For an example, if first argument is "test", it will be written to rootfw.prop as (argument1 = test).
+	 * 
+	 * @return
+	 *     <code>False if it failed</code>
+	 */
+	public Boolean runInRecovery(Context context, String... args) {
+		if (isFile()) {
+			String cacheLocation = "/cache";
+			MountStat mountStat = mShell.getDisk(cacheLocation).getFsDetails();
+			
+			if (mountStat != null) {
+				DiskStat diskStat = mShell.getDisk( mountStat.device() ).getDiskDetails();
+				
+				if (diskStat == null || !cacheLocation.equals(diskStat.location())) {
+					if (diskStat == null) {
+						mShell.getDisk("/").mount(new String[]{"rw"});
+						cacheLocation = "/cache-int";
+						
+						if (!getFile(cacheLocation).createDirectory()) {
+							return false;
+							
+						} else if (!mShell.getDisk(mountStat.device()).mount(cacheLocation)) {
+							return false;
+						}
+						
+						mShell.getDisk("/").mount(new String[]{"ro"});
+						
+					} else {
+						cacheLocation = diskStat.location();
+					}
+				}
+			}
+			
+			if (getFile(cacheLocation + "/recovery").createDirectory()) {
+				if (getFile(cacheLocation + "/recovery/command").write("--update_package=" + getResolvedPath())) {
+					if (args != null && args.length > 0) {
+						String[] lines = new String[ args.length ];
+						
+						for (int i=0; i < args.length; i++) {
+							lines[i] = "argument" + (i+1) + "=" + args[i];
+						}
+						
+						if (!getFile(cacheLocation + "/recovery/rootfw.prop").write(lines)) {
+							getFile(cacheLocation + "/recovery/command").remove(); 
+							
+							return false;
+						}
+					}
+					
+					if (mShell.getDevice().rebootRecovery(context)) {
+						return true;
+					}
+					
+					getFile(cacheLocation + "/recovery/command").remove();
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+	/**
 	 * Extract data from an Android Assets Path (files located in /assets/) and add it to the current file location.
 	 * If the file already exist, it will be overwritten. Otherwise the file will be created. 
 	 * 
@@ -1457,6 +1542,38 @@ public class File {
 	 */
 	public String getParentPath() {
 		return mFile.getParent();
+	}
+	
+	/**
+	 * Get a real absolute path. <br /><br />
+	 * 
+	 * Java's <code>getAbsolutePath</code> is not a fully resolved path. Something like <code>./file</code> could be returned as <code>/folder/folder2/.././file</code> or simular. 
+	 * This method however will resolve a path and return a fully absolute path <code>/folder/file</code>. It is a bit slower, so only use it when this is a must. 
+	 */
+	public String getResolvedPath() {
+		synchronized (mLock) {
+			String path = getAbsolutePath();
+			
+			if (path.contains(".")) {
+				String[] directories = ("/".equals(path) ? path : path.endsWith("/") ? path.substring(1, path.length() - 1) : path.substring(1)).split("/");
+				List<String> resolved = new ArrayList<String>();
+				
+				for (int i=0; i < directories.length; i++) {
+					if (directories[i].equals("..")) {
+						if (resolved.size() > 0) {
+							resolved.remove( resolved.size()-1 );
+						}
+						
+					} else if (!directories[i].equals(".")) {
+						resolved.add(directories[i]);
+					}
+				}
+				
+				path = resolved.size() > 0 ? "/" + TextUtils.join("/", resolved) : "/";
+			}
+			
+			return path;
+		}
 	}
 	
 	/**
