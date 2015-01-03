@@ -35,6 +35,8 @@ import android.util.Log;
 
 import com.spazedog.lib.rootfw4.ShellStream.OnStreamListener;
 import com.spazedog.lib.rootfw4.containers.Data;
+import com.spazedog.lib.rootfw4.utils.Device;
+import com.spazedog.lib.rootfw4.utils.Device.Process;
 import com.spazedog.lib.rootfw4.utils.File;
 import com.spazedog.lib.rootfw4.utils.Filesystem;
 import com.spazedog.lib.rootfw4.utils.Filesystem.Disk;
@@ -609,7 +611,7 @@ public class Shell {
 			} else {
 				if(Common.DEBUG)Log.d(TAG, "destroy: Making a clean exit on the stream");
 				
-				mStream.execute("exit 0");
+				execute("exit 0");
 			}
 			
 			mStream = null;
