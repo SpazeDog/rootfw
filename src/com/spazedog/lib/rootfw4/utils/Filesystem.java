@@ -375,6 +375,38 @@ public class Filesystem {
 					"mount --bind '" + mFile.getAbsolutePath() + "' '" + location + "'" : 
 						"mount" + (type != null ? " -t '" + type + "'" : "") + (options != null ? " -o '" + (location == null ? "remount," : "") + TextUtils.join(",", Arrays.asList(options)) + "'" : "") + " '" + mFile.getAbsolutePath() + "'" + (location != null ? " '" + location + "'" : "");
 			
+			/*
+			 * On some devices, some partitions has been made read-only by writing to the block device ioctls. 
+			 * This means that even mounting them as read/write will not work by itself, we need to change the ioctls as well. 
+			 */
+			if (options != null && !"/".equals(mFile.getAbsolutePath())) {
+				for (String option : options) {
+					if ("rw".equals(option)) {
+						String blockdevice = null;
+						
+						if (mFile.isDirectory()) {
+							MountStat stat = getMountDetails();
+							
+							if (stat != null) {
+								blockdevice = stat.device();
+								
+							} else if ((stat = getFsDetails()) != null) {
+								blockdevice = stat.device();
+							}
+							
+						} else {
+							blockdevice = mFile.getAbsolutePath();
+						}
+						
+						if (blockdevice != null && blockdevice.startsWith("/dev/")) {
+							mShell.createAttempts("blockdev --setrw '" + blockdevice + "' 2> /dev/null").execute();
+						}
+						
+						break;
+					}
+				}
+			}
+			
 			Result result = mShell.createAttempts(cmd).execute();
 			
 			return result != null && result.wasSuccessful();
