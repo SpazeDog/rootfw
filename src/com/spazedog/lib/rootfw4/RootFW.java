@@ -27,6 +27,8 @@ import com.spazedog.lib.rootfw4.Shell.OnShellConnectionListener;
 import com.spazedog.lib.rootfw4.Shell.OnShellResultListener;
 import com.spazedog.lib.rootfw4.Shell.OnShellValidateListener;
 import com.spazedog.lib.rootfw4.Shell.Result;
+import com.spazedog.lib.rootfw4.utils.Device;
+import com.spazedog.lib.rootfw4.utils.Device.Process;
 import com.spazedog.lib.rootfw4.utils.File;
 import com.spazedog.lib.rootfw4.utils.Filesystem;
 import com.spazedog.lib.rootfw4.utils.Filesystem.Disk;
@@ -297,5 +299,26 @@ public class RootFW {
 	 */
 	public static Disk getDisk(String disk) {
 		return mShell.getDisk(disk);
+	}
+	
+	/**
+	 * @see Shell#getDevice()
+	 */
+	public static Device getDevice() {
+		return mShell.getDevice();
+	}
+	
+	/**
+	 * @see Shell#getProcess(String)
+	 */
+	public static Process getProcess(String process) {
+		return mShell.getProcess(process);
+	}
+	
+	/**
+	 * @see Shell#getProcess(Integer)
+	 */
+	public static Process getProcess(Integer pid) {
+		return mShell.getProcess(pid);
 	}
 }

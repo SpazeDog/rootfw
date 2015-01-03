@@ -726,4 +726,32 @@ public class Shell {
 	public Disk getDisk(String disk) {
 		return new Disk(this, disk);
 	}
+	
+	
+	/**
+	 * Get a new {@link Device} instance.
+	 */
+	public Device getDevice() {
+		return new Device(this);
+	}
+	
+	/**
+	 * Get a new {@link Process} instance.
+	 * 
+	 * @param process
+	 *     The name of the process
+	 */
+	public Process getProcess(String process) {
+		return new Process(this, process);
+	}
+	
+	/**
+	 * Get a new {@link Process} instance.
+	 * 
+	 * @param pid
+	 *     The process id
+	 */
+	public Process getProcess(Integer pid) {
+		return new Process(this, pid);
+	}
 }
