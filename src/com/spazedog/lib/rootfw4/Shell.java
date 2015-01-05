@@ -465,14 +465,17 @@ public class Shell {
 		new Thread() {
 			@Override
 			public void run() {
+				Result result = null;
+				
 				synchronized (lock) {
 					lock.notifyAll();
 				}
 				
 				synchronized(mLock) {
-					Result result = Shell.this.execute(commands, resultCodes, validater);
-					listener.onShellResult(result);
+					result = Shell.this.execute(commands, resultCodes, validater);
 				}
+				
+				listener.onShellResult(result);
 			}
 			
 		}.start();
