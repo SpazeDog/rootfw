@@ -31,7 +31,10 @@ import com.spazedog.lib.rootfw4.utils.Device;
 import com.spazedog.lib.rootfw4.utils.Device.Process;
 import com.spazedog.lib.rootfw4.utils.File;
 import com.spazedog.lib.rootfw4.utils.Filesystem;
+import com.spazedog.lib.rootfw4.utils.Memory;
 import com.spazedog.lib.rootfw4.utils.Filesystem.Disk;
+import com.spazedog.lib.rootfw4.utils.Memory.CompCache;
+import com.spazedog.lib.rootfw4.utils.Memory.Swap;
 import com.spazedog.lib.rootfw4.utils.io.FileReader;
 import com.spazedog.lib.rootfw4.utils.io.FileWriter;
 
@@ -320,5 +323,26 @@ public class RootFW {
 	 */
 	public static Process getProcess(Integer pid) {
 		return mShell.getProcess(pid);
+	}
+	
+	/**
+	 * @see Shell#getMemory()
+	 */
+	public static Memory getMemory() {
+		return mShell.getMemory();
+	}
+	
+	/**
+	 * @see Shell#getCompCache()
+	 */
+	public static CompCache getCompCache() {
+		return mShell.getCompCache();
+	}
+	
+	/**
+	 * @see Shell#getSwap(String device)
+	 */
+	public static Swap getSwap(String device) {
+		return mShell.getSwap(device);
 	}
 }

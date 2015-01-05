@@ -40,6 +40,9 @@ import com.spazedog.lib.rootfw4.utils.Device.Process;
 import com.spazedog.lib.rootfw4.utils.File;
 import com.spazedog.lib.rootfw4.utils.Filesystem;
 import com.spazedog.lib.rootfw4.utils.Filesystem.Disk;
+import com.spazedog.lib.rootfw4.utils.Memory;
+import com.spazedog.lib.rootfw4.utils.Memory.CompCache;
+import com.spazedog.lib.rootfw4.utils.Memory.Swap;
 import com.spazedog.lib.rootfw4.utils.io.FileReader;
 import com.spazedog.lib.rootfw4.utils.io.FileWriter;
 
@@ -753,5 +756,29 @@ public class Shell {
 	 */
 	public Process getProcess(Integer pid) {
 		return new Process(this, pid);
+	}
+	
+	/**
+	 * Get a new {@link Memory} instance.
+	 */
+	public Memory getMemory() {
+		return new Memory(this);
+	}
+	
+	/**
+	 * Get a new {@link CompCache} instance.
+	 */
+	public CompCache getCompCache() {
+		return new CompCache(this);
+	}
+	
+	/**
+	 * Get a new {@link Swap} instance.
+	 * 
+	 * @param device
+	 *     The /dev/ swap device
+	 */
+	public Swap getSwap(String device) {
+		return new Swap(this, device);
 	}
 }
