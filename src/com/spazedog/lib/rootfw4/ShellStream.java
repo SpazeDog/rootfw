@@ -47,7 +47,6 @@ public class ShellStream {
 	
 	protected final Counter mCounter = new Counter();
 	protected final Object mLock = new Object();
-	protected List<Object> mLocks = new ArrayList<Object>();
 	protected Boolean mIsActive = false;
 	protected Boolean mIsRoot = false;
 	
@@ -200,18 +199,27 @@ public class ShellStream {
 					lock.notifyAll();
 				}
 				
-				if (waitFor(0, -1)) {
-					mListener.onStreamStart();
-					
-					String input = command + "\n";
-					input += "echo " + mCommandEnd + " $?\n";
-					
-					try {
-						mStdInput.write( input.getBytes() );
-						mStdInput.flush();
+				synchronized(mLock) {
+					if (waitFor(0, -1)) {
+						mListener.onStreamStart();
 						
-					} catch (IOException e) {
-						Log.w(TAG, e.getMessage(), e);
+						String input = command + "\n";
+						input += "echo " + mCommandEnd + " $?\n";
+						
+						try {
+							mStdInput.write( input.getBytes() );
+							
+							/*
+							 * Things often get written to the shell without flush().
+							 * This breaks when using exit, as it some times get destroyed before reaching here. 
+							 */
+							if (mStdInput != null) {
+								mStdInput.flush();
+							}
+							
+						} catch (IOException e) {
+							Log.w(TAG, e.getMessage(), e);
+						}
 					}
 				}
 			}
@@ -265,23 +273,23 @@ public class ShellStream {
 		if (counter > 0) {
 			Long timeoutMilis = timeout > 0 ? System.currentTimeMillis() + timeout : 0L;
 			
-			while (mCounter.size() > 0 && mIsActive) {
-				try {
-					counter -= 1;
-					
-					synchronized(mLock) {
-						mLock.wait(timeout.longValue());
-					}
-					
-					if (timeout > 0 && System.currentTimeMillis() >= timeoutMilis) {
-						return mCounter.size() == 0 && mIsActive;
+			synchronized(mLock) {
+				while (mCounter.size() > 0 && mIsActive) {
+					try {
+						counter -= 1;
 						
-					} else if (counter <= 0) {
-						break;
+						mLock.wait(timeout.longValue());
+						
+						if (timeout > 0 && System.currentTimeMillis() >= timeoutMilis) {
+							return mCounter.size() == 0 && mIsActive;
+							
+						} else if (counter <= 0) {
+							return mIsActive;
+						}
+						
+					} catch (InterruptedException e) {
+						Log.w(TAG, e.getMessage(), e);
 					}
-					
-				} catch (InterruptedException e) {
-					Log.w(TAG, e.getMessage(), e);
 				}
 			}
 		}
@@ -339,14 +347,8 @@ public class ShellStream {
 			mStdOutputWorker.interrupt();
 			mStdOutputWorker = null;
 			
-			synchronized (mLocks) {
-				for (Object lock : mLocks) {
-					synchronized(lock) {
-						lock.notifyAll();
-					}
-				}
-				
-				mLocks.clear();
+			synchronized (mLock) {
+				mLock.notifyAll();
 			}
 			
 			mListener.onStreamDied();
