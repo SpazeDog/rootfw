@@ -65,7 +65,7 @@ public class FileReader extends Reader {
 			mStream = new InputStreamReader(new FileInputStream(filePath));
 			
 		} catch (FileNotFoundException e) {
-			String binary = shell != null ? shell.getBinary("cat") : "toolbox cat";
+			String binary = shell != null ? shell.findCommand("cat") : "toolbox cat";
 			
 			try {
 				ProcessBuilder builder = new ProcessBuilder("su");

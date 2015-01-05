@@ -258,8 +258,8 @@ public class RootFW {
 	/**
 	 * @see Shell#getBinary(String)
 	 */
-	public static String getBinary(String bin) {
-		return mShell.getBinary(bin);
+	public static String findCommand(String bin) {
+		return mShell.findCommand(bin);
 	}
 	
 	/**

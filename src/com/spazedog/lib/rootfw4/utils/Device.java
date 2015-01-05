@@ -291,7 +291,7 @@ public class Device {
 			 * We need to check if we have some kind of pidof support from either busybox, toolbox or another registered binary. 
 			 * If not, we fallback on a /proc search. 
 			 */
-			String cmd = mShell.getBinary("pidof");
+			String cmd = mShell.findCommand("pidof");
 			
 			if (cmd != null) {
 				Result result = mShell.execute(cmd + " '" + mProcess + "'");
@@ -327,7 +327,7 @@ public class Device {
 		 */
 		public Integer[] getPids() {
 			String name = getName();
-			String cmd = mShell.getBinary("pidof");
+			String cmd = mShell.findCommand("pidof");
 			
 			if (cmd != null) {
 				Result result = mShell.createAttempts(cmd + " '" + name + "'").execute();

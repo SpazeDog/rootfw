@@ -57,7 +57,7 @@ public class FileWriter extends Writer {
 			mStream = new DataOutputStream(new FileOutputStream(filePath, append));
 			
 		} catch (IOException e) {
-			String binary = shell != null ? shell.getBinary("cat") : "toolbox cat";
+			String binary = shell != null ? shell.findCommand("cat") : "toolbox cat";
 			
 			try {
 				mProcess = new ProcessBuilder("su").start();

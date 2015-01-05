@@ -631,7 +631,7 @@ public class Shell {
 	 * @param bin
 	 *     The command to check
 	 */
-	public String getBinary(String bin) {
+	public String findCommand(String bin) {
 		if (!mBinaries.containsKey(bin)) {
 			for (String toolbox : Common.BINARIES) {
 				String cmd = toolbox != null && toolbox.length() > 0 ? toolbox + " " + bin : bin;
