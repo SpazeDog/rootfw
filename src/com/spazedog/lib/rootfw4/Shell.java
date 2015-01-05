@@ -66,7 +66,7 @@ public class Shell {
 	protected Boolean mIsRoot = false;
 	protected List<String> mOutput = null;
 	protected Integer mResultCode = 0;
-	protected Integer mShellTimeout = 1500;
+	protected Integer mShellTimeout = 15000;
 	protected Set<Integer> mResultCodes = new HashSet<Integer>();
 	
 	/**
