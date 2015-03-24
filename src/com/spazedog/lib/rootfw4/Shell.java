@@ -399,7 +399,9 @@ public class Shell {
 					cmdCount += 1;
 				}
 				
-				return new Result(mOutput.toArray(new String[mOutput.size()]), mResultCode, codes.toArray(new Integer[codes.size()]), cmdCount);
+				if (mOutput != null) {
+					return new Result(mOutput.toArray(new String[mOutput.size()]), mResultCode, codes.toArray(new Integer[codes.size()]), cmdCount);
+				}
 			}
 			
 			return null;
