@@ -138,11 +138,16 @@ public class ShellStream {
 					try {
 						while (mIsActive && (output = mStdOutput.readLine()) != null) {
 							if (mListener != null && mCounter.size() > 0) {
-								if (output.startsWith(mCommandEnd)) {
+								if (output.contains(mCommandEnd)) {
 									Integer result = 0;
 									
 									try {
-										result = Integer.parseInt(output.substring(mCommandEnd.length()+1));
+										if (output.startsWith(mCommandEnd)) {
+											result = Integer.parseInt(output.substring(mCommandEnd.length()+1));
+											
+										} else {
+											result = 1;
+										}
 										
 									} catch (Throwable e) {
 										Log.w(TAG, e.getMessage(), e);
@@ -204,7 +209,7 @@ public class ShellStream {
 						mListener.onStreamStart();
 						
 						String input = command + "\n";
-						input += "echo " + mCommandEnd + " $?\n";
+						input += "    echo " + mCommandEnd + " $?\n";
 						
 						try {
 							mStdInput.write( input.getBytes() );
