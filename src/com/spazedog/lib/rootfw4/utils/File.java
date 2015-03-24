@@ -1092,6 +1092,8 @@ public class File {
 			}
 			
 			if (builder.length() > 0) {
+				builder.append(" '" + getAbsolutePath() + "'");
+				
 				Result result = mShell.createAttempts(builder.toString()).execute();
 				
 				if (result != null && result.wasSuccessful()) {
