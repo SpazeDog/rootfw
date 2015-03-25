@@ -589,8 +589,9 @@ public class File {
 					for (String line : input) {
 						String escapedInput = oPatternEscape.matcher(line).replaceAll("\\\\$1");
 						Attempts attempts = mShell.createAttempts("echo '" + escapedInput + "' " + redirect + " '" + path + "' 2> /dev/null");
+						Result result = attempts.execute();
 						
-						if (!(status = attempts.execute().wasSuccessful())) {
+						if (result != null && !(status = result.wasSuccessful())) {
 							break;
 						}
 						
