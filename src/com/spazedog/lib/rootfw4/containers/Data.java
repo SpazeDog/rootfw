@@ -303,6 +303,24 @@ public class Data<DATATYPE extends Data<DATATYPE>> extends BasicContainer {
 	}
 	
 	/**
+	 * Reverses the lines in this collection
+	 *     
+	 * @return
+	 *     This instance
+	 */
+	public DATATYPE reverse() {
+		String[] lines = mLines;
+		
+		mLines = new String[lines.length];
+		
+		for (int i=lines.length-1, x=0; i >= 0; i--, x++) {
+			mLines[x] = lines[i];
+		}
+		
+		return (DATATYPE) this;
+	}
+	
+	/**
 	 * This method will remove all of the empty lines from the data array
 	 *     
 	 * @return
