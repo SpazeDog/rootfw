@@ -27,12 +27,13 @@ import com.spazedog.lib.rootfw4.Shell.OnShellConnectionListener;
 import com.spazedog.lib.rootfw4.Shell.OnShellResultListener;
 import com.spazedog.lib.rootfw4.Shell.OnShellValidateListener;
 import com.spazedog.lib.rootfw4.Shell.Result;
+import com.spazedog.lib.rootfw4.Shell.StreamCollector;
 import com.spazedog.lib.rootfw4.utils.Device;
 import com.spazedog.lib.rootfw4.utils.Device.Process;
 import com.spazedog.lib.rootfw4.utils.File;
 import com.spazedog.lib.rootfw4.utils.Filesystem;
-import com.spazedog.lib.rootfw4.utils.Memory;
 import com.spazedog.lib.rootfw4.utils.Filesystem.Disk;
+import com.spazedog.lib.rootfw4.utils.Memory;
 import com.spazedog.lib.rootfw4.utils.Memory.CompCache;
 import com.spazedog.lib.rootfw4.utils.Memory.Swap;
 import com.spazedog.lib.rootfw4.utils.io.FileReader;
@@ -207,6 +208,13 @@ public class RootFW {
 	}
 	
 	/**
+	 * @see Shell#execute(StreamCollector)
+	 */
+	public static Result execute(StreamCollector collector) {
+		return mShell.execute(collector);
+	}
+	
+	/**
 	 * @see Shell#executeAsync(String, OnShellResultListener)
 	 */
 	public static void executeAsync(String command, OnShellResultListener listener) {
@@ -225,6 +233,13 @@ public class RootFW {
 	 */
 	public static void executeAsync(String[] commands, Integer[] resultCodes, OnShellValidateListener validater, OnShellResultListener listener) {
 		mShell.executeAsync(commands, resultCodes, validater, listener);
+	}
+	
+	/**
+	 * @see Shell#executeAsync(StreamCollector, OnShellResultListener)
+	 */
+	public static void executeAsync(StreamCollector collector, OnShellResultListener listener) {
+		mShell.executeAsync(collector, listener);
 	}
 	
 	/**

@@ -23,8 +23,6 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
 
 import android.util.Log;
 
@@ -32,6 +30,22 @@ import android.util.Log;
  * This class opens a connection to the shell and creates a consistent output stream
  * that can be read using the {@link ShellStream.OnStreamListener} interface. It also
  * contains an input stream that can be used to execute shell commands. 
+ * 
+ * @deprecated
+ * 
+ * This class is deprecated and should no longer be used. 
+ * Instead use the replacement class {@link ShellStreamer}. 
+ * This class was replaced for several reasons. <br /><br />
+ * 
+ * For one this class has some limitations as a shell streamer in that 
+ * it cannot provide constant output. It can only work as a constant input streamer.<br /><br />
+ * 
+ * Second this class contains some dangerous synchronized blocks. It has not provided any issues so far, 
+ * but in theory it could provide a bottleneck if used across multiple threads.<br /><br />
+ * 
+ * Last it was not possible to fix it's issues without compromising backward compatibility. 
+ * So a new class was created instead and this one will stay for an unknown period of time so not 
+ * to break old code on update. 
  */
 public class ShellStream {
 	public static final String TAG = Common.TAG + ".ShellStream";
@@ -83,6 +97,12 @@ public class ShellStream {
 	
 	/**
 	 * This interface is used to read the input from the shell.
+	 * 
+	 * @deprecated
+	 * 
+	 * This has been deprecated along with it's parent {@link ShellStream}. 
+	 * It has been replaced by {@link ShellStreamer.StreamListener} and {@link ShellStreamer.ConnectionListener} 
+	 * to be used with the new {@link ShellStreamer} class. 
 	 */
 	public static interface OnStreamListener {
 		/**

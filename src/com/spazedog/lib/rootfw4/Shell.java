@@ -33,7 +33,8 @@ import java.util.WeakHashMap;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.spazedog.lib.rootfw4.ShellStream.OnStreamListener;
+import com.spazedog.lib.rootfw4.ShellStreamer.ConnectionListener;
+import com.spazedog.lib.rootfw4.ShellStreamer.StreamListener;
 import com.spazedog.lib.rootfw4.containers.Data;
 import com.spazedog.lib.rootfw4.utils.Device;
 import com.spazedog.lib.rootfw4.utils.Device.Process;
@@ -47,9 +48,9 @@ import com.spazedog.lib.rootfw4.utils.io.FileReader;
 import com.spazedog.lib.rootfw4.utils.io.FileWriter;
 
 /**
- * This class is a front-end to {@link ShellStream} which makes it easier to work
- * with normal shell executions. If you need to execute a consistent command (one that never ends), 
- * you should work with {@link ShellStream} directly. 
+ * This class is a front-end to {@link ShellStreamer} which makes it easier to work
+ * with normal shell executions. If you need to execute a consistent command (one that never ends, like a daemon or similar), 
+ * you should work with {@link ShellStreamer} directly. 
  */
 public class Shell {
 	public static final String TAG = Common.TAG + ".Shell";
@@ -61,10 +62,11 @@ public class Shell {
 	protected Set<OnShellConnectionListener> mConnectionRecievers = new HashSet<OnShellConnectionListener>();
 	
 	protected Object mLock = new Object();
-	protected ShellStream mStream;
+	protected ShellStreamer mStream;
+	protected Boolean mAllowDisconnect = false;
 	protected Boolean mIsConnected = false;
 	protected Boolean mIsRoot = false;
-	protected List<String> mOutput = null;
+	protected List<String> mOutput = new ArrayList<String>();
 	protected Integer mResultCode = 0;
 	protected Integer mShellTimeout = 15000;
 	protected Set<Integer> mResultCodes = new HashSet<Integer>();
@@ -172,6 +174,123 @@ public class Shell {
 	}
 	
 	/**
+	 * This is mostly an internal class that is used to collect data from the 
+	 * {@link ShellStreamer}. But since there really is no reason for making this private, it's not.
+	 * But should this class be extended and parsed to methods in {@link Shell}, it might be a good idea to review the source 
+	 * for it first. It is used to make synchronized calls to {@link ShellStreamer} that normally works asynchronized.
+	 */
+	public static class StreamCollector implements StreamListener {
+		protected final Object mLock = new Object();
+		
+		protected String[] mAttempts;
+		protected Set<Integer> mValidResults;
+		protected OnShellValidateListener mListener;
+		
+		protected volatile boolean mHasResult = false;
+		protected volatile int mAttemptNumber = -1;
+		protected volatile int mResultCode = 0;
+		protected volatile List<String> mOutputLines = new ArrayList<String>();
+		
+		public StreamCollector(String[] attempts, Set<Integer> resultCodes, OnShellValidateListener validater) {
+			mAttempts = attempts;
+			mValidResults = resultCodes;
+			mListener = validater;
+			
+			if (mValidResults == null || mValidResults.size() == 0) {
+				mValidResults = new HashSet<Integer>();
+				mValidResults.add(0);
+			}
+		}
+
+		@Override
+		public void onStreamStart(ShellStreamer shell) {
+			mAttemptNumber += 1;
+			mOutputLines.clear();
+			
+			if(Common.DEBUG)Log.d(TAG, "onStreamStart: Executing attempt " + (mAttemptNumber + 1) + " of " + mAttempts.length);
+			
+			if (mAttemptNumber < mAttempts.length) {
+				if(Common.DEBUG)Log.d(TAG, "onStreamStart: Executing the command '" + mAttempts[ mAttemptNumber ] + "'");
+				
+				shell.writeLine(mAttempts[ mAttemptNumber ]);
+			}
+			
+			shell.stopStream();
+		}
+
+		@Override
+		public void onStreamInput(ShellStreamer shell, String outputLine) {
+			if(Common.DEBUG)Log.d(TAG, "onStreamInput: " + (outputLine != null ? (outputLine.length() > 50 ? outputLine.substring(0, 50) + " ..." : outputLine) : "NULL"));
+			
+			mOutputLines.add(outputLine);
+		}
+
+		@Override
+		public void onStreamStop(ShellStreamer shell, int resultCode) {
+			if(Common.DEBUG)Log.d(TAG, "onStreamStop: The command finished with the result code '" + resultCode + "'");
+			
+			mResultCode = resultCode;
+			
+			if (mAttemptNumber < mAttempts.length) {
+				if ((mListener != null && mListener.onShellValidate(mAttempts[ mAttemptNumber ], mResultCode, mOutputLines, mValidResults)) || mValidResults.contains(mResultCode)) {
+					/*
+					 * The validater might have it's own result code that is not in the array
+					 */
+					mValidResults.add(mResultCode);
+					
+				} else {
+					shell.repeatStream(); return;
+				}
+			}
+			
+			releaseResult();
+		}
+		
+		protected void releaseResult() {
+			if (!mHasResult) {
+				mHasResult = true;
+				
+				synchronized (mLock) {
+					mLock.notifyAll();
+				}
+			}
+		}
+		
+		public boolean waitForResult(long timeout) {
+			synchronized(mLock) {
+				while (!mHasResult) {
+					long timeoutMilis = timeout > 0 ? System.currentTimeMillis() + timeout : 0l;
+					
+					try {
+						if(Common.DEBUG)Log.d(TAG, "waitForResult: Waiting for result to be released");
+						
+						mLock.wait(timeout);
+						
+					} catch (InterruptedException e) {}
+					
+					if (timeout > 0 && (timeoutMilis - System.currentTimeMillis()) < 0) {
+						if(Common.DEBUG)Log.d(TAG, "waitForResult: Result was not released. ShellStreamer timedout after " + (timeout / 1000) + " seconds");
+						
+						return false;
+					}
+				}
+				
+				if(Common.DEBUG)Log.d(TAG, "waitForResult: Releasing result");
+				
+				return true;
+			}
+		}
+		
+		public Result getResult() {
+			if (mHasResult) {
+				return new Result(mOutputLines.toArray(new String[mOutputLines.size()]), mResultCode, mValidResults.toArray(new Integer[mValidResults.size()]), mAttemptNumber);
+			}
+			
+			return null;
+		}
+	}
+	
+	/**
 	 * A class containing automatically created shell attempts and links to both {@link Shell#executeAsync(String[], Integer[], OnShellResultListener)} and {@link Shell#execute(String[], Integer[])} <br /><br />
 	 * 
 	 * All attempts are created based on {@link Common#BINARIES}. <br /><br />
@@ -238,14 +357,47 @@ public class Shell {
 	}
 	
 	/**
-	 * Establish a {@link ShellStream} connection.
+	 * Establish a {@link ShellStreamer} connection.
 	 * 
 	 * @param requestRoot
 	 *     Whether or not to request root privileges for the shell connection
 	 */
-	public Shell(Boolean requestRoot) {
+	public Shell(final Boolean requestRoot) {
 		mResultCodes.add(0);
+		mAllowDisconnect = false;
 		mIsRoot = requestRoot;
+		mStream = new ShellStreamer();
+		mStream.addConnectionListener(new ConnectionListener(){
+			@Override
+			public void onShellConnected(ShellStreamer shell) {
+				if(Common.DEBUG)Log.d(TAG, "Listener: ShellStreamer connection has been established");
+				
+				mInstances.add(Shell.this);
+			}
+
+			@Override
+			public void onShellDisconnected(ShellStreamer shell) {
+				if(Common.DEBUG)Log.d(TAG, "Listener: ShellStreamer connection has been disconnected");
+				
+				mInstances.remove(Shell.this);
+				
+				if (mIsConnected && !mAllowDisconnect) {
+					mStream = shell;
+
+					if (mStream.connect(requestRoot)) {
+						return;
+					}
+				}
+				
+				shell.removeConnectionListener(this);
+				
+				mIsConnected = false;
+				
+				for (OnShellConnectionListener reciever : mConnectionRecievers) {
+					reciever.onShellDisconnect();
+				}
+			}
+		});
 		
 		/*
 		 * Kutch superuser daemon mode sometimes has problems connecting the first time.
@@ -254,67 +406,8 @@ public class Shell {
 		for (int i=0; i < 2; i++) {
 			if(Common.DEBUG)Log.d(TAG, "Construct: Running connection attempt number " + (i+1));
 			
-			mStream = new ShellStream(requestRoot, new OnStreamListener() {
-				@Override
-				public void onStreamStart() {
-					if(Common.DEBUG)Log.d(TAG, "onStreamStart: ...");
-					
-					mOutput = new ArrayList<String>();
-				}
-
-				@Override
-				public void onStreamInput(String outputLine) {
-					if(Common.DEBUG)Log.d(TAG, "onStreamInput: " + (outputLine != null ? (outputLine.length() > 50 ? outputLine.substring(0, 50) + " ..." : outputLine) : "NULL"));
-					
-					mOutput.add(outputLine);
-				}
-
-				@Override
-				public void onStreamStop(Integer resultCode) {
-					if(Common.DEBUG)Log.d(TAG, "onStreamStop: " + resultCode);
-					
-					mResultCode = resultCode;
-				}
-
-				@Override
-				public void onStreamDied() {
-					if(Common.DEBUG)Log.d(TAG, "onStreamDied: The stream has been closed");
-					
-					if (mIsConnected) {
-						if(Common.DEBUG)Log.d(TAG, "onStreamDied: The stream seams to have died, reconnecting");
-						
-						mStream = new ShellStream(mIsRoot, this);
-						
-						if (mStream.isActive()) {
-							Result result = execute("echo connected");
-							
-							mIsConnected = result != null && "connected".equals(result.getLine());
-							
-						} else {
-							if(Common.DEBUG)Log.d(TAG, "onStreamDied: Could not reconnect");
-							
-							mIsConnected = false;
-						}
-					}
-					
-					if (!mIsConnected) {
-						for (OnShellConnectionListener reciever : mConnectionRecievers) {
-							reciever.onShellDisconnect();
-						}
-					}
-				}
-			});
-			
-			if (mStream.isActive()) {
-				Result result = execute("echo connected");
-				
-				mIsConnected = result != null && "connected".equals(result.getLine());
-				
-				if (mIsConnected) {
-					if(Common.DEBUG)Log.d(TAG, "Construct: Connection has been established");
-					
-					mInstances.add(this); break;
-				}
+			if (mStream.connect(requestRoot)) {
+				mIsConnected = true; break;
 			}
 		}
 	}
@@ -346,7 +439,7 @@ public class Shell {
 	/**
 	 * Execute a range of commands until one is successful.<br /><br />
 	 * 
-	 * Android shells differs a lot from one another, which makes it difficult to program shell scripts for. 
+	 * Android shells differs a lot from one another, which makes it difficult to program shell scripts for it. 
 	 * This method can help with that by trying different commands until one works. <br /><br />
 	 * 
 	 * <code>Shell.execute( new String(){"cat file", "toolbox cat file", "busybox cat file"} );</code><br /><br />
@@ -362,50 +455,46 @@ public class Shell {
 	 *     
 	 * @param validater
 	 *     A {@link OnShellValidateListener} instance or NULL
-	 */
+	 */	
 	public Result execute(String[] commands, Integer[] resultCodes, OnShellValidateListener validater) {
-		synchronized(mLock) {
-			if (mStream.waitFor(mShellTimeout)) {
-				Integer cmdCount = 0;
-				Set<Integer> codes = new HashSet<Integer>(mResultCodes);
-				
-				if (resultCodes != null) {
-					Collections.addAll(codes, resultCodes);
-				}
-				
-				for (String command : commands) {
-					if(Common.DEBUG)Log.d(TAG, "execute: Executing the command '" + command + "'");
+		if (mIsConnected) {
+			Set<Integer> codes = new HashSet<Integer>(mResultCodes);
+			
+			if (resultCodes != null) {
+				Collections.addAll(codes, resultCodes);
+			}
+
+			return execute( new StreamCollector(commands, codes, validater) );
+		}
+		
+		return null;
+	}
+	
+	/**
+	 * Start a stream on this instance's {@link ShellStreamer} using the default or a custom version of 
+	 * {@link StreamCollector}.
+	 * 
+	 * @return
+	 * 		{@link Result} collected by the parsed {@link StreamCollector}
+	 */
+	public Result execute(StreamCollector collector) {
+		if (mIsConnected) {
+			if (mStream.startStream(collector)) {
+				if (collector.waitForResult(mShellTimeout)) {
+					return collector.getResult();
 					
-					mStream.execute(command);
+				} else {
+					if(Common.DEBUG)Log.d(TAG, "execute: The shell timedout, doing a force reconnect");
 					
-					if(!mStream.waitFor(mShellTimeout)) {
-						/*
-						 * Something is wrong, reconnect to the shell.
-						 */
-						mStream.destroy();
-						
-						return null;
-					}
-					
-					if(Common.DEBUG)Log.d(TAG, "execute: The command finished with the result code '" + mResultCode + "'");
-					
-					if ((validater != null && validater.onShellValidate(command, mResultCode, mOutput, codes)) || codes.contains(mResultCode)) {
-						/*
-						 * If a validater excepts this, then add the result code to the list of successful codes 
-						 */
-						codes.add(mResultCode); break;
-					}
-					
-					cmdCount += 1;
-				}
-				
-				if (mOutput != null) {
-					return new Result(mOutput.toArray(new String[mOutput.size()]), mResultCode, codes.toArray(new Integer[codes.size()]), cmdCount);
+					/*
+					 * Something is wrong, reconnect to the shell.
+					 */
+					mStream.disconnect();
 				}
 			}
-			
-			return null;
 		}
+		
+		return null;
 	}
 	
 	/**
@@ -457,40 +546,37 @@ public class Shell {
 	 */
 	public synchronized void executeAsync(final String[] commands, final Integer[] resultCodes, final OnShellValidateListener validater, final OnShellResultListener listener) {
 		if(Common.DEBUG)Log.d(TAG, "executeAsync: Starting an async shell execution");
-		
-		/*
-		 * If someone execute more than one async task after another, and use the same listener, 
-		 * we could end up getting the result in the wrong order. We need to make sure that each Thread is started in the correct order. 
-		 */
-		final Object lock = new Object();
-		
+
 		new Thread() {
 			@Override
 			public void run() {
-				Result result = null;
-				
-				synchronized (lock) {
-					lock.notifyAll();
-				}
-				
-				synchronized(mLock) {
-					result = Shell.this.execute(commands, resultCodes, validater);
-				}
+				Result result = Shell.this.execute(commands, resultCodes, validater);
 				
 				listener.onShellResult(result);
 			}
 			
 		}.start();
-		
-		/*
-		 * Do not exit this method, until the Thread is started. 
-		 */
-		synchronized (lock) {
-			try {
-				lock.wait();
+	}
+	
+	/**
+	 * Start a stream on this instance's {@link ShellStreamer} asynchronous using the default or a custom version of 
+	 * {@link StreamCollector}.
+	 * 
+	 * @param listener
+	 *     A {@link Shell.OnShellResultListener} callback instance
+	 */
+	public synchronized void executeAsync(final StreamCollector collector, final OnShellResultListener listener) {
+		if(Common.DEBUG)Log.d(TAG, "executeAsync: Starting an async shell execution");
+
+		new Thread() {
+			@Override
+			public void run() {
+				Result result = Shell.this.execute(collector);
 				
-			} catch (InterruptedException e) {}
-		}
+				listener.onShellResult(result);
+			}
+			
+		}.start();
 	}
 	
 	/**
@@ -609,12 +695,15 @@ public class Shell {
 	 */
 	public void destroy() {
 		if (mStream != null) {
-			mIsConnected = false;
+			/*
+			 * Do not auto-reconnect
+			 */
+			mAllowDisconnect = true;
 			
-			if (mStream.isRunning() || !mStream.isActive()) {
+			if (mStream.isBusy()) {
 				if(Common.DEBUG)Log.d(TAG, "destroy: Destroying the stream");
 				
-				mStream.destroy();
+				mStream.disconnect();
 				
 			} else {
 				if(Common.DEBUG)Log.d(TAG, "destroy: Making a clean exit on the stream");
@@ -622,6 +711,7 @@ public class Shell {
 				execute("exit 0");
 			}
 			
+			mIsConnected = false;
 			mStream = null;
 			mInstances.remove(this);
 			mBroadcastRecievers.clear();
