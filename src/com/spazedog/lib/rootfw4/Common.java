@@ -29,13 +29,41 @@ import android.os.Process;
 public class Common {
 	private static Boolean oEmulator = false;
 	
+	/**
+	 * A tag used when logging
+	 */
 	public static final String TAG = Common.class.getPackage().getName();
+	
+	/**
+	 * Enables/Disables debug logging. In cases where this is disabled, errors will still be logged.
+	 */
 	public static Boolean DEBUG = true;
+	
+	/**
+	 * This is a collection of All-in-one binaries that is used together with 
+	 * the helper method 'Shell.Attempts Shell.createAttempts(String command)'
+	 */
 	public static String[] BINARIES = new String[]{null, "busybox", "toolbox"};
+	
+	/**
+	 * A collection of all Android's User/Group ID's
+	 * 
+	 * @see #getUID(String)
+	 */
 	public static Map<String, Integer> UIDS = new HashMap<String, Integer>();
+	
+	/**
+	 * A collection of all Android's User/Group names
+	 * 
+	 * @see #getUIDName(Integer)
+	 */
 	public static Map<Integer, String> UNAMES = new HashMap<Integer, String>();
 	
 	static {
+		/*
+		 * All of Android's internal user/group names are static. 
+		 * We can't get a list, so we create one with the names and their id.
+		 */
 		UIDS.put("root", 0);
 		UIDS.put("system", 1000);
 		UIDS.put("radio", 1001);
@@ -62,6 +90,9 @@ public class Common {
 		UIDS.put("misc", 9998);
 		UIDS.put("nobody", 9999);
 		
+		/*
+		 * Make sure that we can also find the names based on ID's
+		 */
 		for (Entry<String, Integer> entry : UIDS.entrySet()) {
 			UNAMES.put(entry.getValue(), entry.getKey());
 		}
@@ -79,6 +110,18 @@ public class Common {
 		return oEmulator;
 	}
 	
+	/**
+	 * Locate a User/Group Id based on the User/Group name. <br /><br />
+	 * 
+	 * Android's internal Users/Groups are static and this will return 
+	 * an id from the RootFW internal cache {@link #UIDS}.<br /><br />
+	 * 
+	 * Applications have a specific ID/Name pattern which this method 
+	 * will use to re-create the Id from the name. 
+	 * 
+	 * @param name
+	 * 		The User/Group name
+	 */
 	public static Integer getUID(String name) {
 		if (name != null) {
 			if (name.matches("^[0-9]+$")) {
@@ -103,6 +146,18 @@ public class Common {
 		return -10000;
 	}
 	
+	/**
+	 * Locate a User/Group name based on the User/Group id. <br /><br />
+	 * 
+	 * Android's internal Users/Groups are static and this will return 
+	 * an id from the RootFW internal cache {@link #UNAMES}.<br /><br />
+	 * 
+	 * Applications have a specific ID/Name pattern which this method 
+	 * will use to re-create the name from the id. 
+	 * 
+	 * @param id
+	 * 		The User/Group Id
+	 */
 	public static String getUIDName(Integer id) {
 		if (UNAMES.containsKey(id)) {
 			return UNAMES.get(id);
