@@ -62,6 +62,32 @@ public class RootFW {
 		 */
 		public void onShellConnect();
 	}
+
+    /**
+     * Internal Use
+     */
+    protected static OnConnectionListener mShellListener = new OnConnectionListener(){
+        @Override
+        public void onShellConnect() {
+            for (OnConnectionListener listener : mListeners) {
+                listener.onShellConnect();
+            }
+        }
+
+        @Override
+        public void onShellDisconnect() {
+            for (OnConnectionListener listener : mListeners) {
+                listener.onShellDisconnect();
+            }
+        }
+    };
+
+    /**
+     * @see #connect(boolean)
+     */
+    public static Boolean connect() {
+        return connect(true);
+    }
 	
 	/**
 	 * Create a new connection to the global shell.<br /><br />
@@ -72,32 +98,36 @@ public class RootFW {
 	 * @return 
 	 *     True if the shell was connected successfully
 	 */
-	public static Boolean connect() {
+	public static Boolean connect(boolean useRoot) {
 		synchronized(mLock) {
-			if (mShell == null || !mShell.isConnected()) {
-				mLockCount = 0;
-				mShell = new Shell(true);
-				
-				/*
-				 * Fallback to a regular user shell
-				 */
-				if (!mShell.isConnected()) {
-					mShell = new Shell(false);
-				}
-				
-				mShell.addShellConnectionListener(new OnShellConnectionListener(){
-					@Override
-					public void onShellDisconnect() {
-						for (OnConnectionListener listener : mListeners) {
-							listener.onShellDisconnect();
-						}
-					}
-				});
-				
-				for (OnConnectionListener listener : mListeners) {
-					listener.onShellConnect();
-				}
-			}
+            boolean connect = mShell == null || !mShell.isConnected();
+            boolean reconnect = !connect && useRoot && !mShell.isRoot();
+
+            if (connect || reconnect) {
+                if (mShell != null) {
+                    mShell.removeShellConnectionListener(mShellListener);
+                }
+
+                if (connect) {
+                    mLockCount = 0;
+
+                } else {
+                    mShell.destroy();
+                }
+
+                mShell = new Shell(useRoot);
+
+                if (mShell.isConnected()) {
+                    mShell.addShellConnectionListener(mShellListener);
+
+                    if (connect) {
+                        mShellListener.onShellConnect();
+                    }
+
+                } else if (reconnect) {
+                    mShellListener.onShellDisconnect();
+                }
+            }
 			
 			return mShell.isConnected();
 		}
@@ -271,7 +301,7 @@ public class RootFW {
 	}
 	
 	/**
-	 * @see Shell#getBinary(String)
+	 * @see Shell#findCommand(String)
 	 */
 	public static String findCommand(String bin) {
 		return mShell.findCommand(bin);
