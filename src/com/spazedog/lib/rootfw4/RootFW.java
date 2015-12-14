@@ -390,4 +390,18 @@ public class RootFW {
 	public static Swap getSwap(String device) {
 		return mShell.getSwap(device);
 	}
+
+    /**
+     * @see Shell#getEnv(String)
+     */
+    public static String getEnv(String env) {
+        return mShell.getEnv(env);
+    }
+
+    /**
+     * @see Shell#setEnv(String, Object)
+     */
+    public static void setEnv(String env, Object value) {
+        mShell.setEnv(env, value);
+    }
 }

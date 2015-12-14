@@ -744,6 +744,39 @@ public class Shell {
 		
 		return mBinaries.get(bin);
 	}
+
+    /**
+     * Get the value of an environment variable from the current shell
+     *
+     * @param env
+     *      Name of the variable
+     */
+    public String getEnv(String env) {
+        if (env != null) {
+            Result result = execute("echo $" + env.replaceAll("[^a-zA-Z0-9_\\-]+", ""));
+
+            if (result != null) {
+                return result.getLine();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Set/Change the value of an environment variable from the current shell
+     *
+     * @param env
+     *      Name of the variable
+     *
+     * @param value
+     *      Value of the variable
+     */
+    public void setEnv(String env, Object value) {
+        if (env != null && value != null) {
+            execute("export $" + env.replaceAll("[^a-zA-Z0-9_\\-]+", "") + "='" + String.valueOf(value).replaceAll("'", "\\'") + "'");
+        }
+    }
 	
 	/**
 	 * Create a new instance of {@link Attempts}
