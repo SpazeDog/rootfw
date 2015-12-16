@@ -10,6 +10,16 @@ RootFW is a tool that helps Android Applications act as root. The only way for a
 ### Include Library
 -----------
 
+**Maven**
+
+Reflect Tools is available in Maven respository at [Bintray](https://bintray.com/dk-zero-cool/maven/rootfw_gen4/view) and can be accessed via jCenter. 
+
+```
+dependencies {
+    compile 'com.spazedog.lib:rootfw_gen4'
+}
+```
+
 **Android Studio**
 
 First download the [rootfw-release.aar](https://github.com/SpazeDog/rootfw/raw/4_gen/projects/rootfw-release.aar) file. 
