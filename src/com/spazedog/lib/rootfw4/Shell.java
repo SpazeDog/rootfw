@@ -755,7 +755,7 @@ public class Shell {
         if (env != null) {
             Result result = execute("echo $" + env.replaceAll("[^a-zA-Z0-9_\\-]+", ""));
 
-            if (result != null) {
+            if (result != null && result.wasSuccessful()) {
                 return result.getLine();
             }
         }
@@ -772,10 +772,16 @@ public class Shell {
      * @param value
      *      Value of the variable
      */
-    public void setEnv(String env, Object value) {
+    public boolean setEnv(String env, Object value) {
         if (env != null && value != null) {
-            execute("export $" + env.replaceAll("[^a-zA-Z0-9_\\-]+", "") + "='" + String.valueOf(value).replaceAll("'", "\\'") + "'");
+            Result result = execute("export $" + env.replaceAll("[^a-zA-Z0-9_\\-]+", "") + "='" + String.valueOf(value).replaceAll("'", "\\'") + "'");
+
+            if (result != null) {
+                return result.wasSuccessful();
+            }
         }
+
+        return false;
     }
 	
 	/**
