@@ -1,6 +1,6 @@
 apply plugin: 'com.android.library'
 
-buildDir = '../../build/rootfw'
+buildDir = "${System.properties['user.home']}/.gradle/build/${rootProject.name}/${project.name}"
 
 android {
     compileSdkVersion 21
@@ -9,8 +9,8 @@ android {
     defaultConfig {
         minSdkVersion 9
         targetSdkVersion 22
-        versionCode 1
-        versionName "1.0.2"
+        versionCode 2
+        versionName "1.1.0"
     }
 
     sourceSets {
