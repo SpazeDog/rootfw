@@ -733,9 +733,9 @@ public class Shell {
 				Result result = execute( cmd + " -h" );
 					
 				if (result != null) {
-					String line = result.getLine();
+					String line = result.getLine().toLowerCase();
 					
-					if (!line.endsWith("not found") && !line.endsWith("such tool")) {
+					if (!line.endsWith("not found") && !line.endsWith("such tool") && !line.endsWith("unknown")) {
 						mBinaries.put(bin, cmd); break;
 					}
 				}

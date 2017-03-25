@@ -43,7 +43,7 @@ public class Common {
 	 * This is a collection of All-in-one binaries that is used together with 
 	 * the helper method 'Shell.Attempts Shell.createAttempts(String command)'
 	 */
-	public static String[] BINARIES = new String[]{null, "busybox", "toolbox"};
+	public static String[] BINARIES = new String[]{null, "toybox", "busybox", "toolbox"};
 	
 	/**
 	 * A collection of all Android's User/Group ID's
