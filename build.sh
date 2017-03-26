@@ -1,46 +1,144 @@
 #!/bin/bash
 
-BUILD_PATH="$(readlink -f "$(dirname $0)")"
-BUILD_TYPE="$1"
-BUILD_ACTION="$2"
-BUILD_HOME=~/.gradle/build/$(basename "$BUILD_PATH")
-BUILD_LIB="$BUILD_HOME/rootfw"
-BUILD_BINTRAY="$BUILD_HOME/bintray"
+#############################################
+#
+# ASSEMBLE VARIABLES
+#
 
-export PATH="$PATH:$BUILD_PATH"
+BUILD_TYPE=$1
 
 if [ -z "$BUILD_TYPE" ] || [[ "$BUILD_TYPE" != "debug" && "$BUILD_TYPE" != "release" ]]; then
     BUILD_TYPE="release"
 fi
 
-if [ -f "$BUILD_PATH/gradlew" ]; then
-    chmod +x "$BUILD_PATH/gradlew" 2> /dev/null
+BUILD_SRC="$(dirname "$(readlink -f "$0")")"
+BUILD_NAME=$(basename "$BUILD_SRC")
+
+LIB_DST=~/.gradle/build/$BUILD_NAME/rootfw
+LIB_SRC="$BUILD_SRC/src"
+LIB_PROJECT="$BUILD_SRC/projects/rootfw"
+LIB_FILE=$LIB_DST/outputs/aar/rootfw-$BUILD_TYPE.aar
+LIB_PKG="$LIB_PROJECT/../rootfw-$BUILD_TYPE.aar"
+
+BINTRAY_DST=~/.gradle/build/$BUILD_NAME/bintray
+BINTRAY_PACKAGE="rootfw_gen4"
+BINTRAY_GROUP="com.spazedog.lib"
+
+
+#############################################
+#
+# PREPARE GRADLEW
+#
+
+if [ ! -f "$BUILD_SRC/gradlew" ]; then
+    echo "Missing 'gradlew' in src directory"; exit 1
+
+else
+    chmod +x "$BUILD_SRC/gradlew" || exit 1
+    PATH="$BUILD_SRC:$PATH"
 fi
 
-if which gradlew 2>&1 > /dev/null; then
-    # Build RootFW
-    cd "$BUILD_PATH/projects/rootfw" || exit 1
-    gradlew clean || exit 1
-    gradlew build || exit 1
-    cp -f "$BUILD_LIB/outputs/aar/rootfw-$BUILD_TYPE.aar" "$BUILD_PATH/projects/" || exit 1
 
-    # BitTray Upload
-    if [ "$BUILD_ACTION" = "publish" ]; then
-        if [ ! -f "$BUILD_PATH/bintray.properties" ]; then
-            echo "Cannot publish. Missing Bintray Properties!"; exit 1
+#############################################
+#
+# BUILD PROJECT
+#
 
-        elif ! which curl > /dev/null 2>&1; then
-            echo "Cannot publish. Missing 'curl' binary"; exit 1
+cd "$LIB_PROJECT"
+
+gradlew clean || exit 1
+
+if [ "$BUILD_TYPE" = "release" ]; then
+    gradlew assembleRelease || exit 1
+
+else
+    gradlew --debug assembleDebug || exit 1
+fi
+
+if [ -f "$LIB_FILE" ]; then
+    mv -f "$LIB_FILE" "$LIB_PKG" || exit 1
+
+else
+    echo "Output aar file does not exist"; exit 1
+fi
+
+
+#############################################
+#
+# SIGN PACKAGE
+#
+
+echo -n "Do you want to sign the library? [Y/N]: "
+
+stty_bak=$(stty -g)
+stty raw -echo
+answer=$( while ! head -c 1 | grep -i '[ny]'; do true; done )
+stty $stty_bak
+
+echo $answer
+
+if echo $answer | grep -iq "^y"; then
+    if which jarsigner > /dev/null 2>&1; then
+        read -e -p "KeyStore: " KEYSTORE
+
+        if [ -f "$KEYSTORE" ]; then
+            KEYSTORE="$(readlink -f "$KEYSTORE")"
+
+            read -p "Alias: " ALIAS
+            read -s -p "Store Password: " STOREPWD
+            echo ""
+            read -s -p "Key Password: [Optional] " KEYPWD
+            echo ""
+
+            if [ -z "$KEYPWD" ]; then
+                KEYPWD=$STOREPWD
+            fi
+
+            zip -d "$LIB_PKG" META-INF/* 2> /dev/null
+            jarsigner -tsa http://timestamp.digicert.com -verbose -sigalg MD5withRSA -digestalg SHA1 -keystore "$KEYSTORE" -storepass $STOREPWD -keypass $KEYPWD "$LIB_PKG" $ALIAS || exit 1
+
+        else
+            echo "Could not find the KeyStore at the specified location"; exit 1
         fi
 
-        rm -rf "$BUILD_BINTRAY" 2> /dev/null
-        mkdir -p "$BUILD_BINTRAY/META_INF"
+    else
+        echo "Could not locate the binary 'jarsigner'"; exit 1
+    fi
+fi
 
-cat << 'EOF' > "$BUILD_BINTRAY/META_INF/MANIFEST.MF"
+
+#############################################
+#
+# PUBLISH PACKAGE
+#
+
+if [ -n "$KEYSTORE" ]; then
+    echo -n "Do you want to publish the library? [Y/N]: "
+
+    stty_bak=$(stty -g)
+    stty raw -echo
+    answer=$( while ! head -c 1 | grep -i '[ny]'; do true; done )
+    stty $stty_bak
+
+    echo $answer
+
+    if echo $answer | grep -iq "^y"; then
+        if which curl > /dev/null 2>&1; then
+            read -e -p "Bintray KeyFile: " KEYFILE
+
+            if [ -f "$KEYFILE" ]; then
+                KEYFILE="$(readlink -f "$KEYFILE")"
+
+                read -p "Bintray Username: " USERNAME
+
+                rm -rf "$BINTRAY_DST" 2> /dev/null
+                mkdir -p "$BINTRAY_DST/META_INF"
+
+cat << 'EOF' > "$BINTRAY_DST/META_INF/MANIFEST.MF"
 Manifest-Version: 1.0
 EOF
 
-cat << 'EOF' > "$BUILD_BINTRAY/library.pom"
+cat << 'EOF' > "$BINTRAY_DST/library.pom"
 <?xml version="1.0" encoding="UTF-8"?>
 <project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
@@ -50,40 +148,89 @@ cat << 'EOF' > "$BUILD_BINTRAY/library.pom"
 </project>
 EOF
 
-        cd "$BUILD_BINTRAY"
-        zip -r "javadoc.jar" "META_INF/" || exit 1
+                cd "$BINTRAY_DST"
+                zip -r "javadoc.jar" "META_INF/" || exit 1
 
-        cd "$BUILD_PATH/src/"
-        zip -r "$BUILD_BINTRAY/sources.jar" * || exit 1
-        cd "$BUILD_PATH"
+                cd "$DEP_SRC"
+                zip -r "$BINTRAY_DST/sources.jar" * || exit 1
+                cd "$LIB_SRC"
+                zip -r "$BINTRAY_DST/sources.jar" * || exit 1
+                cd "$BINTRAY_DST"
 
-        cp "$BUILD_PATH/projects/rootfw-$BUILD_TYPE.aar" "$BUILD_BINTRAY/library.aar" || exit 1
+                cp "$LIB_PKG" "$BINTRAY_DST/library.aar" || exit 1
 
-        btPackage="rootfw_gen4"
-        btGroupId="com.spazedog.lib"
-        btVersion="$(grep 'versionName' "$BUILD_PATH/projects/rootfw/build.gradle" | sed 's/.*\"\(.*\)\"/\1/')"
-        btBaseDir="$(echo $btGroupId | tr . /)/$btPackage/$btVersion"
+                if ! which aapt > /dev/null 2>&1; then
+                    if [ -f "$BUILD_SRC/local.properties" ] && grep -qe '^sdk.dir' "$BUILD_SRC/local.properties"; then
+                        BUILD_SDK=$(grep -e '^sdk.dir' "$BUILD_SRC/local.properties" | sed 's/sdk\.dir=\(.*\)/\1/')
 
-        if [ "$BUILD_TYPE" = "debug" ]; then
-            btVersion="$btVersion-debug"
+                        if [ -d "$BUILD_SDK" ]; then
+                            AAPT=$(find "$BUILD_SDK" -name 'aapt' | head -n 1)
+
+                            if [ -f "$AAPT" ]; then
+                                PATH="$(dirname $AAPT):$PATH"
+                            fi
+                        fi
+                    fi
+                fi
+
+                if which aapt > /dev/null 2>&1 && aapt dump badging "$BINTRAY_DST/library.aar" > /dev/null 2>&1 | grep -q "package:"; then
+                    btVersion="$(aapt dump badging "$BINTRAY_DST/library.aar" | grep 'package:' | sed 's/.*versionName=\x27\([^\x27]\+\)\x27.*/\1/')"
+
+                elif grep -q 'versionName' "$LIB_PROJECT/build.gradle"; then
+                    btVersion="$(grep 'versionName' "$LIB_PROJECT/build.gradle" | sed 's/.*\"\(.*\)\"/\1/')"
+
+                else
+                    echo "Could not get version information from the package"; exit 1
+                fi
+
+                btPackage="$BINTRAY_PACKAGE"
+                btGroupId="$BINTRAY_GROUP"
+                btBaseDir="$(echo $btGroupId | tr . /)/$btPackage/$btVersion"
+
+                if [ "$BUILD_TYPE" = "debug" ]; then
+                    btVersion="$btVersion-debug"
+                fi
+
+                sed -i "s/%groupid/$btGroupId/" "$BINTRAY_DST/library.pom" || exit 1
+                sed -i "s/%artifactid/$btPackage/" "$BINTRAY_DST/library.pom" || exit 1
+                sed -i "s/%version/$btVersion/" "$BINTRAY_DST/library.pom" || exit 1
+
+                jarsigner -tsa http://timestamp.digicert.com -verbose -sigalg MD5withRSA -digestalg SHA1 -keystore "$KEYSTORE" -storepass $STOREPWD -keypass $KEYPWD "$BINTRAY_DST/javadoc.jar" $ALIAS || exit 1
+                jarsigner -tsa http://timestamp.digicert.com -verbose -sigalg MD5withRSA -digestalg SHA1 -keystore "$KEYSTORE" -storepass $STOREPWD -keypass $KEYPWD "$BINTRAY_DST/sources.jar" $ALIAS || exit 1
+
+cat << EOF
+The following files have been assembled:
+
+    $btPackage-$btVersion-sources.jar
+    $btPackage-$btVersion-javadoc.jar
+    $btPackage-$btVersion.aar
+    $btPackage-$btVersion.pom
+EOF
+
+                echo ""
+                echo -n "Do you wish to continue publishing these files? [Y/N]: "
+
+                stty_bak=$(stty -g)
+                stty raw -echo
+                answer=$( while ! head -c 1 | grep -i '[ny]'; do true; done )
+                stty $stty_bak
+
+                echo $answer
+
+                if echo $answer | grep -iq "^y"; then
+                    curl -u $(cat "$KEYFILE") -T "$BINTRAY_DST/sources.jar" "https://api.bintray.com/content/$USERNAME/maven/$btPackage/$btVersion/$btBaseDir/$btPackage-$btVersion-sources.jar?publish=1" || exit 1
+                    curl -u $(cat "$KEYFILE") -T "$BINTRAY_DST/javadoc.jar" "https://api.bintray.com/content/$USERNAME/maven/$btPackage/$btVersion/$btBaseDir/$btPackage-$btVersion-javadoc.jar?publish=1" || exit 1
+                    curl -u $(cat "$KEYFILE") -T "$BINTRAY_DST/library.aar" "https://api.bintray.com/content/$USERNAME/maven/$btPackage/$btVersion/$btBaseDir/$btPackage-$btVersion.aar?publish=1" || exit 1
+                    curl -u $(cat "$KEYFILE") -T "$BINTRAY_DST/library.pom" "https://api.bintray.com/content/$USERNAME/maven/$btPackage/$btVersion/$btBaseDir/$btPackage-$btVersion.pom?publish=1" || exit 1
+                fi
+
+            else
+                echo "Could not find the Bintray KeyFile at the specified location"; exit 1
+            fi
+
+        else
+            echo "You need to install curl in order to publish the library"; exit 1
         fi
-
-        sed -i "s/%groupid/$btGroupId/" "$BUILD_BINTRAY/library.pom"
-        sed -i "s/%artifactid/$btPackage/" "$BUILD_BINTRAY/library.pom"
-        sed -i "s/%version/$btVersion/" "$BUILD_BINTRAY/library.pom"
-
-        curl -u $(cat "$BUILD_PATH/bintray.properties") -T "$BUILD_BINTRAY/sources.jar" "https://api.bintray.com/content/dk-zero-cool/maven/$btPackage/$btVersion/$btBaseDir/$btPackage-$btVersion-sources.jar?publish=1" 
-        curl -u $(cat "$BUILD_PATH/bintray.properties") -T "$BUILD_BINTRAY/javadoc.jar" "https://api.bintray.com/content/dk-zero-cool/maven/$btPackage/$btVersion/$btBaseDir/$btPackage-$btVersion-javadoc.jar?publish=1" 
-        curl -u $(cat "$BUILD_PATH/bintray.properties") -T "$BUILD_BINTRAY/library.aar" "https://api.bintray.com/content/dk-zero-cool/maven/$btPackage/$btVersion/$btBaseDir/$btPackage-$btVersion.aar?publish=1" 
-        curl -u $(cat "$BUILD_PATH/bintray.properties") -T "$BUILD_BINTRAY/library.pom" "https://api.bintray.com/content/dk-zero-cool/maven/$btPackage/$btVersion/$btBaseDir/$btPackage-$btVersion.pom?publish=1" 
-
-        rm -rf "$BUILD_BINTRAY"
     fi
-
-    # Clean
-    cd "$BUILD_PATH" || exit 1
-    gradlew clean || exit 1
-
-else
-    echo "You need to setup Gradle to build this project"
 fi
+
