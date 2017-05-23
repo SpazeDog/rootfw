@@ -141,6 +141,9 @@ class Command() : Data<Command>(arrayOf<String>()) {
     /** * */
     private var mResultCode = 0;
 
+    /** * */
+    private var mExecuted = false
+
     /**
      * @suppress
      */
@@ -390,22 +393,48 @@ class Command() : Data<Command>(arrayOf<String>()) {
      * Returns `TRUE` if one of the calls returned with an acceptible result code
      */
     fun getResultSuccess(): Boolean {
-        val call = getCallAt(mResultCall)
+        if (mExecuted) {
+            val call = getCallAt(mResultCall)
 
-        if (call != null) {
-            return call.hasResult(mResultCode)
+            if (call != null) {
+                return call.hasResult(mResultCode)
+            }
         }
 
         return false
     }
 
     /**
+     * Reset this instance and clear all [Call]'s
+     */
+    fun reset() {
+        resetInternal()
+        mCalls.clear()
+    }
+
+    /**
      * @suppress
      */
-    internal fun updateResult(lines: Array<String>, resultCode: Int, resultCall: Int): Command {
+    internal fun updateResultInternal(lines: Array<String>, resultCode: Int, resultCall: Int): Command {
         mLines = lines;
         mResultCode = resultCode
         mResultCall = resultCall
+        mExecuted = true
+
+        return this
+    }
+
+    /**
+     * @suppress
+     */
+    internal fun resetInternal(): Command {
+        if (mLines.size > 0) {
+            mLines = arrayOf<String>();
+        }
+
+        mResultCode = 0
+        mResultCall = -1
+        mExecuted = false
 
         return this
     }

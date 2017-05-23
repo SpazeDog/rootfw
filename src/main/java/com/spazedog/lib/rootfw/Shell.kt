@@ -238,7 +238,7 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
             mActive = false;
             mCallback = null
 
-            return command.updateResult(lines.toTypedArray(), resultCode, resultCall)
+            return command.updateResultInternal(lines.toTypedArray(), resultCode, resultCall)
         }
     }
 
