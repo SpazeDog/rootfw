@@ -197,7 +197,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
      *
      * @see addCall
      */
-    constructor(callback: (it: String?) -> Call) : this() {
+    constructor(callback: (it: String?) -> Call?) : this() {
         addCall(callback)
     }
 
@@ -337,7 +337,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
      * @return
      *      This callback should return the [Call] instances to use or `NULL` to skip the current one
      */
-    fun addCall(callback: (bin: String?) -> Call) {
+    fun addCall(callback: (bin: String?) -> Call?) {
         for (bin in mBinaries) {
             val call = callback(bin)
 
