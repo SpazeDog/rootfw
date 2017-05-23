@@ -99,7 +99,17 @@ class Command() : Data<Command>(arrayOf<String>()) {
          * @param resultCodes
          *      One or more acceptable result codes
          */
-        class Call(@JvmField val command: String, @JvmField val resultCodes: Array<Int>) {
+        class Call(val command: String, val resultCodes: Array<Int>) {
+
+            /**
+             *
+             */
+            constructor(command: String, resultCode: Int) : this(command, arrayOf<Int>(resultCode))
+
+            /**
+             *
+             */
+            constructor(command: String) : this(command, arrayOf<Int>(0))
 
             /**
              * Check if a specific result code is acceptable to this call
