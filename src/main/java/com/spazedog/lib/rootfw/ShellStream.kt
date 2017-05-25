@@ -23,20 +23,22 @@ package com.spazedog.lib.rootfw
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
-import java.io.BufferedReader
-import java.io.DataOutputStream
-import java.io.IOException
-import java.io.InputStreamReader
-
 import com.spazedog.lib.rootfw.ShellStream.Interfaces.ConnectionListener
 import com.spazedog.lib.rootfw.ShellStream.Interfaces.StreamListener
-
+import com.spazedog.lib.rootfw.utils.OutputWriter
+import com.spazedog.lib.rootfw.utils.InputReader
+import com.spazedog.lib.rootfw.utils.InputReader.Signal
+import com.spazedog.lib.rootfw.utils.threadNotify
+import com.spazedog.lib.rootfw.utils.threadWait
+import java.io.*
+import java.io.Reader as JavaReader
+import java.io.Writer as JavaWriter
 
 /**
  * I/O stream for a terminal process
  *
  * This stream is used to write to a terminal process and uses
- * listeners to retrieve any output from stdout asynchronously.
+ * listeners or a [Reader] to retrieve any output from stdout asynchronously or synchronously.
  */
 class ShellStream() {
 
@@ -46,6 +48,16 @@ class ShellStream() {
     private companion object {
         var STREAMS = 0;
     }
+
+    /**
+     * Special stream reader class returned by [getReader]
+     */
+    class Reader internal constructor(lock: Any? = null) : InputReader(lock)
+
+    /**
+     * Special stream reader class returned by [getWriter]
+     */
+    abstract class Writer internal constructor(lock: Any? = null) : OutputWriter(lock)
 
     /**
      * Object containing interfaces that can be used with [ShellStream]
@@ -148,6 +160,7 @@ class ShellStream() {
         }
     }
 
+    /** * */
     private enum class WaitState {CONNECTING, DISCONNECTING, NOWAIT}
 
     /** * */
@@ -158,16 +171,13 @@ class ShellStream() {
     private var mWait = WaitState.NOWAIT;
 
     /** * */
-    private var mRootStream = false;
-
-    /** * */
-    private var mIgnoreErrorStream = false;
+    private var mIsRootStream = false;
 
     /** * */
     private var mConnection: Process? = null
 
     /** * */
-    private var mStdInput: DataOutputStream? = null
+    private var mStdInput: BufferedWriter? = null
 
     /** * */
     private var mStdOutput: BufferedReader? = null
@@ -176,10 +186,10 @@ class ShellStream() {
     private var mStdError: BufferedReader? = null
 
     /** * */
-    private var mStdOutReader: Thread? = null
+    private var mStdOutWorker: Thread? = null
 
     /** * */
-    private var mStdErrReader: Thread? = null
+    private var mStdErrWorker: Thread? = null
 
     /** * */
     private val mLock = Any()
@@ -189,6 +199,16 @@ class ShellStream() {
 
     /** * */
     private val mStreamListeners = mutableListOf<Interfaces.StreamListener>()
+
+    /** * */
+    private val mShellReader = Reader()
+
+    /** * */
+    private val mShellWriter = object : Writer(mLock) {
+        override inline fun getOutputStream(): java.io.Writer? {
+            return mStdInput
+        }
+    }
 
     /**
      * Add a new Kotlin lambda as [ConnectionListener]
@@ -326,12 +346,12 @@ class ShellStream() {
     /**
      * Check whether or not this stream is running with root privileges
      */
-    fun isRootStream(): Boolean = mRootStream && isConnected()
+    fun isRootStream(): Boolean = mIsRootStream && isConnected()
 
     /**
      * Check whether or not this stream has been configured to ignore stderr
      */
-    fun ignoreErrorStream(): Boolean = mIgnoreErrorStream
+    fun ignoreErrorStream(): Boolean = mStdError != null
 
     /**
      * Connect to the terminal process using default setup
@@ -373,9 +393,9 @@ class ShellStream() {
      */
     fun connect(requestRoot: Boolean, wait: Boolean, ignoreErr: Boolean): Boolean {
         synchronized(mLock) {
-            var status = false;
+            var status = isConnected();
 
-            if (!isConnected()) {
+            if (!status) {
                 mWait = if (wait) WaitState.CONNECTING else WaitState.NOWAIT
 
                 val cmds = if (requestRoot) arrayOf("su", "sh") else arrayOf("sh")
@@ -389,141 +409,53 @@ class ShellStream() {
                         }
 
                         mConnection = builder.start();
-                        mStdInput = DataOutputStream(mConnection!!.outputStream)
-                        mStdOutput = BufferedReader(InputStreamReader(mConnection!!.inputStream))
-                        mRootStream = console.equals("su")
-                        mIgnoreErrorStream = ignoreErr
-
-                        if (ignoreErr) {
-                            mStdError = BufferedReader(InputStreamReader(mConnection!!.errorStream))
-                        }
+                        mIsRootStream = console.equals("su")
 
                         if (isConnected()) {
-                            mStdOutReader = Thread {
-                                var thread = HandlerThread("Stream\$$mStreamId")
-                                thread.start()
-
-                                var handler = Handler(thread.looper)
-
-                                if (mConnListeners.size > 0) {
-                                    handler.post {
-                                        for (listener in mConnListeners) {
-                                            listener.onConnect(this)
-                                        }
-                                    }
-
-                                    if (mWait == WaitState.CONNECTING) {
-                                        handler.post {
-                                            mWait = WaitState.DISCONNECTING
-
-                                            synchronized(mLock) {
-                                                (mLock as java.lang.Object).notifyAll()
-                                            }
-                                        }
-                                    }
-
-                                } else if (mWait == WaitState.CONNECTING) {
-                                    mWait = WaitState.DISCONNECTING
-
-                                    synchronized(mLock) {
-                                        (mLock as java.lang.Object).notifyAll()
-                                    }
-                                }
-
-                                try {
-                                    var output: String? = null
-
-                                    while ({ output = mStdOutput?.readLine(); output }() != null) {
-                                        if (mStreamListeners.size > 0) {
-                                            val line = output!!;
-
-                                            handler.post {
-                                                for (listener in mStreamListeners) {
-                                                    listener.onStdOut(this, line)
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                } catch (e: IOException) {
-                                } finally {
-                                    destroy()
-
-                                    if (mConnListeners.size > 0) {
-                                        handler.post {
-                                            for (listener in mConnListeners) {
-                                                listener.onDisconnect(this)
-                                            }
-                                        }
-
-                                        if (mWait == WaitState.DISCONNECTING) {
-                                            handler.post {
-                                                mWait = WaitState.NOWAIT
-
-                                                synchronized(mLock) {
-                                                    (mLock as java.lang.Object).notifyAll()
-                                                }
-                                            }
-                                        }
-
-                                    } else if (mWait == WaitState.DISCONNECTING) {
-                                        mWait = WaitState.NOWAIT
-
-                                        synchronized(mLock) {
-                                            (mLock as java.lang.Object).notifyAll()
-                                        }
-                                    }
-
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-                                        thread.quitSafely()
-
-                                    } else {
-                                        /*
-                                         * Make sure that the message above has been delivered
-                                         */
-                                        Thread.sleep(1000)
-                                        thread.quit()
-                                    }
-                                }
-                            }
+                            mStdInput = BufferedWriter(OutputStreamWriter(mConnection!!.outputStream))
+                            mStdOutput = BufferedReader(InputStreamReader(mConnection!!.inputStream))
+                            mStdOutWorker = outputWorker()
 
                             if (ignoreErr) {
-                                mStdErrReader = Thread {
-                                    try {
-                                        var output: String? = null
-
-                                        while ({ output = mStdError?.readLine(); output }() != null) {
-                                            // Ignore
-                                        }
-
-                                    } catch (e: IOException) {}
-                                }
+                                mStdError = BufferedReader(InputStreamReader(mConnection!!.errorStream))
+                                mStdErrWorker = errorWorker()
                             }
 
-                            mStdErrReader?.start()
-                            mStdOutReader!!.start()
+                            mShellReader.signal(Signal.Connected)
 
-                            status = true;
+                            status = true
                         }
 
                     } catch (e: IOException) {
                         mConnection?.destroy()
-                        mConnection = null
                     }
                 }
-
-            } else {
-                status = true
             }
 
-            while (status && mWait == WaitState.CONNECTING) {
-                try {
-                    (mLock as java.lang.Object).wait()
-
-                } catch (e: Throwable) {}
-            }
+            threadWait(mLock) { status && mWait == WaitState.CONNECTING }
 
             return status
+        }
+    }
+
+    /**
+     * Check whether or not the terminal process is active
+     */
+    fun isConnected(): Boolean {
+        synchronized(mLock) {
+            try {
+                /*
+                 * If mConnection is null, it's not connected.
+                 * Also if it returns an exit value, the process has been terminated.
+                 * If it's connected, this call will throw an exception.
+                 */
+                mConnection?.exitValue()
+
+            } catch (e: IllegalThreadStateException) {
+                return true
+            }
+
+            return false
         }
     }
 
@@ -539,13 +471,7 @@ class ShellStream() {
             if (isConnected()) {
                 writeLines("exit $?")
 
-                while (mWait == WaitState.DISCONNECTING) {
-                    try {
-                        (mLock as java.lang.Object).wait()
-
-                    } catch (e: Throwable) {
-                    }
-                }
+                threadWait(mLock) { mWait == WaitState.DISCONNECTING }
             }
         }
     }
@@ -580,47 +506,18 @@ class ShellStream() {
 
                 } catch (e: IOException) {}
 
+                mShellReader.signal(Signal.Disconnected)
+
                 mStdInput = null;
                 mStdOutput = null;
                 mStdError = null;
+                mStdOutWorker = null
+                mStdErrWorker = null
 
-                mRootStream = false;
-                mIgnoreErrorStream = false
+                mIsRootStream = false;
 
-                mStdOutReader = null
-                mStdErrReader = null
-
-                if (wasConnected) {
-                    while (mWait == WaitState.DISCONNECTING) {
-                        try {
-                            (mLock as java.lang.Object).wait()
-
-                        } catch (e: Throwable) {
-                        }
-                    }
-                }
+                threadWait(mLock) { wasConnected && mWait == WaitState.DISCONNECTING }
             }
-        }
-    }
-
-    /**
-     * Check whether or not the terminal process is active
-     */
-    fun isConnected(): Boolean {
-        synchronized(mLock) {
-            try {
-                /*
-                 * If mConnection is null, it's not connected.
-                 * Also if it returns an exit value, the process has been terminated.
-                 * If it's connected, this call will throw an exception.
-                 */
-                mConnection?.exitValue();
-
-            } catch (e: IllegalThreadStateException) {
-                return true
-            }
-
-            return false
         }
     }
 
@@ -639,7 +536,7 @@ class ShellStream() {
             if (isConnected()) {
                 try {
                     for (line in lines) {
-                        mStdInput!!.write("$line\n".toByteArray())
+                        mStdInput!!.write("$line\n")
                     }
 
                     if (mStdInput != null) {
@@ -667,7 +564,7 @@ class ShellStream() {
             if (isConnected()) {
                 try {
                     for (str in out) {
-                        mStdInput!!.write(str.toByteArray())
+                        mStdInput!!.write(str)
                     }
 
                     if (mStdInput != null) {
@@ -685,12 +582,12 @@ class ShellStream() {
     }
 
     /**
-     * Write one or more [Byte]'s to the terminal process
+     * Write one or more [Char]'s to the terminal process
      *
      * @param out
      *      Data to write
      */
-    fun write(vararg out: Byte): Boolean {
+    fun write(vararg out: Char): Boolean {
         synchronized(mLock) {
             if (isConnected()) {
                 try {
@@ -708,5 +605,181 @@ class ShellStream() {
 
             return false
         }
+    }
+
+    /**
+     * Get a [Reader] connected to this stream
+     *
+     * After returning the [Reader], this class will enter a synchronous state
+     * that will follow the read calls made to the [Reader]. This will affect
+     * any [StreamListener]'s attached to this instance as they will have to wait
+     * for read calls to the [Reader] before receiving any output.
+     *
+     * Remember to close this reader when you are done, this will release the
+     * synchronous state and enter it back into asynchronous
+     */
+    fun getReader(): JavaReader = { mShellReader.open(); mShellReader }()
+
+    /**
+     * Get a [Writer] connected to this stream
+     *
+     * Unlike [getReader], this will not change the behavior of this class.
+     * This just provides a more direct access to the internal writer,
+     * allowing you to control write and flush
+     */
+    fun getWriter(): JavaWriter = mShellWriter
+
+    /**
+     *
+     */
+    private fun outputWorker(): Thread {
+        val worker = Thread {
+            var listenerThread = { val thread = HandlerThread("Stream\$$mStreamId"); thread.start(); thread }()
+            var listenerHandler = Handler(listenerThread.looper)
+            val listenerState = { state: WaitState ->
+                if (mConnListeners.size > 0) {
+                    listenerHandler.post {
+                        for (listener in mConnListeners) {
+                            if (state == WaitState.CONNECTING) {
+                                listener.onConnect(this)
+
+                            } else {
+                                listener.onDisconnect(this)
+                            }
+                        }
+                    }
+
+                    if (mWait == state) {
+                        listenerHandler.post {
+                            synchronized(mLock) {
+                                mWait = if (state == WaitState.CONNECTING) WaitState.DISCONNECTING else WaitState.NOWAIT
+                                threadNotify(mLock)
+                            }
+                        }
+                    }
+
+                } else if (mWait == state) {
+                    synchronized(mLock) {
+                        mWait = if (state == WaitState.CONNECTING) WaitState.DISCONNECTING else WaitState.NOWAIT
+                        threadNotify(mLock)
+                    }
+                }
+            }
+            var listenerBuffer = { line: String ->
+                if (mConnListeners.size > 0) {
+                    listenerHandler.post {
+                        for (listener in mStreamListeners) {
+                            listener.onStdOut(this, line)
+                        }
+                    }
+                }
+            }
+
+            // Tell listeners that the connection is ready
+            listenerState(WaitState.CONNECTING)
+
+            // Start monitoring stdout on the shell process
+            try {
+                val allocate = 512
+                var buffer = CharArray(allocate)
+                var lineBuffer = StringBuffer()
+                var len = 0
+                var skipLF = false
+
+                while (mStdOutput != null) {
+                    len = mStdOutput!!.read(buffer)
+
+                    if (mStreamListeners.size > 0) {
+                        for (i in 0 until len) {
+                            if (buffer[i] == '\n' || buffer[i] == '\r') {
+                                if (skipLF && buffer[i] == '\n') {
+                                    skipLF = false; continue
+
+                                } else if (buffer[i] == '\r') {
+                                    skipLF = true
+                                }
+
+                                listenerBuffer(lineBuffer.toString())
+                                lineBuffer.setLength(0)
+
+                            } else {
+                                lineBuffer.append(buffer[i])
+                            }
+                        }
+
+                        if ((len == -1 || !mStdOutput!!.ready()) && lineBuffer.length > 0) {
+                            listenerBuffer(lineBuffer.toString())
+                            lineBuffer.setLength(0)
+                        }
+
+                    } else if (lineBuffer.length > 0) {
+                        lineBuffer.setLength(0)
+                    }
+
+                    if (mShellReader.active) {
+                        synchronized(mShellReader) {
+                            threadWait(mShellReader, true) { !mShellReader.receieve && mShellReader.active }
+
+                            if (mShellReader.receieve) {
+                                mShellReader.buffer(buffer.copyOfRange(0, len), mStdOutput!!.ready())
+                            }
+                        }
+                    }
+
+                    if (len == -1) {
+                        break
+                    }
+                }
+
+            } catch (e: IOException) {
+            }
+
+            // Destroy everything
+            destroy()
+
+            // Tell listeners that the connection is closed
+            listenerState(WaitState.DISCONNECTING)
+
+            // Close the thread handler
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                listenerThread.quitSafely()
+
+            } else {
+                /*
+                 * Make sure that the message above has been delivered
+                 */
+                try {
+                    Thread.sleep(1000)
+
+                } catch (e: InterruptedException) {
+                }
+
+                listenerThread.quit()
+            }
+        }
+
+        worker.start()
+
+        return worker
+    }
+
+    /**
+     *
+     */
+    private fun errorWorker(): Thread {
+        val worker = Thread {
+            try {
+                var buffer = CharArray(512)
+
+                while (mStdError?.read(buffer) != -1) {
+                    // Ignore
+                }
+
+            } catch (e: IOException) {}
+        }
+
+        worker.start()
+
+        return worker
     }
 }
