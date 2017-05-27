@@ -424,6 +424,8 @@ class ShellStream() {
                             mShellReader.signal(Signal.Connected)
 
                             status = true
+
+                            break
                         }
 
                     } catch (e: IOException) {
