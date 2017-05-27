@@ -122,7 +122,7 @@ abstract class InputReader(lock: Any? = null) : Reader() {
                         getDebug().log("Reader", "Local buffer is empty, request refill from Worker")
 
                         mReceieve = true
-                        threadWait(mLock, true) { receieve }
+                        threadSuspend(mLock, true) { if (receieve) 1000 else 0 }
 
                         if (mCurChar >= mCharLen) {
                             getDebug().log("Reader", "Worker has no more data for us, returning to caller")

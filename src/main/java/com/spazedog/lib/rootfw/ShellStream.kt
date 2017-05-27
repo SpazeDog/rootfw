@@ -704,6 +704,7 @@ class ShellStream() {
                 var lineBuffer = StringBuffer()
                 var len = 0
                 var skipLF = false
+                var quit = false
 
                 while (mStdOutput != null) {
                     mDebug.log("Worker", "Reading content into temp buffer")
@@ -747,7 +748,18 @@ class ShellStream() {
                         synchronized(mShellReader) {
                             mDebug.log("Worker", "Waiting on Reader to request buffer content")
 
-                            threadWait(mShellReader, true) { !mShellReader.receieve && mShellReader.active }
+                            threadSuspend(mShellReader, true) {
+                                if (!mShellReader.receieve && mShellReader.active && isConnected())
+                                    1000
+
+                                else {
+                                    if (!isConnected()) {
+                                        quit = true
+                                    }
+
+                                    0
+                                }
+                            }
 
                             if (mShellReader.receieve) {
                                 mDebug.log("Worker", "Request from Reader has been received, parsing buffer content")
@@ -755,14 +767,14 @@ class ShellStream() {
                                 mShellReader.buffer(buffer.copyOfRange(0, len), mStdOutput!!.ready())
 
                             } else {
-                                mDebug.log("Worker", "Request was denied")
+                                mDebug.log("Worker", "Request timedout")
                             }
                         }
                     }
 
                     mDebug.log("Worker", "Rewinding buffer")
 
-                    if (len == -1) {
+                    if (len == -1 || quit) {
                         break
                     }
                 }
