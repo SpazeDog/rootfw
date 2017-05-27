@@ -31,7 +31,7 @@ import java.io.Reader
  * Use [ShellStream.getReader] to get the one that works with
  * a specific instance
  */
-open abstract class InputReader(lock: Any? = null) : Reader() {
+abstract class InputReader(lock: Any? = null) : Reader() {
 
     /** * */
     internal enum class Signal { Connected, Disconnected }
@@ -71,6 +71,11 @@ open abstract class InputReader(lock: Any? = null) : Reader() {
     /**
      *
      */
+    internal abstract fun getDebug(): Debug
+
+    /**
+     *
+     */
     internal fun signal(sig: Signal) {
         synchronized(mLock) {
             mConnected = sig == Connected
@@ -85,6 +90,8 @@ open abstract class InputReader(lock: Any? = null) : Reader() {
     internal fun buffer(buf: CharArray, buffered: Boolean) {
         synchronized(mLock) {
             if (mReceieve) {
+                getDebug().log("Reader", "Received buffer from Worker")
+
                 mCharBuffer = buf
                 mBuffered = buffered
                 mCurChar = 0
@@ -108,14 +115,22 @@ open abstract class InputReader(lock: Any? = null) : Reader() {
             }
 
             if (mConnected) {
+                getDebug().log("Reader", "Start reading from local buffer")
+
                 do {
                     if (mCurChar >= mCharLen) {
+                        getDebug().log("Reader", "Local buffer is empty, request refill from Worker")
+
                         mReceieve = true
                         threadWait(mLock, true) { receieve }
 
                         if (mCurChar >= mCharLen) {
+                            getDebug().log("Reader", "Worker has no more data for us, returning to caller")
+
                             return -1
                         }
+
+                        getDebug().log("Reader", "Local buffer has been filled, continue reading")
                     }
 
                     while (offset < (off + len) && mCurChar < mCharLen) {
@@ -126,6 +141,8 @@ open abstract class InputReader(lock: Any? = null) : Reader() {
                     }
 
                 } while (offset < (off + len) && ready())
+
+                getDebug().log("Reader", "Read completed, returning to caller")
             }
 
             return if ((offset - off) == 0 && !mConnected) -1 else offset - off
@@ -146,6 +163,8 @@ open abstract class InputReader(lock: Any? = null) : Reader() {
      */
     internal fun open() {
         synchronized(mLock) {
+            getDebug().log("Reader", "Open was called, adding lock")
+
             mLocks++
         }
     }
@@ -155,6 +174,8 @@ open abstract class InputReader(lock: Any? = null) : Reader() {
      */
     override fun close() {
         synchronized(mLock) {
+            getDebug().log("Reader", "Close was called, removing lock")
+
             mLocks--
 
             if (mLocks <= 0) {

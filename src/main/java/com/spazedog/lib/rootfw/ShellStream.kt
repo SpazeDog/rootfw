@@ -25,11 +25,8 @@ import android.os.Handler
 import android.os.HandlerThread
 import com.spazedog.lib.rootfw.ShellStream.Interfaces.ConnectionListener
 import com.spazedog.lib.rootfw.ShellStream.Interfaces.StreamListener
-import com.spazedog.lib.rootfw.utils.OutputWriter
-import com.spazedog.lib.rootfw.utils.InputReader
+import com.spazedog.lib.rootfw.utils.*
 import com.spazedog.lib.rootfw.utils.InputReader.Signal
-import com.spazedog.lib.rootfw.utils.threadNotify
-import com.spazedog.lib.rootfw.utils.threadWait
 import java.io.*
 import java.io.Reader as JavaReader
 import java.io.Writer as JavaWriter
@@ -52,7 +49,7 @@ class ShellStream() {
     /**
      * Special stream reader class returned by [getReader]
      */
-    class Reader internal constructor(lock: Any? = null) : InputReader(lock)
+    abstract class Reader internal constructor(lock: Any? = null) : InputReader(lock)
 
     /**
      * Special stream reader class returned by [getWriter]
@@ -201,7 +198,14 @@ class ShellStream() {
     private val mStreamListeners = mutableListOf<Interfaces.StreamListener>()
 
     /** * */
-    private val mShellReader = Reader()
+    private val mDebug = Debug("RootFW:Stream($mStreamId)")
+
+    /** * */
+    private val mShellReader = object : Reader() {
+        override inline fun getDebug(): Debug {
+            return mDebug
+        }
+    }
 
     /** * */
     private val mShellWriter = object : Writer(mLock) {
@@ -401,6 +405,8 @@ class ShellStream() {
                 val cmds = if (requestRoot) arrayOf("su", "sh") else arrayOf("sh")
 
                 for (console in cmds) {
+                    mDebug.log("Connecting using '$console'")
+
                     try {
                         val builder = ProcessBuilder(console)
 
@@ -412,6 +418,8 @@ class ShellStream() {
                         mIsRootStream = console.equals("su")
 
                         if (isConnected()) {
+                            mDebug.log("Connection has been established")
+
                             mStdInput = BufferedWriter(OutputStreamWriter(mConnection!!.outputStream))
                             mStdOutput = BufferedReader(InputStreamReader(mConnection!!.inputStream))
                             mStdOutWorker = outputWorker()
@@ -428,7 +436,10 @@ class ShellStream() {
                             break
                         }
 
+                        mDebug.log("Failed to connect")
+
                     } catch (e: IOException) {
+                        mDebug.log("Failed to connect", e)
                         mConnection?.destroy()
                     }
                 }
@@ -471,6 +482,8 @@ class ShellStream() {
     fun disconnect() {
         synchronized(mLock) {
             if (isConnected()) {
+                mDebug.log("Sending signal to shell process to terminate")
+
                 writeLines("exit $?")
 
                 threadWait(mLock) { mWait == WaitState.DISCONNECTING }
@@ -488,6 +501,8 @@ class ShellStream() {
     fun destroy() {
         synchronized(mLock) {
             if (mConnection != null) {
+                mDebug.log("Destroying shell process and cleaning up")
+
                 val wasConnected = isConnected()
                 val conn = mConnection
                 mConnection = null
@@ -635,6 +650,8 @@ class ShellStream() {
      *
      */
     private fun outputWorker(): Thread {
+        mDebug.log("Worker", "Starting worker thread")
+
         val worker = Thread {
             var listenerThread = { val thread = HandlerThread("Stream\$$mStreamId"); thread.start(); thread }()
             var listenerHandler = Handler(listenerThread.looper)
@@ -689,7 +706,11 @@ class ShellStream() {
                 var skipLF = false
 
                 while (mStdOutput != null) {
+                    mDebug.log("Worker", "Reading content into temp buffer")
+
                     len = mStdOutput!!.read(buffer)
+
+                    mDebug.log("Worker", "Buffer has been filled, start processing")
 
                     if (mStreamListeners.size > 0) {
                         for (i in 0 until len) {
@@ -701,6 +722,8 @@ class ShellStream() {
                                     skipLF = true
                                 }
 
+                                mDebug.log("Worker", "Sending assembled line output to all listeners")
+
                                 listenerBuffer(lineBuffer.toString())
                                 lineBuffer.setLength(0)
 
@@ -710,6 +733,8 @@ class ShellStream() {
                         }
 
                         if ((len == -1 || !mStdOutput!!.ready()) && lineBuffer.length > 0) {
+                            mDebug.log("Worker", "Sending assembled line output to all listeners")
+
                             listenerBuffer(lineBuffer.toString())
                             lineBuffer.setLength(0)
                         }
@@ -720,13 +745,22 @@ class ShellStream() {
 
                     if (mShellReader.active) {
                         synchronized(mShellReader) {
+                            mDebug.log("Worker", "Waiting on Reader to request buffer content")
+
                             threadWait(mShellReader, true) { !mShellReader.receieve && mShellReader.active }
 
                             if (mShellReader.receieve) {
+                                mDebug.log("Worker", "Request from Reader has been received, parsing buffer content")
+
                                 mShellReader.buffer(buffer.copyOfRange(0, len), mStdOutput!!.ready())
+
+                            } else {
+                                mDebug.log("Worker", "Request was denied")
                             }
                         }
                     }
+
+                    mDebug.log("Worker", "Rewinding buffer")
 
                     if (len == -1) {
                         break
@@ -735,6 +769,8 @@ class ShellStream() {
 
             } catch (e: IOException) {
             }
+
+            mDebug.log("Worker", "Stopping worker thread")
 
             // Destroy everything
             destroy()
@@ -758,6 +794,8 @@ class ShellStream() {
 
                 listenerThread.quit()
             }
+
+            mDebug.log("Worker", "Worker thread has been stopped")
         }
 
         worker.start()

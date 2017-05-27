@@ -22,8 +22,42 @@
 
 package com.spazedog.lib.rootfw.utils
 
+import android.util.Log
+import com.spazedog.lib.rootfw.BuildConfig
+
 /** * */
 internal val BINARIES: List<String?> = listOf(null, "toybox", "busybox", "toolbox")
+
+/** * */
+internal val DEBUG = BuildConfig.BUILD_TYPE == "debug"
+
+/**
+ *
+ */
+internal class Debug(val tag: String) {
+    inline fun log(msg: String) = logDebug(tag, msg)
+    inline fun log(msg: String, e: Throwable) = logDebug(tag, msg, e)
+    inline fun log(identifier: String, msg: String) = logDebug("$tag:$identifier", msg)
+    inline fun log(identifier: String, msg: String, e: Throwable) = logDebug("$tag:$identifier", msg, e)
+}
+
+/**
+ *
+ */
+internal inline fun logDebug(tag: String, msg: String, e: Throwable) {
+    if (DEBUG) {
+        Log.d(tag, msg, e);
+    }
+}
+
+/**
+ *
+ */
+internal inline fun logDebug(tag: String, msg: String) {
+    if (DEBUG) {
+        Log.d(tag, msg);
+    }
+}
 
 /**
  *

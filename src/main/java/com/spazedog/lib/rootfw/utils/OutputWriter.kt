@@ -31,7 +31,7 @@ import java.io.Writer
  * Use [ShellStream.getWriter] to get the one that works with
  * a specific instance
  */
-open abstract class OutputWriter(lock: Any? = null) : Writer() {
+abstract class OutputWriter(lock: Any? = null) : Writer() {
 
     /** * */
     private val mLock: Any = if (lock != null) lock else this
