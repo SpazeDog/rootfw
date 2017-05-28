@@ -20,6 +20,7 @@
 
 package com.spazedog.lib.rootfw.utils
 
+import android.os.Looper
 import com.spazedog.lib.rootfw.ShellStream
 import com.spazedog.lib.rootfw.utils.InputReader.Signal.Connected
 import java.io.Reader
@@ -163,6 +164,10 @@ abstract class InputReader(lock: Any? = null) : Reader() {
      */
     internal fun open() {
         synchronized(mLock) {
+            if (DEBUG && Looper.myLooper() != null && Looper.myLooper() == Looper.getMainLooper()) {
+                getDebug().log('w', "Reader", "Using the Reader on the main Thread could potentially block your apps UI")
+            }
+
             getDebug().log("Reader", "Open was called, adding lock")
 
             mLocks++

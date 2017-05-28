@@ -20,8 +20,11 @@
 
 package com.spazedog.lib.rootfw
 
+import android.os.Looper
 import com.spazedog.lib.rootfw.ShellStream.Interfaces.ConnectionListener
 import com.spazedog.lib.rootfw.ShellStream.Interfaces.StreamListener
+import com.spazedog.lib.rootfw.utils.DEBUG
+import com.spazedog.lib.rootfw.utils.Debug
 
 /**
  * Wrapper class for [ShellStreamer] for synchronous tasks
@@ -50,7 +53,7 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
     private val mStream: ShellStream = stream
 
     /** * */
-    private val mEOL: String
+    private val mEOL: String = "[STREAM:-ID(${stream.streamId()})-:EOL]"
 
     /** * */
     private var mCallback: ((String) -> Unit)? = null
@@ -61,6 +64,9 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
     /** * */
     @Volatile private var mActive = false;
 
+    /** * */
+    private val mDebug = Debug("RootFW:Shell(${stream.streamId()})")
+
     /**
      * @suppress
      */
@@ -68,8 +74,6 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
         mStream.connect(false, true)
         mStream.addConnectionListener(this)
         mStream.addStreamListener(this)
-
-        mEOL = "[STREAM:-ID(${mStream.streamId()})-:EOL]"
     }
 
     /**
@@ -159,6 +163,9 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
         synchronized(mLock) {
             if (!mStream.isConnected()) {
                 throw RuntimeException("Cannot execute on a closed stream (ID: ${mStream.streamId()})")
+
+            } else if (DEBUG && Looper.myLooper() != null && Looper.myLooper() == Looper.getMainLooper()) {
+                mDebug.log('w', "Executing synchronous on the main Thread could potentially block your apps UI")
             }
 
             mActive = true

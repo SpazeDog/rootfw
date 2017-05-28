@@ -29,34 +29,192 @@ import com.spazedog.lib.rootfw.BuildConfig
 internal val BINARIES: List<String?> = listOf(null, "toybox", "busybox", "toolbox")
 
 /** * */
-internal val DEBUG = BuildConfig.BUILD_TYPE == "debug"
+internal var FORCED_DEBUG = false
 
 /**
- *
+ * Check if we have a debug build or debug has been forced
  */
-internal class Debug(val tag: String) {
-    inline fun log(msg: String) = logDebug(tag, msg)
-    inline fun log(msg: String, e: Throwable) = logDebug(tag, msg, e)
-    inline fun log(identifier: String, msg: String) = logDebug("$tag:$identifier", msg)
-    inline fun log(identifier: String, msg: String, e: Throwable) = logDebug("$tag:$identifier", msg, e)
+val DEBUG: Boolean
+    get() = FORCED_DEBUG || BuildConfig.BUILD_TYPE == "debug"
+
+/**
+ * Debug class that can be used to send logcat entries with pre-defined tags
+ *
+ * Note that this class will only send logcat messages if and only if `DEBUG` returns `true`,
+ * also note that the methods are inline, meaning that they will be copied to the location where
+ * they are called. There is no need to manually do a debug check each time to save resources on
+ * calling the methods, the conditions are handled automatically.
+ *
+ * @param tag
+ *      A tag that will automatically be pre-pended to all entries sent by this instance
+ */
+class Debug(val tag: String) {
+
+    /**
+     * Send message to logcat
+     *
+     * @param msg
+     *      Message to send
+     */
+    inline fun log(msg: String) = logDebug('d', tag, msg)
+
+    /**
+     * Send message to logcat
+     *
+     * @param msg
+     *      Message to send
+     *
+     * @param e
+     *      Throwable to parse to logcat
+     */
+    inline fun log(msg: String, e: Throwable) = logDebug('d', tag, msg, e)
+
+    /**
+     * Send message to logcat
+     *
+     * @param identifier
+     *      Additional tag that will be apended to one parsed in the constructor, separated by `:`
+     *
+     * @param msg
+     *      Message to send
+     */
+    inline fun log(identifier: String, msg: String) = logDebug('d', "$tag:$identifier", msg)
+
+    /**
+     * Send message to logcat
+     *
+     * @param identifier
+     *      Additional tag that will be apended to one parsed in the constructor, separated by `:`
+     *
+     * @param msg
+     *      Message to send
+     *
+     * @param e
+     *      Throwable to parse to logcat
+     */
+    inline fun log(identifier: String, msg: String, e: Throwable) = logDebug('d', "$tag:$identifier", msg, e)
+
+    /**
+     * Send message to logcat
+     *
+     * @param type
+     *      Type of log `d`,`i`,`w`, or `e` for `debug`, `info`, `warning` or `error`
+     *
+     * @param msg
+     *      Message to send
+     */
+    inline fun log(type: Char, msg: String) = logDebug(type, tag, msg)
+
+    /**
+     * Send message to logcat
+     *
+     * @param type
+     *      Type of log `d`,`i`,`w`, or `e` for `debug`, `info`, `warning` or `error`
+     *
+     * @param msg
+     *      Message to send
+     *
+     * @param e
+     *      Throwable to parse to logcat
+     */
+    inline fun log(type: Char, msg: String, e: Throwable) = logDebug(type, tag, msg, e)
+
+    /**
+     * Send message to logcat
+     *
+     * @param type
+     *      Type of log `d`,`i`,`w`, or `e` for `debug`, `info`, `warning` or `error`
+     *
+     * @param identifier
+     *      Additional tag that will be apended to one parsed in the constructor, separated by `:`
+     *
+     * @param msg
+     *      Message to send
+     */
+    inline fun log(type: Char, identifier: String, msg: String) = logDebug(type, "$tag:$identifier", msg)
+
+    /**
+     * Send message to logcat
+     *
+     * @param type
+     *      Type of log `d`,`i`,`w`, or `e` for `debug`, `info`, `warning` or `error`
+     *
+     * @param identifier
+     *      Additional tag that will be apended to one parsed in the constructor, separated by `:`
+     *
+     * @param msg
+     *      Message to send
+     *
+     * @param e
+     *      Throwable to parse to logcat
+     */
+    inline fun log(type: Char, identifier: String, msg: String, e: Throwable) = logDebug(type, "$tag:$identifier", msg, e)
 }
 
 /**
+ * Send mesage to logcat
  *
+ * Note that this function will only send logcat messages if and only if `DEBUG` returns `true`
+ * also note that the function is inline, meaning that it will be copied to the location where
+ * it is called. There is no need to manually do a debug check each time to save resources on
+ * calling the function, the conditions are handled automatically.
+ *
+ * @param type
+ *      Type of log `d`,`i`,`w`, or `e` for `debug`, `info`, `warning` or `error`
+ *
+ * @param tag
+ *      Tag to be used on the entry
+ *
+ * @param msg
+ *      Message to send
+ *
+ * @param e
+ *      Throwable to parse to logcat
  */
-internal inline fun logDebug(tag: String, msg: String, e: Throwable) {
+inline fun logDebug(type: Char, tag: String, msg: String, e: Throwable) {
     if (DEBUG) {
-        Log.d(tag, msg, e);
+        when (type) {
+            'd' -> Log.d(tag, msg, e)
+            'w' -> Log.w(tag, msg, e)
+            'i' -> Log.i(tag, msg, e)
+            'e' -> Log.e(tag, msg, e)
+        }
     }
 }
 
 /**
+ * Send mesage to logcat
  *
+ * Note that this function will only send logcat messages if and only if `DEBUG` returns `true`
+ * also note that the function is inline, meaning that it will be copied to the location where
+ * it is called. There is no need to manually do a debug check each time to save resources on
+ * calling the function, the conditions are handled automatically.
+ *
+ * @param type
+ *      Type of log `d`,`i`,`w`, or `e` for `debug`, `info`, `warning` or `error`
+ *
+ * @param tag
+ *      Tag to be used on the entry
+ *
+ * @param msg
+ *      Message to send
  */
-internal inline fun logDebug(tag: String, msg: String) {
+inline fun logDebug(type: Char, tag: String, msg: String) {
     if (DEBUG) {
-        Log.d(tag, msg);
+        when (type) {
+            'd' -> Log.d(tag, msg)
+            'w' -> Log.w(tag, msg)
+            'i' -> Log.i(tag, msg)
+            'e' -> Log.e(tag, msg)
+        }
     }
+}
+
+/**
+ * Debug is set based on build type, but you can force it on releases
+ */
+fun setForcedDebug(flag: Boolean) {
+    FORCED_DEBUG = flag
 }
 
 /**
