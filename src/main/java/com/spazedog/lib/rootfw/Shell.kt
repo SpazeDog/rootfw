@@ -71,7 +71,8 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
      * @suppress
      */
     init {
-        mStream.connect(false, true)
+        mActive = mStream.connect(false, true)
+
         mStream.addConnectionListener(this)
         mStream.addStreamListener(this)
     }
@@ -100,14 +101,29 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
     fun destroy() = mStream.destroy()
 
     /**
+     * This will detach from [ShellStream] without destroying it
+     *
+     * This class adds listeners to [ShellStream] to handle output and monitor connection state.
+     * This method will detach itself from the stream instance but will not destroy it, meaning
+     * that this instance will no longer work, but the [ShellStream] instance will.
+     */
+    fun close() {
+        if (mActive) {
+            mActive = false
+            mStream.removeConnectionListener(this)
+            mStream.removeStreamListener(this)
+        }
+    }
+
+    /**
      * Check whether or not the [ShellStream] used by this class has root privileges
      */
-    fun isRootShell(): Boolean = mStream.isRootStream()
+    fun isRootShell(): Boolean = mActive && mStream.isRootStream()
 
     /**
      * Check whether or not the [ShellStream] used by this class is active/connected
      */
-    fun isActive(): Boolean = mStream.isConnected()
+    fun isActive(): Boolean = mActive
 
     /**
      * Execute a command
@@ -161,8 +177,8 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
      */
     fun execute(command: Command, timeout: Long): Command {
         synchronized(mLock) {
-            if (!mStream.isConnected()) {
-                throw RuntimeException("Cannot execute on a closed stream (ID: ${mStream.streamId()})")
+            if (!mActive) {
+                throw RuntimeException("Cannot execute on a closed shell (ID: ${mStream.streamId()})")
 
             } else if (DEBUG && Looper.myLooper() != null && Looper.myLooper() == Looper.getMainLooper()) {
                 mDebug.log('w', "Executing synchronous on the main Thread could potentially block your apps UI")
@@ -234,7 +250,7 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
                 }
 
                 if (!mActive) {
-                    throw RuntimeException("Stream was disconnected unexpectedly")
+                    throw RuntimeException("Shell was unexpectedly disconnected from the stream (ID: ${mStream.streamId()})")
                 }
 
                 if (call.hasResult(resultCode)) {
@@ -298,7 +314,7 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
      */
     override fun onDisconnect(stream: ShellStream) {
         if (!mStream.isConnected()) {
-            mActive = false;
+            close()
 
             synchronized(mLock) {
                 (mLock as java.lang.Object).notifyAll()
