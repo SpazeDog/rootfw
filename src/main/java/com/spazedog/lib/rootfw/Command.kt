@@ -466,7 +466,7 @@ open class Command() : Data<Command>(arrayOf<String>()) {
         mResultCall = -1
         mExecuted = false
 
-        resetInternal()
+        onReset()
 
         return this
     }
