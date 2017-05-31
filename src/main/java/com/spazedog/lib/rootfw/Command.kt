@@ -40,7 +40,7 @@ import com.spazedog.lib.rootfw.utils.BINARIES
  * When the command instance are executed, each call will be executed until one produces an
  * acceptable result code.
  */
-class Command() : Data<Command>(arrayOf<String>()) {
+open class Command() : Data<Command>(arrayOf<String>()) {
 
     /**
      *
@@ -99,7 +99,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
          * @param resultCodes
          *      One or more acceptable result codes
          */
-        class Call(val command: String, val resultCodes: Array<Int>) {
+        open class Call(val command: String, val resultCodes: Array<Int>) {
 
             /**
              *
@@ -130,19 +130,19 @@ class Command() : Data<Command>(arrayOf<String>()) {
     }
 
     /** * */
-    private val mCalls = mutableListOf<Call>()
+    protected val mCalls = mutableListOf<Call>()
 
     /** * */
-    private val mBinaries = mutableListOf<String?>()
+    protected val mBinaries = mutableListOf<String?>()
 
     /** * */
-    private var mResultCall = -1
+    protected var mResultCall = -1
 
     /** * */
-    private var mResultCode = 0;
+    protected var mResultCode = 0;
 
     /** * */
-    private var mExecuted = false
+    protected var mExecuted = false
 
     /**
      * @suppress
@@ -211,7 +211,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
      * @param command
      *      Shell command
      */
-    fun addCall(command: String) = addCall(command, arrayOf(0), false)
+    open fun addCall(command: String) = addCall(command, arrayOf(0), false)
 
     /**
      * Add a new [Call] that is auto build from a shell command.
@@ -222,7 +222,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
      * @param resultCode
      *      An acceptible result code for the shell command
      */
-    fun addCall(command: String, resultCode: Int) = addCall(command, arrayOf(resultCode), false)
+    open fun addCall(command: String, resultCode: Int) = addCall(command, arrayOf(resultCode), false)
 
     /**
      * Add a new [Call] that is auto build from a shell command,
@@ -250,7 +250,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
      * @param populate
      *      Populate with all registered all-in-one binaries
      */
-    fun addCall(command: String, resultCode: Int, populate: Boolean) = addCall(command, arrayOf(resultCode), populate)
+    open fun addCall(command: String, resultCode: Int, populate: Boolean) = addCall(command, arrayOf(resultCode), populate)
 
     /**
      * Add a new [Call] that is auto build from a shell command with multiple acceptible result codes
@@ -278,7 +278,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
      * @param populate
      *      Populate with all registered all-in-one binaries
      */
-    fun addCall(command: String, resultCodes: Array<Int>, populate: Boolean) {
+    open fun addCall(command: String, resultCodes: Array<Int>, populate: Boolean) {
         if (populate) {
             for (bin in mBinaries) {
                 if (bin != null) {
@@ -317,7 +317,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
      * @return
      *      This callback should return the [Call] instances to use or `NULL` to skip the current one
      */
-    fun addCall(callback: CallCreator) {
+    open fun addCall(callback: CallCreator) {
         for (bin in mBinaries) {
             val call = callback.onCreateCall(bin)
 
@@ -340,7 +340,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
      * @return
      *      This callback should return the [Call] instances to use or `NULL` to skip the current one
      */
-    fun addCall(callback: (bin: String?) -> Call?) {
+    open fun addCall(callback: (bin: String?) -> Call?) {
         for (bin in mBinaries) {
             val call = callback(bin)
 
@@ -353,12 +353,12 @@ class Command() : Data<Command>(arrayOf<String>()) {
     /**
      * Get all [Call] instances currently added to this class
      */
-    fun getCalls(): Array<Call> = mCalls.toTypedArray()
+    open fun getCalls(): Array<Call> = mCalls.toTypedArray()
 
     /**
      * Get the number of [Call] instances added to this class
      */
-    fun getCallSize(): Int = mCalls.size
+    open fun getCallSize(): Int = mCalls.size
 
     /**
      * Get the [Call] instance at the specified array position
@@ -366,7 +366,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
      * @param pos
      *      Positition of the [Call] to return
      */
-    fun getCallAt(pos: Int): Call? {
+    open fun getCallAt(pos: Int): Call? {
         val loc = if (pos < 0)
             mCalls.size + pos
         else
@@ -382,22 +382,22 @@ class Command() : Data<Command>(arrayOf<String>()) {
     /**
      * Array position of the last executed call
      */
-    fun getResultCall(): Int = mResultCall
+    open fun getResultCall(): Int = mResultCall
 
     /**
      * The result code of the last executed call
      */
-    fun getResultCode(): Int = mResultCode
+    open fun getResultCode(): Int = mResultCode
 
     /**
      * Returns `TRUE` if one of the calls returned with an acceptible result code
      */
-    fun getResultSuccess(): Boolean {
+    open fun getResultSuccess(): Boolean {
         if (mExecuted) {
-            val call = getCallAt(mResultCall)
+            val call = getCallAt(getResultCall())
 
             if (call != null) {
-                return call.hasResult(mResultCode)
+                return call.hasResult(getResultCode())
             }
         }
 
@@ -407,7 +407,7 @@ class Command() : Data<Command>(arrayOf<String>()) {
     /**
      * Reset this instance and clear all [Call]'s
      */
-    fun reset() {
+    open fun reset() {
         resetInternal()
         mCalls.clear()
     }
@@ -420,6 +420,8 @@ class Command() : Data<Command>(arrayOf<String>()) {
         mResultCode = resultCode
         mResultCall = resultCall
         mExecuted = true
+
+        onUpdateResult(lines, resultCode, resultCall)
 
         return this
     }
@@ -436,6 +438,18 @@ class Command() : Data<Command>(arrayOf<String>()) {
         mResultCall = -1
         mExecuted = false
 
+        resetInternal()
+
         return this
     }
+
+    /**
+     * Allow interaction with updateResultInternal() without exposing it
+     */
+    open protected fun onUpdateResult(lines: Array<String>, resultCode: Int, resultCall: Int) {}
+
+    /**
+     * Allow interaction with resetInternal() without exposing it
+     */
+    open protected fun onReset() {}
 }
