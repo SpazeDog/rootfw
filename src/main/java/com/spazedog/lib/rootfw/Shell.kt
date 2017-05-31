@@ -184,8 +184,6 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
                 mDebug.log('w', "Executing synchronous on the main Thread could potentially block your apps UI")
             }
 
-            mActive = true
-
             var running = false
             val lines = mutableListOf<String>()
             var resultCode = 1
@@ -258,7 +256,6 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
                 }
             }
 
-            mActive = false;
             mCallback = null
 
             return command.updateResultInternal(lines.toTypedArray(), resultCode, resultCall)
