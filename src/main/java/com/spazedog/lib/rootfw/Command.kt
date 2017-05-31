@@ -161,21 +161,8 @@ open class Command() : Data<Command>(arrayOf<String>()) {
      *
      * @see addCall
      */
-    constructor(command: String) : this(command, arrayOf(0), false)
-
-    /**
-     * Create a new [Command]
-     *
-     * @see addCall
-     */
-    constructor(command: String, resultCode: Int) : this(command, arrayOf(resultCode), false)
-
-    /**
-     * Create a new [Command]
-     *
-     * @see addCall
-     */
-    constructor(command: String, resultCode: Int, populate: Boolean) : this(command, arrayOf(resultCode), populate)
+    @JvmOverloads
+    constructor(command: String, resultCode: Int = 0, populate: Boolean = false) : this(command, arrayOf(resultCode), populate)
 
     /**
      * Create a new [Command]
@@ -205,26 +192,6 @@ open class Command() : Data<Command>(arrayOf<String>()) {
     }
 
     /**
-     * Add a new [Call] that is auto build from a shell command.
-     * The acceptible result code will be `0`
-     *
-     * @param command
-     *      Shell command
-     */
-    open fun addCall(command: String) = addCall(command, arrayOf(0), false)
-
-    /**
-     * Add a new [Call] that is auto build from a shell command.
-     *
-     * @param command
-     *      Shell command
-     *
-     * @param resultCode
-     *      An acceptible result code for the shell command
-     */
-    open fun addCall(command: String, resultCode: Int) = addCall(command, arrayOf(resultCode), false)
-
-    /**
      * Add a new [Call] that is auto build from a shell command,
      * and optionally auto populate with all registered all-in-one binaries
      *
@@ -250,7 +217,8 @@ open class Command() : Data<Command>(arrayOf<String>()) {
      * @param populate
      *      Populate with all registered all-in-one binaries
      */
-    open fun addCall(command: String, resultCode: Int, populate: Boolean) = addCall(command, arrayOf(resultCode), populate)
+    @JvmOverloads
+    open fun addCall(command: String, resultCode: Int = 0, populate: Boolean = false) = addCall(command, arrayOf(resultCode), populate)
 
     /**
      * Add a new [Call] that is auto build from a shell command with multiple acceptible result codes

@@ -358,32 +358,6 @@ class ShellStream() {
     fun ignoreErrorStream(): Boolean = mStdError != null
 
     /**
-     * Connect to the terminal process using default setup
-     *
-     * Default setup means no root privileges and stderr will not be ignored
-     */
-    fun connect(): Boolean = connect(false, false, false)
-
-    /**
-     * Connect to the terminal process
-     *
-     * @param requestRoot
-     *      Request root privileges. If not possible, the connection will use normal privileges
-     */
-    fun connect(requestRoot: Boolean): Boolean = connect(requestRoot, false, false)
-
-    /**
-     * Connect to the terminal process
-     *
-     * @param requestRoot
-     *      Request root privileges. If not possible, the connection will use normal privileges
-     *
-     * @param wait
-     *      Block until connection listeners are done
-     */
-    fun connect(requestRoot: Boolean, wait: Boolean): Boolean = connect(requestRoot, wait, false)
-
-    /**
      * Connect to the terminal process
      *
      * @param requestRoot
@@ -395,7 +369,8 @@ class ShellStream() {
      * @param ignoreErr
      *      Filter stderr out of the output
      */
-    fun connect(requestRoot: Boolean, wait: Boolean, ignoreErr: Boolean): Boolean {
+    @JvmOverloads
+    fun connect(requestRoot: Boolean = false, wait: Boolean = false, ignoreErr: Boolean = false): Boolean {
         synchronized(mLock) {
             var status = isConnected();
 

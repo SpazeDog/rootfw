@@ -127,24 +127,14 @@ open abstract class Data<T : Data<T>>(lines: Array<String>) {
      * @param contains
      *     Sequence that each line must not contain
      *
-     * @return
-     *     This instance
-     */
-    fun assort(contains: String): T = assort(contains, false)
-
-    /**
-     * Sort lines by checking the absence of a sequence within each line
-     *
-     * @param contains
-     *     Sequence that each line must not contain
-     *
      * @param ignoreCase
      *     Ignore case when comparing
      *
      * @return
      *     This instance
      */
-    fun assort(contains: String, ignoreCase: Boolean): T {
+    @JvmOverloads
+    fun assort(contains: String, ignoreCase: Boolean = false): T {
         if (mLines.size > 0) {
             val list = mutableListOf<String>()
 
@@ -166,24 +156,14 @@ open abstract class Data<T : Data<T>>(lines: Array<String>) {
      * @param contains
      *     Sequence that each line must contain
      *
-     * @return
-     *     This instance
-     */
-    fun sort(contains: String): T = sort(contains, false)
-
-    /**
-     * Sort lines by checking the existence of a sequence within each line
-     *
-     * @param contains
-     *     Sequence that each line must contain
-     *
      * @param ignoreCase
      *     Ignore case when comparing
      *
      * @return
      *     This instance
      */
-    fun sort(contains: String, ignoreCase: Boolean): T {
+    @JvmOverloads
+    fun sort(contains: String, ignoreCase: Boolean = false): T {
         if (mLines.size > 0) {
             val list = mutableListOf<String>()
 
@@ -375,14 +355,6 @@ open abstract class Data<T : Data<T>>(lines: Array<String>) {
     fun getArray(): Array<String> = mLines
 
     /**
-     * This will return a string of the data array with line feed as separators
-     *
-     * @return
-     *     The data array as a string
-     */
-    fun getString(): String = getString("\n")
-
-    /**
      * This will return a string of the data array with custom characters used as line breakers
      *
      * @param separater
@@ -391,7 +363,8 @@ open abstract class Data<T : Data<T>>(lines: Array<String>) {
      * @return
      *     The data array as a string
      */
-    fun getString(separater: String): String {
+    @JvmOverloads
+    fun getString(separater: String = "\n"): String {
         val builder = StringBuilder()
 
         for (i in 0 until mLines.size) {
@@ -404,27 +377,6 @@ open abstract class Data<T : Data<T>>(lines: Array<String>) {
 
         return builder.toString()
     }
-
-    /**
-     * This will return the last line in the data array
-     *
-     * @return
-     *     The last non-empty line of the data array
-     */
-    fun getLine(): String? = getLine(-1, false)
-
-    /**
-     * This will return one specified line of the data array.
-     *
-     * Note that this also takes negative number to get a line from the end and up
-     *
-     * @param lineNum
-     *     The line number to return
-     *
-     * @return
-     *     The specified line
-     */
-    fun getLine(lineNum: Int): String? = getLine(lineNum, false)
 
     /**
      * This will return one specified line of the data array.
@@ -440,7 +392,8 @@ open abstract class Data<T : Data<T>>(lines: Array<String>) {
      * @return
      *     The specified line
      */
-    fun getLine(lineNum: Int, skipEmpty: Boolean): String? {
+    @JvmOverloads
+    fun getLine(lineNum: Int = -1, skipEmpty: Boolean = false): String? {
         if (mLines.size > 0) {
             var count: Int = if (lineNum < 0)
                 mLines.size + lineNum

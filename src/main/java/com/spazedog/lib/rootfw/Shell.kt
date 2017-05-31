@@ -79,16 +79,12 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
 
     /**
      * Create a new [Shell] instance using a new default [ShellStream]
-     */
-    constructor() : this(ShellStream())
-
-    /**
-     * Create a new [Shell] instance using a new default [ShellStream]
      *
      * @param requestRoot
      *      Request root for the new [ShellStream] instance
      */
-    constructor(requestRoot: Boolean) : this({ val stream = ShellStream(); stream.connect(requestRoot, true); stream }())
+    @JvmOverloads
+    constructor(requestRoot: Boolean = false) : this({ val stream = ShellStream(); stream.connect(requestRoot, true); stream }())
 
     /**
      * Get the [ShellStream] used by this class
@@ -130,25 +126,6 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
      *
      * @param command
      *      The command to execute
-     */
-    fun execute(command: String): Command = execute(Command(command), 0L)
-
-    /**
-     * Execute a command
-     *
-     * @param command
-     *      The command to execute
-     *
-     * @param resultCode
-     *      The result code that should be produced upon a successful call
-     */
-    fun execute(command: String, resultCode: Int): Command = execute(Command(command, resultCode), 0L)
-
-    /**
-     * Execute a command
-     *
-     * @param command
-     *      The command to execute
      *
      * @param resultCode
      *      The result code that should be produced upon a successful call
@@ -156,15 +133,8 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
      * @param timeout
      *      Timeout in milliseconds after which to force quit
      */
-    fun execute(command: String, resultCode: Int, timeout: Long): Command = execute(Command(command, resultCode), timeout)
-
-    /**
-     * Execute a command
-     *
-     * @param command
-     *      [Command] to execute
-     */
-    fun execute(command: Command): Command = execute(command, 0L)
+    @JvmOverloads
+    fun execute(command: String, resultCode: Int = 0, timeout: Long = 0L): Command = execute(Command(command, resultCode), timeout)
 
     /**
      * Execute a command
@@ -175,7 +145,8 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
      * @param timeout
      *      Timeout in milliseconds after which to force quit
      */
-    fun execute(command: Command, timeout: Long): Command {
+    @JvmOverloads
+    fun execute(command: Command, timeout: Long = 0L): Command {
         synchronized(mLock) {
             if (!mActive) {
                 throw RuntimeException("Cannot execute on a closed shell (ID: ${mStream.streamId()})")
