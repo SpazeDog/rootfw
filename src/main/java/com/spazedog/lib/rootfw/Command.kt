@@ -49,6 +49,9 @@ open class Command() : Data<Command>(arrayOf<String>()) {
         /** * */
         protected val mStaticBinaries = mutableListOf<String?>()
 
+        /** * */
+        protected val mBinariySupport = mutableMapOf<String, String?>()
+
         /**
          * Register new all-in-one binary like `busybox` or `toybox`
          *
@@ -60,6 +63,63 @@ open class Command() : Data<Command>(arrayOf<String>()) {
             if (!mStaticBinaries.contains(bin) && !BINARIES.contains(bin)) {
                 mStaticBinaries.add(bin)
             }
+        }
+
+        /**
+         * Find which registered all-in-one binary packs a specific command
+         *
+         * Transforms something like `cat` into `toybox cat` or `toolbox cat`,
+         * depending on whichever supports `cat`. Be careful though, this method
+         * does this by invoking the argument `-h` on the specified command.
+         * Something like `toolbox reboot -h` will not produce any output,
+         * it will simply ignore the argument and reboot the device, if the
+         * installed version supports reboot. It will work on most commands though.
+         * Just dont use it on commands that will affect the system, like reboot.
+         *
+         * @param shell
+         *      A [Shell] instance to use for the search
+         *
+         * @param bin
+         *      The command to search for like `cat`, `ps` etc
+         *
+         * @return
+         *      This method returns `NULL` if no support could be found
+         */
+        @JvmStatic
+        fun getBinary(shell: Shell, bin: String): String? {
+            if (!mBinariySupport.containsKey(bin)) {
+                val list = mutableListOf<String?>()
+                list.addAll(mStaticBinaries);
+                list.addAll(BINARIES);
+
+                if (list.isEmpty()) {
+                    list.add(null);
+                }
+
+                /* Toolbox = '<cmd>: no such tool'
+                 * Toybox = '<cmd>: not found'
+                 * Busybox = '<cmd>: applet not found' or '<cmd>: command unknown'
+                 */
+                val reg = Regex("(not found|such tool|unknown)$")
+                val command = Command();
+
+                for (toolbox in list) {
+                    val tb = if (toolbox == null || toolbox.length == 0) bin else "$toolbox $bin"
+
+                    command.reset()
+                    command.addCall("$tb -h 2>&1")
+
+                    shell.execute(command)
+
+                    val line = command.getLine()
+
+                    if (line != null && !line.toLowerCase().matches(reg)) {
+                        mBinariySupport.put(bin, "$tb"); break
+                    }
+                }
+            }
+
+            return mBinariySupport.get(bin)
         }
     }
 
