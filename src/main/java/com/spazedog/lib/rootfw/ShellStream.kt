@@ -635,7 +635,15 @@ class ShellStream() {
      * Remember to close this reader when you are done, this will release the
      * synchronous state and enter it back into asynchronous
      */
-    fun getReader(): JavaReader = { mShellReader.open(); mShellReader }()
+    fun getReader(): JavaReader {
+        if (mStreamListeners.size > 0) {
+            mDebug.log('w', "Using the Reader will affact the '${mStreamListeners.size}' attached stream listener(s)")
+        }
+
+        mShellReader.open()
+
+        return mShellReader
+    }
 
     /**
      * Get a [Writer] connected to this stream
