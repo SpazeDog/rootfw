@@ -130,11 +130,14 @@ class Shell(stream: ShellStream) : ConnectionListener, StreamListener {
      * @param resultCode
      *      The result code that should be produced upon a successful call
      *
+     * @param autopopulate
+     *      Whether or not to auto populate with all registered all-in-one binaries
+     *
      * @param timeout
      *      Timeout in milliseconds after which to force quit
      */
     @JvmOverloads
-    fun execute(command: String, resultCode: Int = 0, timeout: Long = 0L): Command = execute(Command(command, resultCode), timeout)
+    fun execute(command: String, resultCode: Int = 0, autopopulate: Boolean = false, timeout: Long = 0L): Command = execute(Command(command, resultCode, autopopulate), timeout)
 
     /**
      * Execute a command
