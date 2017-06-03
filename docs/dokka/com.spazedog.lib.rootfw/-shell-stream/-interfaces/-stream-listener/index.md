@@ -2,7 +2,7 @@
 
 # StreamListener
 
-`interface StreamListener : Any`
+`interface StreamListener`
 
 Used to retrieve output from stdout of the terminal process
 
@@ -15,7 +15,7 @@ You can read more in the docs for [ShellStream.addStreamListener](../../add-stre
 
 | Name | Summary |
 |---|---|
-| [onStdOut](on-std-out.md) | `abstract fun onStdOut(stream: `[`ShellStream`](../../index.md)`, line: String): Unit`<br>Called whenever the stream receives a new output line from the terminal process |
+| [onStdOut](on-std-out.md) | `abstract fun onStdOut(stream: `[`ShellStream`](../../index.md)`, line: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)<br>Called whenever the stream receives a new output line from the terminal process |
 
 ### Inheritors
 

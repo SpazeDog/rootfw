@@ -2,7 +2,7 @@
 
 # destroy
 
-`fun destroy(): Unit`
+`fun destroy(): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)
 
 Kill the terminal process
 

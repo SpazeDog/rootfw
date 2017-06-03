@@ -2,7 +2,7 @@
 
 # writeLines
 
-`fun writeLines(vararg lines: String): Boolean`
+`fun writeLines(vararg lines: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`): `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)
 
 Write lines to the terminal process
 
@@ -12,4 +12,13 @@ line feeds, you can use [ShellStream.write](write.md) instead.
 
 ### Parameters
 
-`lines` - Lines to write
+`lines` -
+
+```
+
+```
+    Lines to write
+```
+
+```
+

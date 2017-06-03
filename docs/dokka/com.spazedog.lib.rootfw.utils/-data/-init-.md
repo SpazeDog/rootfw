@@ -2,7 +2,7 @@
 
 # &lt;init&gt;
 
-`Data(lines: Array<String>)`
+`Data(lines: `[`Array`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-array/index.html)`<`[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`>)`
 
 Abstract data container that stores data as lines in an array.
 

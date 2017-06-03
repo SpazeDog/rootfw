@@ -2,7 +2,7 @@
 
 # getCallSize
 
-`fun getCallSize(): Int`
+`open fun getCallSize(): `[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)
 
 Get the number of [Call](-containers/-call/index.md) instances added to this class
 

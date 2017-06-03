@@ -2,4 +2,4 @@
 
 # command
 
-`val command: String`
+`val command: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)

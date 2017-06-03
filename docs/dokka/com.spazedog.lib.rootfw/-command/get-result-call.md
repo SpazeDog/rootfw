@@ -2,7 +2,7 @@
 
 # getResultCall
 
-`fun getResultCall(): Int`
+`open fun getResultCall(): `[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)
 
 Array position of the last executed call
 

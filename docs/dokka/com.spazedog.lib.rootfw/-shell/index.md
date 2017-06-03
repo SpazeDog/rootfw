@@ -22,16 +22,24 @@ between each command.
 
 | Name | Summary |
 |---|---|
-| [&lt;init&gt;](-init-.md) | `Shell()`<br>`Shell(requestRoot: Boolean)`<br>Create a new Shell instance using a new default [ShellStream](../-shell-stream/index.md)`Shell(stream: `[`ShellStream`](../-shell-stream/index.md)`)`<br>Create a new Shell instance using an existing [ShellStream](../-shell-stream/index.md) |
+| [&lt;init&gt;](-init-.md) | `Shell(requestRoot: `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)` = false)`<br>Create a new Shell instance using a new default [ShellStream](../-shell-stream/index.md)`Shell(stream: `[`ShellStream`](../-shell-stream/index.md)`)`
+
+```
+
+```
+    Create a new [Shell] instance using an existing [ShellStream]<br>```
+<br>```
+<br> |
 
 ### Functions
 
 | Name | Summary |
 |---|---|
-| [destroy](destroy.md) | `fun destroy(): Unit`<br>Destroy the [ShellStream](../-shell-stream/index.md) used by this class |
-| [execute](execute.md) | `fun execute(command: String): `[`Command`](../-command/index.md)<br>`fun execute(command: String, resultCode: Int): `[`Command`](../-command/index.md)<br>`fun execute(command: String, resultCode: Int, timeout: Long): `[`Command`](../-command/index.md)<br>`fun execute(command: `[`Command`](../-command/index.md)`): `[`Command`](../-command/index.md)<br>`fun execute(command: `[`Command`](../-command/index.md)`, timeout: Long): `[`Command`](../-command/index.md)<br>Execute a command |
-| [getEnv](get-env.md) | `fun getEnv(name: String): String?`<br>Get value of an environment variable on the current connection |
+| [close](close.md) | `fun close(): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)<br>This will detach from [ShellStream](../-shell-stream/index.md) without destroying it |
+| [destroy](destroy.md) | `fun destroy(): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)<br>Destroy the [ShellStream](../-shell-stream/index.md) used by this class |
+| [execute](execute.md) | `fun execute(command: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`, resultCode: `[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)` = 0, autopopulate: `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)` = false, timeout: `[`Long`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-long/index.html)` = 0L): `[`Command`](../-command/index.md)<br>`fun execute(command: `[`Command`](../-command/index.md)`, timeout: `[`Long`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-long/index.html)` = 0L): `[`Command`](../-command/index.md)<br>Execute a command |
+| [getEnv](get-env.md) | `fun getEnv(name: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`): `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`?`<br>Get value of an environment variable on the current connection |
 | [getStream](get-stream.md) | `fun getStream(): `[`ShellStream`](../-shell-stream/index.md)<br>Get the [ShellStream](../-shell-stream/index.md) used by this class |
-| [isActive](is-active.md) | `fun isActive(): Boolean`<br>Check whether or not the [ShellStream](../-shell-stream/index.md) used by this class is active/connected |
-| [isRootShell](is-root-shell.md) | `fun isRootShell(): Boolean`<br>Check whether or not the [ShellStream](../-shell-stream/index.md) used by this class has root privileges |
-| [setEnv](set-env.md) | `fun setEnv(name: String, value: Any): Boolean`<br>Set/Change the value of an environment variable on the current connection |
+| [isActive](is-active.md) | `fun isActive(): `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)<br>Check whether or not the [ShellStream](../-shell-stream/index.md) used by this class is active/connected |
+| [isRootShell](is-root-shell.md) | `fun isRootShell(): `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)<br>Check whether or not the [ShellStream](../-shell-stream/index.md) used by this class has root privileges |
+| [setEnv](set-env.md) | `fun setEnv(name: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`, value: `[`Any`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-any/index.html)`): `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)<br>Set/Change the value of an environment variable on the current connection |

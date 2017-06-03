@@ -2,7 +2,7 @@
 
 # Containers
 
-`object Containers : Any`
+`object Containers`
 
 Contains class containers that can be used with this class
 
@@ -10,4 +10,4 @@ Contains class containers that can be used with this class
 
 | Name | Summary |
 |---|---|
-| [Call](-call/index.md) | `class Call : Any`<br>Used to store a call that can be added to [Command](../index.md) |
+| [Call](-call/index.md) | `class Call`<br>Used to store a call that can be added to [Command](../index.md) |

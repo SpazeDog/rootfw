@@ -2,7 +2,7 @@
 
 # ConnectionListener
 
-`interface ConnectionListener : Any`
+`interface ConnectionListener`
 
 Used to keep track of the terminal process connection
 
@@ -15,8 +15,8 @@ You can read more in the docs for [ShellStream.addConnectionListener](../../add-
 
 | Name | Summary |
 |---|---|
-| [onConnect](on-connect.md) | `abstract fun onConnect(stream: `[`ShellStream`](../../index.md)`): Unit`<br>Called when a connection has been established |
-| [onDisconnect](on-disconnect.md) | `abstract fun onDisconnect(stream: `[`ShellStream`](../../index.md)`): Unit`<br>Called when a connection has been closed |
+| [onConnect](on-connect.md) | `abstract fun onConnect(stream: `[`ShellStream`](../../index.md)`): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)<br>Called when a connection has been established |
+| [onDisconnect](on-disconnect.md) | `abstract fun onDisconnect(stream: `[`ShellStream`](../../index.md)`): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)<br>Called when a connection has been closed |
 
 ### Inheritors
 

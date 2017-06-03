@@ -7,5 +7,12 @@
 This method will remove all of the empty lines from the data array and trim each line
 
 **Return**
-This instance
+
+```
+
+```
+    This instance
+```
+
+```
 

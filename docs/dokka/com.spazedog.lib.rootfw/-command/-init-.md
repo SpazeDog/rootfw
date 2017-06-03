@@ -2,12 +2,10 @@
 
 # &lt;init&gt;
 
-`Command(command: String)`
-`Command(command: String, resultCode: Int)`
-`Command(command: String, resultCode: Int, populate: Boolean)`
-`Command(command: String, resultCodes: Array<Int>, populate: Boolean)`
+`Command(command: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`, resultCode: `[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)` = 0, populate: `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)` = false)`
+`Command(command: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`, resultCodes: `[`Array`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-array/index.html)`<`[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)`>, populate: `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)`)`
 `Command(callback: `[`CallCreator`](-interfaces/-call-creator/index.md)`)`
-`Command(callback: (String?) -> `[`Call`](-containers/-call/index.md)`)`
+`Command(callback: (it: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`?) -> `[`Call`](-containers/-call/index.md)`?)`
 
 Create a new [Command](index.md)
 

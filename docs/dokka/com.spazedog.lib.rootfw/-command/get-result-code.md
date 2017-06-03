@@ -2,7 +2,7 @@
 
 # getResultCode
 
-`fun getResultCode(): Int`
+`open fun getResultCode(): `[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)
 
 The result code of the last executed call
 

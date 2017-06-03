@@ -2,26 +2,51 @@
 
 # &lt;init&gt;
 
-`Shell()`
-
-Create a new [Shell](index.md) instance using a new default [ShellStream](../-shell-stream/index.md)
-
-`Shell(requestRoot: Boolean)`
+`Shell(requestRoot: `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)` = false)`
 
 Create a new [Shell](index.md) instance using a new default [ShellStream](../-shell-stream/index.md)
 
 ### Parameters
 
-`requestRoot` - Request root for the new [ShellStream](../-shell-stream/index.md) instance
+`requestRoot` -
+
+```
+
+```
+    Request root for the new [ShellStream] instance
+```
+
+```
 
 `Shell(stream: `[`ShellStream`](../-shell-stream/index.md)`)`
 
-Create a new [Shell](index.md) instance using an existing [ShellStream](../-shell-stream/index.md)
+```
+
+```
+    Create a new [Shell] instance using an existing [ShellStream]
+```
+
+```
 
 ### Parameters
 
-`stream` - An intance of [ShellStream](../-shell-stream/index.md)
+`stream` -
+
+```
+
+```
+    An intance of [ShellStream]
+```
+
+```
 
 **Constructor**
-Create a new [Shell](index.md) instance using an existing [ShellStream](../-shell-stream/index.md)
+
+```
+
+```
+    Create a new [Shell] instance using an existing [ShellStream]
+```
+
+```
 

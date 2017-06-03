@@ -2,10 +2,17 @@
 
 # getArray
 
-`fun getArray(): Array<String>`
+`fun getArray(): `[`Array`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-array/index.html)`<`[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`>`
 
 This will return the data array
 
 **Return**
-The data array
+
+```
+
+```
+    The data array
+```
+
+```
 

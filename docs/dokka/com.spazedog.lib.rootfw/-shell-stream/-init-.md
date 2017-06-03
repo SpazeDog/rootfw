@@ -2,13 +2,21 @@
 
 # &lt;init&gt;
 
-`ShellStream(listener: (`[`ShellStream`](index.md)`, Boolean) -> Unit)`
+`ShellStream(listener: (`[`ShellStream`](index.md)`, `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)`) -> `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)`)`
 
 Create a new [ShellStream](index.md)
 
 ### Parameters
 
-`listener` - A kotlin lambda used a [ConnectionListener](-interfaces/-connection-listener/index.md)
+`listener` -
+
+```
+
+```
+    A kotlin lambda used a [ConnectionListener]
+```
+
+```
 
 `ShellStream(listener: `[`ConnectionListener`](-interfaces/-connection-listener/index.md)`)`
 
@@ -16,12 +24,20 @@ Create a new [ShellStream](index.md)
 
 ### Parameters
 
-`listener` - A [ConnectionListener](-interfaces/-connection-listener/index.md)
+`listener` -
+
+```
+
+```
+    A [ConnectionListener]
+```
+
+```
 
 `ShellStream()`
 
 I/O stream for a terminal process
 
 This stream is used to write to a terminal process and uses
-listeners to retrieve any output from stdout asynchronously.
+listeners or a [Reader](-reader.md) to retrieve any output from stdout asynchronously or synchronously.
 

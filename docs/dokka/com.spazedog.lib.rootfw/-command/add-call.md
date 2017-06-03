@@ -2,26 +2,7 @@
 
 # addCall
 
-`fun addCall(command: String): <ERROR CLASS>`
-
-Add a new [Call](-containers/-call/index.md) that is auto build from a shell command.
-The acceptible result code will be `0`
-
-### Parameters
-
-`command` - Shell command
-
-`fun addCall(command: String, resultCode: Int): <ERROR CLASS>`
-
-Add a new [Call](-containers/-call/index.md) that is auto build from a shell command.
-
-### Parameters
-
-`command` - Shell command
-
-`resultCode` - An acceptible result code for the shell command
-
-`fun addCall(command: String, resultCode: Int, populate: Boolean): <ERROR CLASS>`
+`open fun addCall(command: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`, resultCode: `[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)` = 0, populate: `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)` = false): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)
 
 Add a new [Call](-containers/-call/index.md) that is auto build from a shell command,
 and optionally auto populate with all registered all-in-one binaries
@@ -33,6 +14,7 @@ using one of the registered all-in-one binaries that can be located at [BINARIES
 
 ```
 ins.addCall("ls /", 0, true)
+
     -> ls /
     -> busybox ls /
     -> toolbox ls /
@@ -41,13 +23,37 @@ ins.addCall("ls /", 0, true)
 
 ### Parameters
 
-`command` - Shell command
+`command` -
 
-`resultCode` - An acceptible result code for the shell command
+```
 
-`populate` - Populate with all registered all-in-one binaries
+```
+    Shell command
+```
 
-`fun addCall(command: String, resultCodes: Array<Int>, populate: Boolean): Unit`
+```
+
+`resultCode` -
+
+```
+
+```
+    An acceptible result code for the shell command
+```
+
+```
+
+`populate` -
+
+```
+
+```
+    Populate with all registered all-in-one binaries
+```
+
+```
+
+`open fun addCall(command: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`, resultCodes: `[`Array`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-array/index.html)`<`[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)`>, populate: `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)`): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)
 
 Add a new [Call](-containers/-call/index.md) that is auto build from a shell command with multiple acceptible result codes
 and optionally auto populate with all registered all-in-one binaries
@@ -59,6 +65,7 @@ using one of the registered all-in-one binaries that can be located at [BINARIES
 
 ```
 ins.addCall("ls /", 0, true)
+
     -> ls /
     -> busybox ls /
     -> toolbox ls /
@@ -67,13 +74,37 @@ ins.addCall("ls /", 0, true)
 
 ### Parameters
 
-`command` - Shell command
+`command` -
 
-`resultCode` - An acceptible result code for the shell command
+```
 
-`populate` - Populate with all registered all-in-one binaries
+```
+    Shell command
+```
 
-`fun addCall(callback: `[`CallCreator`](-interfaces/-call-creator/index.md)`): Unit`
+```
+
+`resultCode` -
+
+```
+
+```
+    An acceptible result code for the shell command
+```
+
+```
+
+`populate` -
+
+```
+
+```
+    Populate with all registered all-in-one binaries
+```
+
+```
+
+`open fun addCall(callback: `[`CallCreator`](-interfaces/-call-creator/index.md)`): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)
 
 Add a new [Call](-containers/-call/index.md) instances that is build from a callback interface.
 
@@ -83,12 +114,27 @@ for each binary.
 
 ### Parameters
 
-`callback` - The [CallCreator](-interfaces/-call-creator/index.md) callback to use
+`callback` -
+
+```
+
+```
+    The [CallCreator] callback to use
+```
+
+```
 
 **Return**
-This callback should return the [Call](-containers/-call/index.md) instances to use or `NULL` to skip the current one
 
-`fun addCall(callback: (String?) -> `[`Call`](-containers/-call/index.md)`): Unit`
+```
+
+```
+    This callback should return the [Call] instances to use or `NULL` to skip the current one
+```
+
+```
+
+`open fun addCall(callback: (bin: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`?) -> `[`Call`](-containers/-call/index.md)`?): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)
 
 Add a new [Call](-containers/-call/index.md) instances that is build from a Kotlin lambda callback.
 
@@ -98,8 +144,23 @@ for each binary.
 
 ### Parameters
 
-`callback` - The lambda callback to use
+`callback` -
+
+```
+
+```
+    The lambda callback to use
+```
+
+```
 
 **Return**
-This callback should return the [Call](-containers/-call/index.md) instances to use or `NULL` to skip the current one
+
+```
+
+```
+    This callback should return the [Call] instances to use or `NULL` to skip the current one
+```
+
+```
 

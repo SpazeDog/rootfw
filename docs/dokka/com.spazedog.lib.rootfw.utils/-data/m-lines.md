@@ -2,5 +2,5 @@
 
 # mLines
 
-`protected var mLines: Array<String>`
+`protected var mLines: `[`Array`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-array/index.html)`<`[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)`>`
 *

@@ -2,7 +2,7 @@
 
 # disconnect
 
-`fun disconnect(): Unit`
+`fun disconnect(): `[`Unit`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-unit/index.html)
 
 Send exit signal to the terminal process
 

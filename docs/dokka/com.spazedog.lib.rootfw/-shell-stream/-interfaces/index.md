@@ -2,7 +2,7 @@
 
 # Interfaces
 
-`object Interfaces : Any`
+`object Interfaces`
 
 Object containing interfaces that can be used with [ShellStream](../index.md)
 
@@ -10,5 +10,5 @@ Object containing interfaces that can be used with [ShellStream](../index.md)
 
 | Name | Summary |
 |---|---|
-| [ConnectionListener](-connection-listener/index.md) | `interface ConnectionListener : Any`<br>Used to keep track of the terminal process connection |
-| [StreamListener](-stream-listener/index.md) | `interface StreamListener : Any`<br>Used to retrieve output from stdout of the terminal process |
+| [ConnectionListener](-connection-listener/index.md) | `interface ConnectionListener`<br>Used to keep track of the terminal process connection |
+| [StreamListener](-stream-listener/index.md) | `interface StreamListener`<br>Used to retrieve output from stdout of the terminal process |

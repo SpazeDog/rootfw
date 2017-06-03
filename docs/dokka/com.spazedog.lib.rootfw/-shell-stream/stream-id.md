@@ -2,7 +2,7 @@
 
 # streamId
 
-`fun streamId(): Int`
+`fun streamId(): `[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)
 
 Return this stream's id
 

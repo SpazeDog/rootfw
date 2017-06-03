@@ -2,10 +2,17 @@
 
 # getSize
 
-`fun getSize(): Int`
+`fun getSize(): `[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)
 
 Count the lines in the data array
 
 **Return**
-The number of lines
+
+```
+
+```
+    The number of lines
+```
+
+```
 

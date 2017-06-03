@@ -1,4 +1,4 @@
-/ [Wiki](wiki.md) / [Basics](.)
+/ [Wiki](wiki.md) / [Basics]()
 
 # Basics
 

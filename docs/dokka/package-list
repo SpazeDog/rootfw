@@ -1,0 +1,5 @@
+$dokka.format:gfm
+$dokka.linkExtension:md
+
+com.spazedog.lib.rootfw
+com.spazedog.lib.rootfw.utils

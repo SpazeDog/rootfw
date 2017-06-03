@@ -2,38 +2,39 @@
 
 # connect
 
-`fun connect(): Boolean`
-
-Connect to the terminal process using default setup
-
-Default setup means no root privileges and stderr will not be ignored
-
-`fun connect(requestRoot: Boolean): Boolean`
+`fun connect(requestRoot: `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)` = false, wait: `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)` = false, ignoreErr: `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)` = false): `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)
 
 Connect to the terminal process
 
 ### Parameters
 
-`requestRoot` - Request root privileges. If not possible, the connection will use normal privileges
+`requestRoot` -
 
-`fun connect(requestRoot: Boolean, wait: Boolean): Boolean`
+```
 
-Connect to the terminal process
+```
+    Request root privileges. If not possible, the connection will use normal privileges
+```
 
-### Parameters
+```
 
-`requestRoot` - Request root privileges. If not possible, the connection will use normal privileges
+`wait` -
 
-`wait` - Block until connection listeners are done
+```
 
-`fun connect(requestRoot: Boolean, wait: Boolean, ignoreErr: Boolean): Boolean`
+```
+    Block until connection listeners are done
+```
 
-Connect to the terminal process
+```
 
-### Parameters
+`ignoreErr` -
 
-`requestRoot` - Request root privileges. If not possible, the connection will use normal privileges
+```
 
-`wait` - Block until connection listeners are done
+```
+    Filter stderr out of the output
+```
 
-`ignoreErr` - Filter stderr out of the output
+```
+

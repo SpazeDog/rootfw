@@ -2,21 +2,29 @@
 
 # getString
 
-`fun getString(): String`
-
-This will return a string of the data array with line feed as separators
-
-**Return**
-The data array as a string
-
-`fun getString(separater: String): String`
+`fun getString(separater: `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)` = "\n"): `[`String`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-string/index.html)
 
 This will return a string of the data array with custom characters used as line breakers
 
 ### Parameters
 
-`separater` - A separator character used to separate each line
+`separater` -
+
+```
+
+```
+    A separator character used to separate each line
+```
+
+```
 
 **Return**
-The data array as a string
+
+```
+
+```
+    The data array as a string
+```
+
+```
 

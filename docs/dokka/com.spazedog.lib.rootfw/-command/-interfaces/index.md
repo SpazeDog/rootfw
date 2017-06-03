@@ -2,7 +2,7 @@
 
 # Interfaces
 
-`object Interfaces : Any`
+`object Interfaces`
 
 Contains interfaces that can be used with this class
 
@@ -10,5 +10,4 @@ Contains interfaces that can be used with this class
 
 | Name | Summary |
 |---|---|
-| [CallCreator](-call-creator/index.md) | `interface CallCreator : Any`<br>Can be used with [Command.addCall](../add-call.md) to create custom [Call](../-containers/-call/index.md) instances
-for each registered all-in-one binary |
+| [CallCreator](-call-creator/index.md) | `interface CallCreator`<br>Can be used with [Command.addCall](../add-call.md) to create custom [Call](../-containers/-call/index.md) instances for each registered all-in-one binary |

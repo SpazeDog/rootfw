@@ -2,4 +2,4 @@
 
 # resultCodes
 
-`val resultCodes: Array<Int>`
+`val resultCodes: `[`Array`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-array/index.html)`<`[`Int`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-int/index.html)`>`

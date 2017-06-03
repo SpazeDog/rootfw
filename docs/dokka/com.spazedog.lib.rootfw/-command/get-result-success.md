@@ -2,7 +2,7 @@
 
 # getResultSuccess
 
-`fun getResultSuccess(): Boolean`
+`open fun getResultSuccess(): `[`Boolean`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-boolean/index.html)
 
 Returns `TRUE` if one of the calls returned with an acceptible result code
 
